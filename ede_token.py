@@ -14,6 +14,7 @@ class TokenType(Enum):
     SYM_ASTERISK = auto()
     SYM_FWD_SLASH = auto()
     SYM_SEMICOLON = auto()
+    SYM_EQUALS = auto()
     KW_LET = auto()
     KW_IF = auto()
     KW_ELSE = auto()
@@ -28,6 +29,7 @@ SYMBOL_DICT = {
     '*': TokenType.SYM_ASTERISK,
     '/': TokenType.SYM_FWD_SLASH,
     ';': TokenType.SYM_SEMICOLON,
+    '=': TokenType.SYM_EQUALS,
 }
 
 KEYWORD_DICT = {
