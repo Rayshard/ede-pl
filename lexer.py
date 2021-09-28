@@ -1,6 +1,7 @@
+from os import read
 from ede_utils import Error, ErrorType, Result, Success
 from typing import List, Union, cast
-from ede_token import Position, Token, TokenType, is_symbol
+from ede_token import Position, Token, TokenType, is_keyword, is_symbol
 
 EOF = '\0'
 
@@ -43,6 +44,25 @@ def lex_integer(reader: Reader) -> Result[Token]:
         result += reader.read()
 
     return Success(Token.Integer(position, int(result))) if result != '' else Error(ErrorType.INVALID_INT_LIT, position)
+
+def lex_id_or_keyword(reader: Reader) -> Result[Token]:
+    result = ''
+    position = reader.get_position()
+
+    # Attempt to read the initial character
+    if not reader.peek().isalpha() and reader.peek() != '_':
+        return Error(ErrorType.INVALID_ID, position, "Expected letter or _ for identifier.")
+    
+    result += reader.read()
+
+    while True:
+        char = reader.peek()
+        if not char.isalnum() and char != '_':
+            break
+
+        result += reader.read()
+
+    return Success(Token.Keyword(position, result) if is_keyword(result) else Token.Identifier(position, result))
 
 def lex_string(reader: Reader) -> Result[Token]:
     result = ''
@@ -131,7 +151,7 @@ def lex_char(reader: Reader) -> Result[Token]:
         return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must be closed with a '.")
     else:
         reader.read()
-        
+
     return Success(Token.Char(position, result))
 
 
@@ -153,7 +173,12 @@ def lex(reader: Reader) -> Result[Token]:
     elif char == EOF:
         return Success(Token.EOF(reader.get_position()))
     else:
-        return Success(Token.Invalid(reader.get_position(), reader.read()))
+        attempt = lex_id_or_keyword(reader)
+
+        if attempt.is_success():
+            return attempt
+        else:
+            return Success(Token.Invalid(reader.get_position(), reader.read()))
 
 def tokenize(reader: Reader) -> Result[List[Token]]:
     tokens = []

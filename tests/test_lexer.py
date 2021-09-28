@@ -1,6 +1,6 @@
 from ede_utils import ErrorType
-from lexer import Reader, lex, lex_char, lex_integer, lex_string
-from ede_token import Token, TokenType
+from lexer import Reader, lex, lex_char, lex_id_or_keyword, lex_integer, lex_string
+from ede_token import KEYWORD_DICT, SYMBOL_DICT, Token, TokenType
 
 
 def test_integer():
@@ -38,3 +38,23 @@ def test_char():
     assert lex_char(Reader("''")).is_error(ErrorType.INVALID_CHAR_LIT)
     assert lex_char(Reader("'\\'")).is_error(ErrorType.INVALID_CHAR_LIT)
     assert lex_char(Reader("a'")).is_error(ErrorType.INVALID_CHAR_LIT)
+
+def test_symbols():
+    for sym, type in SYMBOL_DICT.items():
+        assert lex(Reader(sym)).get().type == type
+
+def test_keywords():
+    for kw, type in KEYWORD_DICT.items():
+        assert lex_id_or_keyword(Reader(kw)).get().type == type
+
+def test_identifiers():
+    assert lex_id_or_keyword(Reader("_")).get() == Token(type=TokenType.IDENTIFIER, value="_")
+    assert lex_id_or_keyword(Reader("a")).get() == Token(type=TokenType.IDENTIFIER, value="a")
+    assert lex_id_or_keyword(Reader("a1")).get() == Token(type=TokenType.IDENTIFIER, value="a1")
+    assert lex_id_or_keyword(Reader("a_1")).get() == Token(type=TokenType.IDENTIFIER, value="a_1")
+    assert lex_id_or_keyword(Reader("a_1_")).get() == Token(type=TokenType.IDENTIFIER, value="a_1_")
+    assert lex_id_or_keyword(Reader("_a_1_")).get() == Token(type=TokenType.IDENTIFIER, value="_a_1_")
+    assert lex_id_or_keyword(Reader("_123")).get() == Token(type=TokenType.IDENTIFIER, value="_123")
+    assert lex_id_or_keyword(Reader("a bc")).get() == Token(type=TokenType.IDENTIFIER, value="a")
+    assert lex_id_or_keyword(Reader("123")).is_error(ErrorType.INVALID_ID)
+    assert lex_id_or_keyword(Reader(" abc")).is_error(ErrorType.INVALID_ID)

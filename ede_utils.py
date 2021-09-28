@@ -17,6 +17,7 @@ class ErrorType(Enum):
     INVALID_STR_LIT = auto()
     INVALID_CHAR_LIT = auto()
     UNEXPECTED_EOF = auto()
+    INVALID_ID = auto()
 
 class Success(Generic[T]):
     def __init__(self, value: T) -> None:

@@ -8,11 +8,19 @@ class TokenType(Enum):
     INTEGER = auto()
     STRING = auto()
     CHAR = auto()
+    IDENTIFIER = auto()
     SYM_PLUS = auto()
     SYM_DASH = auto()
     SYM_ASTERISK = auto()
     SYM_FWD_SLASH = auto()
     SYM_SEMICOLON = auto()
+    KW_LET = auto()
+    KW_IF = auto()
+    KW_ELSE = auto()
+    KW_WHILE = auto()
+    KW_TRUE = auto()
+    KW_FALSE = auto()
+
 
 SYMBOL_DICT = {
     '+': TokenType.SYM_PLUS,
@@ -22,8 +30,20 @@ SYMBOL_DICT = {
     ';': TokenType.SYM_SEMICOLON,
 }
 
+KEYWORD_DICT = {
+    "let": TokenType.KW_LET,
+    "if": TokenType.KW_IF,
+    "else": TokenType.KW_ELSE,
+    "while": TokenType.KW_WHILE,
+    "true": TokenType.KW_TRUE,
+    "false": TokenType.KW_ELSE,
+}
+
 def is_symbol(sym: str) -> bool:
     return sym in SYMBOL_DICT
+
+def is_keyword(id: str) -> bool:
+    return id in KEYWORD_DICT
 
 class Token(NamedTuple):
     type: TokenType
@@ -53,6 +73,14 @@ class Token(NamedTuple):
     @staticmethod
     def Symbol(pos: Position, sym: str):
         return Token(SYMBOL_DICT[sym], pos)
+
+    @staticmethod
+    def Keyword(pos: Position, id: str):
+        return Token(KEYWORD_DICT[id], pos)
+
+    @staticmethod
+    def Identifier(pos: Position, id: str):
+        return Token(TokenType.IDENTIFIER, pos, id)
 
     def __str__(self):
         string = f"{self.position.line, self.position.column}: {self.type.name}"
