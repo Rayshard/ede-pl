@@ -7,6 +7,7 @@ class TokenType(Enum):
     INVALID = auto()
     INTEGER = auto()
     STRING = auto()
+    CHAR = auto()
     SYM_PLUS = auto()
     SYM_DASH = auto()
     SYM_ASTERISK = auto()
@@ -44,6 +45,10 @@ class Token(NamedTuple):
     @staticmethod
     def String(pos: Position, value: str):
         return Token(TokenType.STRING, pos, value)
+
+    @staticmethod
+    def Char(pos: Position, value: str):
+        return Token(TokenType.CHAR, pos, value)
 
     @staticmethod
     def Symbol(pos: Position, sym: str):

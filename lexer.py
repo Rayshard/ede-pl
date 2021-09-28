@@ -20,11 +20,11 @@ class Reader:
         if char != EOF:
             self.ptr = self.ptr + 1
 
-        if char == '\n':
-            self.line = self.line + 1
-            self.column = 1
-        else:
-            self.column = self.column + 1
+            if char == '\n':
+                self.line = self.line + 1
+                self.column = 1
+            else:
+                self.column = self.column + 1
         
         return char
 
@@ -68,6 +68,8 @@ def lex_string(reader: Reader) -> Result[Token]:
                 result += '\n'
             elif escaped_char == '\\':
                 result += '\\'
+            elif escaped_char == '0':
+                result += '\0'
             elif escaped_char == '"':
                 result += '"'
             elif escaped_char == EOF:
@@ -86,6 +88,53 @@ def lex_string(reader: Reader) -> Result[Token]:
 
     return Success(Token.String(position, result))
 
+def lex_char(reader: Reader) -> Result[Token]:
+    result = ''
+    position = reader.get_position()
+    
+    # Attempt to read the initial '
+    if reader.peek() != '\'':
+        return Error(ErrorType.INVALID_CHAR_LIT, position, "Expected ' to begin char literal.")
+    else:
+        reader.read()
+
+    # Read literal contents
+    char = reader.peek()
+    
+    if char == '\\':
+        reader.read()
+        escaped_char = reader.read()
+
+        if escaped_char == 't':
+            result += '\t'
+        elif escaped_char == 'n':
+            result += '\n'
+        elif escaped_char == '\\':
+            result += '\\'
+        elif escaped_char == '0':
+            result += '\0'
+        elif escaped_char == '"':
+            result += '"'
+        elif escaped_char == EOF:
+            return Error(ErrorType.UNEXPECTED_EOF, position, "Char literal must be closed with a '.")
+        else:
+            return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain only one character.")
+    elif char == '\'':
+        reader.read()
+        return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain one character.")
+    elif char == EOF:
+        return Error(ErrorType.UNEXPECTED_EOF, position, "Char literal must contain one character'.")
+    else:
+        result += reader.read()
+
+    if reader.peek() != '\'':
+        return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must be closed with a '.")
+    else:
+        reader.read()
+        
+    return Success(Token.Char(position, result))
+
+
 def lex(reader: Reader) -> Result[Token]:
     # Skip whitespace
     while reader.peek().isspace():
@@ -97,6 +146,8 @@ def lex(reader: Reader) -> Result[Token]:
         return lex_integer(reader)
     elif char == '"':
         return lex_string(reader)
+    elif char == '\'':
+        return lex_char(reader)
     elif is_symbol(char):
         return Success(Token.Symbol(reader.get_position(), reader.read()))
     elif char == EOF:

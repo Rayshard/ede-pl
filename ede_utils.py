@@ -15,6 +15,7 @@ class ErrorType(Enum):
     DEFAULT = auto()
     INVALID_INT_LIT = auto()
     INVALID_STR_LIT = auto()
+    INVALID_CHAR_LIT = auto()
     UNEXPECTED_EOF = auto()
 
 class Success(Generic[T]):
@@ -45,6 +46,6 @@ class Error(NamedTuple):
         raise Exception("Called 'get' on an Error")
 
     def __str__(self) -> str:
-        return f"{self.position} {self.type.name}:  {self.msg}"    
+        return f"{self.position} {self.type.name}: {self.msg}"    
 
 Result = Union[Success[T], Error]

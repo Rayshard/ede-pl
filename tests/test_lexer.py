@@ -1,5 +1,5 @@
 from ede_utils import ErrorType
-from lexer import Reader, lex, lex_integer, lex_string
+from lexer import Reader, lex, lex_char, lex_integer, lex_string
 from ede_token import Token, TokenType
 
 
@@ -19,9 +19,22 @@ def test_string():
     assert lex_string(Reader('"new line\nis here"')).get() == Token(type=TokenType.STRING, value="new line\nis here")
     assert lex_string(Reader('"tab\\tis here"')).get() == Token(type=TokenType.STRING, value="tab\tis here")
     assert lex_string(Reader('"tab\tis here"')).get() == Token(type=TokenType.STRING, value="tab\tis here")
+    assert lex_string(Reader('"null\\0is here"')).get() == Token(type=TokenType.STRING, value="null\0is here")
     assert lex_string(Reader('"backslash\\\\is here"')).get() == Token(type=TokenType.STRING, value="backslash\\is here")
     assert lex_string(Reader('"unknown escaped\\is here"')).get() == Token(type=TokenType.STRING, value="unknown escaped\\is here")
     assert lex_string(Reader('"improper close\\"')).is_error(ErrorType.UNEXPECTED_EOF)
     assert lex_string(Reader('"improper close')).is_error(ErrorType.UNEXPECTED_EOF)
     assert lex_string(Reader('"improper close\\')).is_error(ErrorType.UNEXPECTED_EOF)
     assert lex_string(Reader('improper open\\')).is_error(ErrorType.INVALID_STR_LIT)
+
+def test_char():
+    assert lex_char(Reader("'a'")).get() == Token(type=TokenType.CHAR, value='a')
+    assert lex_char(Reader("'\\n'")).get() == Token(type=TokenType.CHAR, value='\n')
+    assert lex_char(Reader("'\\t'")).get() == Token(type=TokenType.CHAR, value='\t')
+    assert lex_char(Reader("'\\\\'")).get() == Token(type=TokenType.CHAR, value='\\')
+    assert lex_char(Reader("'abc'")).is_error(ErrorType.INVALID_CHAR_LIT)
+    assert lex_char(Reader("'\\a'")).is_error(ErrorType.INVALID_CHAR_LIT)
+    assert lex_char(Reader("'i")).is_error(ErrorType.INVALID_CHAR_LIT)
+    assert lex_char(Reader("''")).is_error(ErrorType.INVALID_CHAR_LIT)
+    assert lex_char(Reader("'\\'")).is_error(ErrorType.INVALID_CHAR_LIT)
+    assert lex_char(Reader("a'")).is_error(ErrorType.INVALID_CHAR_LIT)
