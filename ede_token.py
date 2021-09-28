@@ -1,10 +1,6 @@
+from ede_utils import Position
 from typing import Any, NamedTuple
 from enum import Enum, auto
-
-
-class Position(NamedTuple):
-    line: int
-    column: int
 
 class TokenType(Enum):
     EOF = auto()
@@ -33,21 +29,26 @@ class Token(NamedTuple):
     position: Position = Position(1, 1)
     value: Any = None
 
+    @staticmethod
     def EOF(pos: Position):
         return Token(TokenType.EOF, pos)
 
+    @staticmethod   
     def Invalid(pos: Position, value: str):
         return Token(TokenType.INVALID, pos, value)
-
+    
+    @staticmethod
     def Integer(pos: Position, value: int):
         return Token(TokenType.INTEGER, pos, value)
 
+    @staticmethod
     def String(pos: Position, value: str):
         return Token(TokenType.STRING, pos, value)
 
+    @staticmethod
     def Symbol(pos: Position, sym: str):
         return Token(SYMBOL_DICT[sym], pos)
 
     def __str__(self):
         string = f"{self.position.line, self.position.column}: {self.type.name}"
-        return string + f"({self.value})" if self.value is not None else string
+        return string + f"({repr(self.value)})" if self.value is not None else string
