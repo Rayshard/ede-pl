@@ -1,6 +1,5 @@
-from token import Position, Token, TokenType, is_symbol
-import token
 from typing import List
+from ede_token import Position, Token, TokenType, is_symbol
 
 EOF = '\0'
 
@@ -49,12 +48,19 @@ def lex_string(reader: Reader) -> Token:
     result = ''
     position = reader.get_position()
     
+    # Attempt to read the initial "
+    if reader.peek() != '"':
+        return Token.Invalid(position, reader.peek())
+    else:
+        reader.read()
+
+    # Read literal contents until an unescaped " or EOF is reached or invalid construction is detected
     while True:
         char = reader.peek()
         
         if char == '\\':
             reader.read()
-            escaped_char = reader.peek()
+            escaped_char = reader.read()
 
             if escaped_char == 't':
                 result += '\t'
@@ -62,10 +68,13 @@ def lex_string(reader: Reader) -> Token:
                 result += '\n'
             elif escaped_char == '\\':
                 result += '\\'
+            elif escaped_char == '"':
+                result += '"'
+            elif escaped_char == EOF:
+                return Token.Invalid(position, result + '\\')
             else:
-                return Token.Invalid(position, result)
+                result += "\\" + escaped_char
 
-            reader.read() 
             continue
         elif char == '"':
             reader.read()
@@ -87,7 +96,6 @@ def lex(reader: Reader) -> Token:
     if char.isdigit():
         return lex_integer(reader)
     elif char == '"':
-        reader.read()
         return lex_string(reader)
     elif is_symbol(char):
         return Token.Symbol(reader.get_position(), reader.read())
