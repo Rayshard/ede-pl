@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
         if result.is_error():
             print(result)
+            exit(1)
         else:
-            for token in result.get():
-                print(token)
+            exit(0)
 
