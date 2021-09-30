@@ -2,8 +2,9 @@ import sys
 import lexer
 from ede_utils import Position
 from ede_ast.ede_literal import IntLiteral, StringLiteral
-from ede_ast.ede_expr import BinopExpr, BinopType
+from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_type import Environment
+from ede_ast.ede_ast import ExecContext
 
 if __name__ == '__main__':
     args = sys.argv[1:]
@@ -12,6 +13,8 @@ if __name__ == '__main__':
     file_path = args[0]
     
     env = Environment()
+    ctx = ExecContext()
+
     left = IntLiteral(Position(1, 1), 10)
     right = IntLiteral(Position(1, 1), 15)
     binop = BinopExpr(Position(1, 1), left, right, BinopType.ADD)
@@ -20,8 +23,7 @@ if __name__ == '__main__':
     rights = StringLiteral(Position(1, 1), "World")
     binops = BinopExpr(Position(1, 1), lefts, rights, BinopType.ADD)
 
-    print(binops.typecheck(env).get())
-    print(binops.execute())
+    print(binops.execute_in(env, ctx))
 
     with open(file_path) as f:
         result = lexer.tokenize(lexer.Reader(f.read()))

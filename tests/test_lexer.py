@@ -2,7 +2,6 @@ from src.lexer import Reader, lex, lex_char, lex_id_or_keyword, lex_integer, lex
 from src.ede_utils import ErrorType
 from src.ede_token import KEYWORD_DICT, SYMBOL_DICT, Token, TokenType
 
-
 def test_integer():
     assert lex_integer(Reader("0")).get() == Token(type=TokenType.INTEGER, value=0)
     assert lex_integer(Reader("123")).get() == Token(type=TokenType.INTEGER, value=123)

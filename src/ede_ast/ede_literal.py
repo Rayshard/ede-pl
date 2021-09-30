@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from enum import Enum, auto
 from ede_utils import Position, Result, Success
-from .ede_ast import ExecutionResult
+from .ede_ast import ExecContext, ExecResult, TypedExecValue
 from .ede_expr import Expression, ExprType
 from .ede_type import EdeType, Environment
 from typing import Generic, TypeVar
@@ -27,7 +27,7 @@ class Literal(Expression, Generic[T]):
         pass
 
     @abstractmethod
-    def execute(self) -> ExecutionResult:
+    def execute(self, ctx: ExecContext) -> ExecResult:
         pass
 
     @abstractmethod
@@ -41,8 +41,8 @@ class IntLiteral(Literal[int]):
     def get_lit_type(self) -> LiteralType:
         return LiteralType.INTEGER
 
-    def execute(self) -> ExecutionResult:
-        return self.value
+    def execute(self, ctx: ExecContext) -> ExecResult:
+        return TypedExecValue(self.get_type(), self.value)
 
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         return Success(EdeType.INT)
@@ -54,8 +54,8 @@ class StringLiteral(Literal[str]):
     def get_lit_type(self) -> LiteralType:
         return LiteralType.STRING
 
-    def execute(self) -> ExecutionResult:
-        return self.value
+    def execute(self, ctx: ExecContext) -> ExecResult:
+        return TypedExecValue(self.get_type(), self.value)
 
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         return Success(EdeType.STR)
@@ -67,8 +67,8 @@ class CharLiteral(Literal[str]):
     def get_lit_type(self) -> LiteralType:
         return LiteralType.CHAR
 
-    def execute(self) -> ExecutionResult:
-        return self.value
+    def execute(self, ctx: ExecContext) -> ExecResult:
+        return TypedExecValue(self.get_type(), self.value)
 
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         return Success(EdeType.CHAR)
@@ -80,8 +80,8 @@ class BoolLiteral(Literal[bool]):
     def get_lit_type(self) -> LiteralType:
         return LiteralType.BOOL
 
-    def execute(self) -> ExecutionResult:
-        return self.value
+    def execute(self, ctx: ExecContext) -> ExecResult:
+        return TypedExecValue(self.get_type(), self.value)
 
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         return Success(EdeType.BOOL)

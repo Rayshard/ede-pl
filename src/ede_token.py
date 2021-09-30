@@ -1,8 +1,8 @@
 from ede_utils import Position
 from typing import Any, NamedTuple
-from enum import Enum, auto
+from enum import IntEnum, auto
 
-class TokenType(Enum):
+class TokenType(IntEnum):
     EOF = auto()
     INVALID = auto()
     INTEGER = auto()
@@ -21,7 +21,6 @@ class TokenType(Enum):
     KW_WHILE = auto()
     KW_TRUE = auto()
     KW_FALSE = auto()
-
 
 SYMBOL_DICT = {
     '+': TokenType.SYM_PLUS,
