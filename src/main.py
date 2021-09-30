@@ -21,7 +21,7 @@ if __name__ == '__main__':
         print(result)
         exit(1)
     else:
-        print(result.get().to_string(0))
+        print(result.get())
         print(result.get().execute_in(env, ctx))
         exit(0)
 

@@ -4,7 +4,7 @@ from ede_utils import Position, Result, Success
 from .ede_ast import ExecContext, ExecResult, TypedExecValue
 from .ede_expr import Expression, ExprType
 from .ede_type import EdeType, Environment
-from typing import Generic, TypeVar
+from typing import Any, Dict, Generic, TypeVar
 
 class LiteralType(Enum):
     '''Enumeration of AST literal types'''
@@ -27,8 +27,8 @@ class Literal(Expression, Generic[T]):
     def get_expr_type(self) -> ExprType:
         return ExprType.LITERAL
 
-    def to_string(self, indent: int) -> str:
-        return f"{self.get_lit_type()}: {self.value}"
+    def to_json(self) -> Dict[str, Any]:
+        return { str(self.get_lit_type()): self.value }
 
     @abstractmethod
     def get_lit_type(self) -> LiteralType:

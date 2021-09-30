@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from enum import Enum, auto
+from typing import Any, Dict
 from ede_utils import Position, Result
 from .ede_type import EdeType, Environment
 from .ede_ast import ExecContext, ExecResult, Node, NodeType
@@ -37,7 +38,7 @@ class Expression(Node):
         pass
 
     @abstractmethod
-    def to_string(self, indent: int) -> str:
+    def to_json(self) -> Dict[str, Any]:
         pass
     
 class IdentifierExpr(Expression):
@@ -58,5 +59,5 @@ class IdentifierExpr(Expression):
     def _execute(self, ctx: ExecContext) -> ExecResult:
         return ctx.get(self.id)
 
-    def to_string(self, indent: int) -> str:
-        return f"ID: {self.id}"
+    def to_json(self) -> Dict[str, Any]:
+        return { "ID": self.id }

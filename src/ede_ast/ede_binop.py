@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Callable, Dict, Optional, Tuple, cast
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 from ede_utils import Position, Result, Success, Error, ErrorType
 from .ede_type import EdeType, Environment, TypeCheckError
 from .ede_expr import Expression, ExprType, IdentifierExpr
@@ -105,5 +105,10 @@ class BinopExpr(Expression):
             # execute function associated with pattern
             return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res.value, right_res.value, self.position, ctx)
 
-    def to_string(self, indent: int) -> str:
-        return f"BINOP:\n\tLeft:\n\t\t{self.left.to_string(indent + 2)}\n\tRight:\n\t\t{self.right.to_string(indent + 2)}\n\tOP:\n\t\t{self.op}".replace('\t', "\t"*(indent + 1))
+    def to_json(self) -> Dict[str, Any]:
+        return { "BINOP": {
+            "Left": self.left.to_json(),
+            "Right": self.right.to_json(),
+            "OP": str(self.op),
+            }
+        }

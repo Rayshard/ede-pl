@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Dict, NamedTuple, Optional, Union
+import json
+from typing import Any, Dict, NamedTuple, Optional, Union
 from ede_utils import Position, Result, Success
 from .ede_type import EdeType, Environment
 
@@ -115,6 +116,9 @@ class Node(ABC):
         assert self.typecheck(env).is_success()
         return self.execute(ctx)
 
+    def __str__(self) -> str:
+        return json.dumps(self.to_json(), indent=4, sort_keys=False)
+
     @abstractmethod
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         '''Protected version for self.typecheck to be overriden in child classes'''
@@ -131,6 +135,6 @@ class Node(ABC):
         pass
 
     @abstractmethod
-    def to_string(self, indent:int) -> str:
-        '''Returns a string representation of the node'''
+    def to_json(self) -> Dict[str, Any]:
+        '''Returns a json representation of the node'''
         pass        
