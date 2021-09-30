@@ -1,6 +1,8 @@
 from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar, Union
 from enum import IntEnum, auto
 
+# TODO: Comment File
+
 class Position(NamedTuple):
     line: int = 1
     column: int = 1
@@ -21,6 +23,7 @@ class ErrorType(IntEnum):
     TYPECHECKING_INVALID_BINOP = auto()
     TYPECHECKING_UNKNOWN_ID = auto()
     TYPECHECKING_INVALID_ASSIGN = auto()
+    TYPECHECKING_MULTIPLE_DECL = auto()
 
 class Success(Generic[T]):
     def __init__(self, value: T) -> None:

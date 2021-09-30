@@ -2,6 +2,8 @@ from ede_utils import Error, ErrorType, Result, Success
 from typing import List, cast
 from ede_token import Position, Token, TokenType, is_keyword, is_symbol
 
+# TODO: Comment File
+
 EOF = '\0'
 
 class Reader:

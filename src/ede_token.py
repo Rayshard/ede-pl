@@ -2,6 +2,8 @@ from ede_utils import Position
 from typing import Any, NamedTuple
 from enum import IntEnum, auto
 
+# TODO: Comment File
+
 class TokenType(IntEnum):
     EOF = auto()
     INVALID = auto()
