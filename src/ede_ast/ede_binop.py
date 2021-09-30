@@ -1,8 +1,8 @@
 from enum import Enum, auto
 from typing import Callable, Dict, Optional, Tuple, cast
 from ede_utils import Position, Result, Success, Error, ErrorType
-from .ede_type import EdeType, Environment
-from .ede_expr import Expression, ExprType
+from .ede_type import EdeType, Environment, TypeCheckError
+from .ede_expr import Expression, ExprType, IdentifierExpr
 from .ede_ast import ExecContext, ExecResult, ExecException, TypedExecValue, ExecValue
 
 def TypeCheckError_InvalidBinop(op: 'BinopType', ltype: EdeType, rtype: EdeType, pos: Position) -> Error:
@@ -15,7 +15,10 @@ class BinopType(Enum):
     SUB = auto()
     MUL = auto()
     DIV = auto()
+    ASSIGN = auto()
 
+
+# TODO: use match expressions in below functions instead of these dicts
 # Map of binop type patterns to resulting type 
 BINOP_EDE_TYPE_DICT : Dict[Tuple[EdeType, EdeType, BinopType], EdeType] = {
     (EdeType.INT, EdeType.INT, BinopType.ADD): EdeType.INT,
@@ -43,6 +46,8 @@ class BinopExpr(Expression):
     def __init__(self, pos: Position, left: Expression, right: Expression, op: BinopType) -> None:
         '''Creates an AST binop expression node'''
 
+        assert op != BinopType.ASSIGN or isinstance(left, IdentifierExpr)  # ensure that identifiers are the LHS of assignments
+
         super().__init__(pos)
         self.left = left
         self.right = right
@@ -64,22 +69,41 @@ class BinopExpr(Expression):
             return right_type
 
         # set pattern and associated type; fail if pattern is not defined above
+        # TODO: when we implement user defined types and inheritance and eq operator overloading, we'll have to update this
         self.type_pattern = (left_type.get(), right_type.get(), self.op)
-        if self.type_pattern in BINOP_EDE_TYPE_DICT:
+        
+        if self.op == BinopType.ASSIGN:
+            return left_type if left_type.get() == right_type.get() else TypeCheckError.InvalidAssignment(left_type.get(), right_type.get(), self.position)
+        elif self.type_pattern in BINOP_EDE_TYPE_DICT:
             return Success(BINOP_EDE_TYPE_DICT[self.type_pattern])
         else:
             return TypeCheckError_InvalidBinop(self.op, left_type.get(), right_type.get(), self.position)
 
     def _execute(self, ctx: ExecContext) -> ExecResult:
-        # execute LHS; return if exception
-        left_res = self.left.execute(ctx)
-        if isinstance(left_res, ExecException):
-            return left_res
+        if self.op == BinopType.ASSIGN:
+            id = cast(IdentifierExpr, self.left).id
 
-        # execute RHS; return if exception
-        right_res = self.right.execute(ctx)
-        if isinstance(right_res, ExecException):
+            # execute RHS; return if exception
+            right_res = self.right.execute(ctx)
+            if isinstance(right_res, ExecException):
+                return right_res
+
+            # set the value of the id to the value of the expression
+            ctx.set(id, right_res, self.position)
             return right_res
+        else:
+            # execute LHS; return if exception
+            left_res = self.left.execute(ctx)
+            if isinstance(left_res, ExecException):
+                return left_res
 
-        # execute function associated with pattern
-        return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res.value, right_res.value, self.position, ctx)
+            # execute RHS; return if exception
+            right_res = self.right.execute(ctx)
+            if isinstance(right_res, ExecException):
+                return right_res
+
+            # execute function associated with pattern
+            return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res.value, right_res.value, self.position, ctx)
+
+    def to_string(self, indent: int) -> str:
+        return f"BINOP:\n\tLeft:\n\t\t{self.left.to_string(indent + 2)}\n\tRight:\n\t\t{self.right.to_string(indent + 2)}\n\tOP:\n\t\t{self.op}".replace('\t', "\t"*(indent + 1))

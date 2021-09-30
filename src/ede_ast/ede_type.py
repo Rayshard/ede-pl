@@ -52,7 +52,7 @@ class Environment:
         return None
 
 class TypeCheckError:
-    '''Singleton for type checking errors'''
+    '''Wrapper for type checking errors'''
 
     @staticmethod
     def InvalidAssignment(ltype: EdeType, rtype: EdeType, pos: Position) -> Error:

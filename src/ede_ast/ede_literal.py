@@ -27,6 +27,9 @@ class Literal(Expression, Generic[T]):
     def get_expr_type(self) -> ExprType:
         return ExprType.LITERAL
 
+    def to_string(self, indent: int) -> str:
+        return f"{self.get_lit_type()}: {self.value}"
+
     @abstractmethod
     def get_lit_type(self) -> LiteralType:
         '''Returns the LiteralType'''

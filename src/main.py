@@ -1,8 +1,5 @@
 import sys
-import lexer
-from ede_utils import Position
-from ede_ast.ede_literal import IntLiteral, StringLiteral
-from ede_ast.ede_binop import BinopExpr, BinopType
+import lexer, ede_parser
 from ede_ast.ede_type import Environment
 from ede_ast.ede_ast import ExecContext
 
@@ -17,22 +14,23 @@ if __name__ == '__main__':
     env = Environment()
     ctx = ExecContext()
 
-    left = IntLiteral(Position(1, 1), 10)
-    right = IntLiteral(Position(1, 1), 15)
-    binop = BinopExpr(Position(1, 1), left, right, BinopType.ADD)
+    reader = ede_parser.TokenReader(lexer.tokenize(lexer.Reader("3 + 7*2")).get())
+    result = ede_parser.parse(reader)
 
-    lefts = StringLiteral(Position(1, 1), "Hello")
-    rights = StringLiteral(Position(1, 1), "World")
-    binops = BinopExpr(Position(1, 1), lefts, rights, BinopType.ADD)
+    if result.is_error():
+        print(result)
+        exit(1)
+    else:
+        print(result.get().to_string(0))
+        print(result.get().execute_in(env, ctx))
+        exit(0)
 
-    print(binops.execute_in(env, ctx))
+    # with open(file_path) as f:
+    #     result = lexer.tokenize(lexer.Reader(f.read()))
 
-    with open(file_path) as f:
-        result = lexer.tokenize(lexer.Reader(f.read()))
-
-        if result.is_error():
-            print(result)
-            exit(1)
-        else:
-            exit(0)
+    #     if result.is_error():
+    #         print(result)
+    #         exit(1)
+    #     else:
+    #         exit(0)
 

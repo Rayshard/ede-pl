@@ -25,6 +25,9 @@ class ErrorType(IntEnum):
     TYPECHECKING_INVALID_ASSIGN = auto()
     TYPECHECKING_MULTIPLE_DECL = auto()
 
+    PARSING_UNEXPECTED_TOKEN = auto()
+    PARSING_INVALID_OPERATOR = auto()
+
 class Success(Generic[T]):
     def __init__(self, value: T) -> None:
         self.value = value

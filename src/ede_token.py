@@ -42,6 +42,12 @@ KEYWORD_DICT = {
     "false": TokenType.KW_ELSE,
 }
 
+OPERATOR_DICT = {
+    TokenType.SYM_PLUS: 0, TokenType.SYM_DASH: 0,
+    TokenType.SYM_ASTERISK: 1, TokenType.SYM_FWD_SLASH: 1,
+    TokenType.SYM_EQUALS: 2
+}
+
 def is_symbol(sym: str) -> bool:
     return sym in SYMBOL_DICT
 

@@ -118,19 +118,19 @@ class Node(ABC):
     @abstractmethod
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         '''Protected version for self.typecheck to be overriden in child classes'''
-
         pass
 
     @abstractmethod
     def _execute(self, ctx: ExecContext) -> ExecResult:
         '''Protected version for self.execute to be overriden in child classes'''
-
         pass
 
     @abstractmethod
     def get_node_type(self) -> NodeType:
         '''Returns the NodeType'''
-
         pass
 
-        
+    @abstractmethod
+    def to_string(self, indent:int) -> str:
+        '''Returns a string representation of the node'''
+        pass        
