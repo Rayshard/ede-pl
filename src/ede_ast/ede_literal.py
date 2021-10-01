@@ -1,20 +1,32 @@
-from abc import abstractmethod
 from enum import Enum, auto
 from ede_utils import Position, Result, Success
 from .ede_ast import ExecContext, ExecResult, TypedExecValue
 from .ede_expr import Expression, ExprType
 from .ede_type import EdeType, Environment
-from typing import Any, Dict, Generic, TypeVar
+from typing import Any, Dict, Generic, NewType, TypeVar, cast
+
+char = NewType('char', str)
+T = TypeVar('T', int, str, char, bool)
 
 class LiteralType(Enum):
     '''Enumeration of AST literal types'''
 
-    INTEGER = auto()
-    STRING = auto()
-    CHAR = auto()
-    BOOL = auto()
+    INTEGER = (auto(), int, EdeType.INT)
+    BOOL = (auto(), bool, EdeType.BOOL)
+    CHAR = (auto(), char, EdeType.CHAR)
+    STRING = (auto(), str, EdeType.STR)
 
-T = TypeVar('T', int, str, bool)
+    def get_type(self) -> Any:
+        '''Returns the underlying python type'''
+        return self.value[1]
+
+    def get_ede_type(self) -> EdeType:
+        '''Returns the associated ede type'''
+        return cast(EdeType, self.value[2])
+
+LIT_TYPE_DICT = {item.get_type(): item for item in LiteralType}  # Map between python types and ast literal types
+LIT_EDE_TYPE_DICT = {item: item.get_ede_type() for item in LiteralType}  # Map between python types and ast literal types
+
 class Literal(Expression, Generic[T]):
     '''AST Literal node'''
 
@@ -27,87 +39,24 @@ class Literal(Expression, Generic[T]):
     def get_expr_type(self) -> ExprType:
         return ExprType.LITERAL
 
-    def to_json(self) -> Dict[str, Any]:
-        return { str(self.get_lit_type()): self.value }
+    def _execute(self, ctx: ExecContext) -> ExecResult:
+        return TypedExecValue(self.get_type(), self.value)
 
-    @abstractmethod
+    def to_json(self) -> Dict[str, Any]:
+        return {
+            "_type_": str(self.get_lit_type()),
+            "value": self.value
+        }
+
     def get_lit_type(self) -> LiteralType:
         '''Returns the LiteralType'''
-        pass
-
-    @abstractmethod
-    def _execute(self, ctx: ExecContext) -> ExecResult:
-        pass
-
-    @abstractmethod
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        pass
-
-class IntLiteral(Literal[int]):
-    '''AST integer Literal node'''
-
-    def __init__(self, pos: Position, value: int) -> None:
-        '''Creates an AST integer Literal node'''
-
-        super().__init__(pos, value)
-
-    def get_lit_type(self) -> LiteralType:
-        return LiteralType.INTEGER
-
-    def _execute(self, ctx: ExecContext) -> ExecResult:
-        return TypedExecValue(self.get_type(), self.value)
+        return LIT_TYPE_DICT[type(self.value)]
 
     def _typecheck(self, env: Environment) -> Result[EdeType]:
-        return Success(EdeType.INT)
+        return Success(LIT_EDE_TYPE_DICT[self.get_lit_type()])
 
-class StringLiteral(Literal[str]):
-    '''AST string Literal node'''
-
-    def __init__(self, pos: Position, value: str) -> None:
-        '''Creates an AST string Literal node'''
-
-        super().__init__(pos, value)
-
-    def get_lit_type(self) -> LiteralType:
-        return LiteralType.STRING
-
-    def _execute(self, ctx: ExecContext) -> ExecResult:
-        return TypedExecValue(self.get_type(), self.value)
-
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        return Success(EdeType.STR)
-
-class CharLiteral(Literal[str]):
-    '''AST char Literal node'''
-
-    def __init__(self, pos: Position, value: str) -> None:
-        '''Creates an AST char Literal node'''
-
-        super().__init__(pos, value)
-        assert len(value) == 1, "value must be of length 1"
-
-    def get_lit_type(self) -> LiteralType:
-        return LiteralType.CHAR
-
-    def _execute(self, ctx: ExecContext) -> ExecResult:
-        return TypedExecValue(self.get_type(), self.value)
-
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        return Success(EdeType.CHAR)
-
-class BoolLiteral(Literal[bool]):
-    '''AST bool Literal node'''
-
-    def __init__(self, pos: Position, value: bool) -> None:
-        '''Creates an AST bool Literal node'''
-
-        super().__init__(pos, value)
-
-    def get_lit_type(self) -> LiteralType:
-        return LiteralType.BOOL
-
-    def _execute(self, ctx: ExecContext) -> ExecResult:
-        return TypedExecValue(self.get_type(), self.value)
-
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        return Success(EdeType.BOOL)
+# Literal Class Types
+IntLiteral = Literal[int]
+StringLiteral = Literal[str]
+CharLiteral = Literal[char]
+BoolLiteral = Literal[bool]

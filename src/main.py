@@ -1,5 +1,5 @@
 import sys
-import lexer, ede_parser
+import ede_lexer, ede_parser
 from ede_ast.ede_type import Environment
 from ede_ast.ede_ast import ExecContext
 
@@ -14,7 +14,7 @@ if __name__ == '__main__':
     env = Environment()
     ctx = ExecContext()
 
-    reader = ede_parser.TokenReader(lexer.tokenize(lexer.Reader("3 + 7*2")).get())
+    reader = ede_parser.TokenReader(ede_lexer.tokenize(ede_lexer.Reader("3 + 7*2")).get())
     result = ede_parser.parse(reader)
 
     if result.is_error():
@@ -26,7 +26,7 @@ if __name__ == '__main__':
         exit(0)
 
     # with open(file_path) as f:
-    #     result = lexer.tokenize(lexer.Reader(f.read()))
+    #     result = ede_lexer.tokenize(ede_lexer.Reader(f.read()))
 
     #     if result.is_error():
     #         print(result)

@@ -60,4 +60,7 @@ class IdentifierExpr(Expression):
         return ctx.get(self.id)
 
     def to_json(self) -> Dict[str, Any]:
-        return { "ID": self.id }
+        return {
+            "_type_": "Identifier Expression",
+            "id": self.id
+        }

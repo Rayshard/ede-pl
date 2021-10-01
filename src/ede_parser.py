@@ -5,7 +5,7 @@ from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Result, Success
 from ede_ast.ede_ast import Node
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
+from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, char
 
 class TokenReader:
     '''Token Reader class that reads a stream of tokens'''
@@ -50,7 +50,7 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
     elif tok.type == TokenType.STRING:
         return Success(StringLiteral(tok.position, cast(str, tok.value)))
     elif tok.type == TokenType.CHAR:
-        return Success(CharLiteral(tok.position, cast(str, tok.value)))
+        return Success(CharLiteral(tok.position, cast(char, tok.value)))
     elif tok.type == TokenType.KW_TRUE:
         return Success(BoolLiteral(tok.position, True))
     elif tok.type == TokenType.KW_FALSE:

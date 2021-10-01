@@ -1,4 +1,4 @@
-from src.lexer import Reader, lex, lex_char, lex_id_or_keyword, lex_integer, lex_string
+from src.ede_lexer import Reader, lex, lex_char, lex_id_or_keyword, lex_integer, lex_string
 from src.ede_utils import ErrorType
 from src.ede_token import KEYWORD_DICT, SYMBOL_DICT, Token, TokenType
 

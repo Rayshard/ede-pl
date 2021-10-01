@@ -106,9 +106,9 @@ class BinopExpr(Expression):
             return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res.value, right_res.value, self.position, ctx)
 
     def to_json(self) -> Dict[str, Any]:
-        return { "BINOP": {
-            "Left": self.left.to_json(),
-            "Right": self.right.to_json(),
-            "OP": str(self.op),
-            }
+        return {
+            "_type_": "Binary Expression",
+            "left": self.left.to_json(),
+            "right": self.right.to_json(),
+            "op": str(self.op),
         }
