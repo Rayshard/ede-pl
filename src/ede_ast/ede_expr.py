@@ -3,7 +3,7 @@ from enum import Enum, auto
 from typing import Any, Dict
 from ede_utils import Position, Result
 from .ede_type import EdeType, Environment
-from .ede_ast import ExecContext, ExecResult, Node, NodeType
+from .ede_ast import ExecContext, ExecValue, Node, NodeType
 
 class ExprType(Enum):
     '''Enumeration of AST expression types'''
@@ -30,7 +30,7 @@ class Expression(Node):
         pass
 
     @abstractmethod
-    def _execute(self, ctx: ExecContext) -> ExecResult:
+    def _execute(self, ctx: ExecContext) -> ExecValue:
         pass
 
     @abstractmethod
@@ -56,7 +56,7 @@ class IdentifierExpr(Expression):
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         return env.get(self.id, self.position)
 
-    def _execute(self, ctx: ExecContext) -> ExecResult:
+    def _execute(self, ctx: ExecContext) -> ExecValue:
         return ctx.get(self.id)
 
     def to_json(self) -> Dict[str, Any]:

@@ -10,6 +10,7 @@ class EdeType(Enum):
     STR = auto()
     CHAR = auto()
     BOOL = auto()
+    EXCEPTION = auto()
 
 class EnvEntry(NamedTuple):
     '''Environment entry struct; holds the metadata for entries in a type checking environment'''

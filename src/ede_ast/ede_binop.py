@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, cast
 from ede_utils import Position, Result, Success, Error, ErrorType
 from .ede_type import EdeType, Environment, TypeCheckError
 from .ede_expr import Expression, ExprType, IdentifierExpr
-from .ede_ast import ExecContext, ExecResult, ExecException, TypedExecValue, ExecValue
+from .ede_ast import ExecContext, ExecException, ExecValue
 
 def TypeCheckError_InvalidBinop(op: 'BinopType', ltype: EdeType, rtype: EdeType, pos: Position) -> Error:
     return Error(ErrorType.TYPECHECKING_INVALID_BINOP, pos, f"Cannot perform {op} on {ltype} and {rtype}")
@@ -17,7 +17,6 @@ class BinopType(Enum):
     DIV = auto()
     ASSIGN = auto()
 
-
 # TODO: use match expressions in below functions instead of these dicts
 # Map of binop type patterns to resulting type 
 BINOP_EDE_TYPE_DICT : Dict[Tuple[EdeType, EdeType, BinopType], EdeType] = {
@@ -29,12 +28,12 @@ BINOP_EDE_TYPE_DICT : Dict[Tuple[EdeType, EdeType, BinopType], EdeType] = {
 }
 
 # Map of binop type patterns to execution functions
-BINOP_EXEC_FUNCS : Dict[Tuple[EdeType, EdeType, BinopType], Callable[[ExecValue, ExecValue, Position, ExecContext], ExecResult]] = {
-    (EdeType.INT, EdeType.INT, BinopType.ADD): lambda left, right, _, __: TypedExecValue(EdeType.INT, cast(int, left) + cast(int, right)),
-    (EdeType.INT, EdeType.INT, BinopType.SUB): lambda left, right, _, __: TypedExecValue(EdeType.INT, cast(int, left) - cast(int, right)),
-    (EdeType.INT, EdeType.INT, BinopType.MUL): lambda left, right, _, __: TypedExecValue(EdeType.INT, cast(int, left) * cast(int, right)),
-    (EdeType.INT, EdeType.INT, BinopType.DIV): lambda left, right, pos, _: TypedExecValue(EdeType.INT, cast(int, left) // cast(int, right)) if right != 0 else ExecException.DivisionByZero(pos),
-    (EdeType.STR, EdeType.STR, BinopType.ADD): lambda left, right, _, __: TypedExecValue(EdeType.STR, cast(str, left) + cast(str, right))
+BINOP_EXEC_FUNCS : Dict[Tuple[EdeType, EdeType, BinopType], Callable[[ExecValue, ExecValue, Position, ExecContext], ExecValue]] = {
+    (EdeType.INT, EdeType.INT, BinopType.ADD): lambda left, right, _, __: ExecValue(left.to_int() + right.to_int()),
+    (EdeType.INT, EdeType.INT, BinopType.SUB): lambda left, right, _, __: ExecValue(left.to_int() - right.to_int()),
+    (EdeType.INT, EdeType.INT, BinopType.MUL): lambda left, right, _, __: ExecValue(left.to_int() * right.to_int()),
+    (EdeType.INT, EdeType.INT, BinopType.DIV): lambda left, right, pos, _: ExecValue(left.to_int() // right.to_int() if right.to_int() != 0 else ExecException.DivisionByZero(pos)),
+    (EdeType.STR, EdeType.STR, BinopType.ADD): lambda left, right, _, __: ExecValue(left.to_str() + right.to_str())
 }
 
 # Ensures there patterns exist in both maps
@@ -79,13 +78,13 @@ class BinopExpr(Expression):
         else:
             return TypeCheckError_InvalidBinop(self.op, left_type.get(), right_type.get(), self.position)
 
-    def _execute(self, ctx: ExecContext) -> ExecResult:
+    def _execute(self, ctx: ExecContext) -> ExecValue:
         if self.op == BinopType.ASSIGN:
             id = cast(IdentifierExpr, self.left).id
 
             # execute RHS; return if exception
             right_res = self.right.execute(ctx)
-            if isinstance(right_res, ExecException):
+            if right_res.is_exception():
                 return right_res
 
             # set the value of the id to the value of the expression
@@ -94,16 +93,16 @@ class BinopExpr(Expression):
         else:
             # execute LHS; return if exception
             left_res = self.left.execute(ctx)
-            if isinstance(left_res, ExecException):
+            if left_res.is_exception():
                 return left_res
 
             # execute RHS; return if exception
             right_res = self.right.execute(ctx)
-            if isinstance(right_res, ExecException):
+            if right_res.is_exception():
                 return right_res
 
             # execute function associated with pattern
-            return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res.value, right_res.value, self.position, ctx)
+            return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res, right_res, self.position, ctx)
 
     def to_json(self) -> Dict[str, Any]:
         return {

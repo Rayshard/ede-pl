@@ -1,7 +1,10 @@
-from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar, Union
+from typing import Generic, NamedTuple, NewType, NoReturn, Optional, TypeVar, Union
 from enum import IntEnum, auto
 
 # TODO: Comment File
+
+char = NewType('char', str)  # Useful type
+
 
 class Position(NamedTuple):
     line: int = 1

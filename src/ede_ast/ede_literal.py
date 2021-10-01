@@ -1,11 +1,10 @@
 from enum import Enum, auto
-from ede_utils import Position, Result, Success
-from .ede_ast import ExecContext, ExecResult, TypedExecValue
+from ede_utils import Position, Result, Success, char
+from .ede_ast import ExecContext, ExecValue
 from .ede_expr import Expression, ExprType
 from .ede_type import EdeType, Environment
-from typing import Any, Dict, Generic, NewType, TypeVar, cast
+from typing import Any, Dict, Generic, TypeVar, cast
 
-char = NewType('char', str)
 T = TypeVar('T', int, str, char, bool)
 
 class LiteralType(Enum):
@@ -39,8 +38,8 @@ class Literal(Expression, Generic[T]):
     def get_expr_type(self) -> ExprType:
         return ExprType.LITERAL
 
-    def _execute(self, ctx: ExecContext) -> ExecResult:
-        return TypedExecValue(self.get_type(), self.value)
+    def _execute(self, ctx: ExecContext) -> ExecValue:
+        return ExecValue(self.value)
 
     def to_json(self) -> Dict[str, Any]:
         return {
