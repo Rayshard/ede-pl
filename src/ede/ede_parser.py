@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Dict, List, Union, cast
+from typing import Dict, List, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
 from ede_token import Token, TokenType
@@ -154,6 +154,7 @@ def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expressio
 
 def parse(reader: TokenReader) -> Result[Node]:
     'Parses a stream of tokens and returns the AST'
+
     node = parse_expr(reader)
     return Success(cast(Node, node.get())) if node.is_success() else cast(Error, node)
 
@@ -161,8 +162,8 @@ class ParseError:
     '''Wrapper for parsing errors'''
 
     @staticmethod
-    def UnexpectedToken(found: Token, expected: Union[TokenType, List[TokenType]], pos: Position) -> Error:
-        return Error(ErrorType.PARSING_UNEXPECTED_TOKEN, pos, f"Encountered unexpected token {found} but expected {expected}")
+    def UnexpectedToken(found: Token, expected: List[TokenType], pos: Position) -> Error:
+        return Error(ErrorType.PARSING_UNEXPECTED_TOKEN, pos, f"Encountered unexpected token '{found.type.name}' but expected {[item.name for item in expected]}")
 
     @staticmethod
     def InvalidOperator(op: OperatorType, pos: Position) -> Error:
