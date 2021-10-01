@@ -39,35 +39,6 @@ class TokenReader:
         '''Returns the current position of token reader'''
         return self.peek().position
 
-def parse_atom(reader: TokenReader) -> Result[Expression]:
-    'Parse an atom node'
-
-    tok = reader.read()
-
-    # TODO: Convert to match expression
-    if tok.type == TokenType.INTEGER:
-        return Success(IntLiteral(tok.position, cast(int, tok.value)))
-    elif tok.type == TokenType.STRING:
-        return Success(StringLiteral(tok.position, cast(str, tok.value)))
-    elif tok.type == TokenType.CHAR:
-        return Success(CharLiteral(tok.position, cast(char, tok.value)))
-    elif tok.type == TokenType.KW_TRUE:
-        return Success(BoolLiteral(tok.position, True))
-    elif tok.type == TokenType.KW_FALSE:
-        return Success(BoolLiteral(tok.position, False))
-    elif tok.type == TokenType.IDENTIFIER:
-        return Success(IdentifierExpr(tok.position, cast(str, tok.value)))
-
-    reader.unread()
-    return ParseError.UnexpectedToken(tok, [
-        TokenType.INTEGER,
-        TokenType.STRING,
-        TokenType.CHAR,
-        TokenType.IDENTIFIER,
-        TokenType.KW_TRUE,
-        TokenType.KW_FALSE],
-        tok.position)        
-
 class OperatorType(Enum):
     '''Enumeration of operators'''
 
@@ -112,6 +83,35 @@ def get_op_prec(op: OperatorType) -> int:
 def is_op_right_assoc(op: OperatorType) -> bool:
     '''Determines if the operator is right associative'''
     return op in RIGHT_ASSOC_OPERATORS
+
+def parse_atom(reader: TokenReader) -> Result[Expression]:
+    'Parse an atom node'
+
+    tok = reader.read()
+
+    # TODO: Convert to match expression
+    if tok.type == TokenType.INTEGER:
+        return Success(IntLiteral(tok.position, cast(int, tok.value)))
+    elif tok.type == TokenType.STRING:
+        return Success(StringLiteral(tok.position, cast(str, tok.value)))
+    elif tok.type == TokenType.CHAR:
+        return Success(CharLiteral(tok.position, cast(char, tok.value)))
+    elif tok.type == TokenType.KW_TRUE:
+        return Success(BoolLiteral(tok.position, True))
+    elif tok.type == TokenType.KW_FALSE:
+        return Success(BoolLiteral(tok.position, False))
+    elif tok.type == TokenType.IDENTIFIER:
+        return Success(IdentifierExpr(tok.position, cast(str, tok.value)))
+
+    reader.unread()
+    return ParseError.UnexpectedToken(tok, [
+        TokenType.INTEGER,
+        TokenType.STRING,
+        TokenType.CHAR,
+        TokenType.IDENTIFIER,
+        TokenType.KW_TRUE,
+        TokenType.KW_FALSE],
+        tok.position) 
 
 def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expression]:
     '''Parse an expression'''

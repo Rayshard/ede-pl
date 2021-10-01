@@ -39,7 +39,7 @@ KEYWORD_DICT = {
     "else": TokenType.KW_ELSE,
     "while": TokenType.KW_WHILE,
     "true": TokenType.KW_TRUE,
-    "false": TokenType.KW_ELSE,
+    "false": TokenType.KW_FALSE,
 }
 
 OPERATOR_DICT = {
