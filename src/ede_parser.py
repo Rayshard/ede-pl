@@ -3,9 +3,9 @@ from typing import Dict, List, Union, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
 from ede_token import Token, TokenType
-from ede_utils import Error, ErrorType, Position, Result, Success
+from ede_utils import Error, ErrorType, Position, Result, Success, char
 from ede_ast.ede_ast import Node
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, char
+from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
 
 class TokenReader:
     '''Token Reader class that reads a stream of tokens'''

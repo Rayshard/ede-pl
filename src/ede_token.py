@@ -1,4 +1,4 @@
-from ede_utils import Position
+from ede_utils import Position, char
 from typing import Any, NamedTuple
 from enum import IntEnum, auto
 
@@ -76,7 +76,7 @@ class Token(NamedTuple):
         return Token(TokenType.STRING, pos, value)
 
     @staticmethod
-    def Char(pos: Position, value: str):
+    def Char(pos: Position, value: char):
         return Token(TokenType.CHAR, pos, value)
 
     @staticmethod

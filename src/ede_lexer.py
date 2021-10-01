@@ -1,4 +1,4 @@
-from ede_utils import Error, ErrorType, Result, Success
+from ede_utils import Error, ErrorType, Result, Success, char
 from typing import List, cast
 from ede_token import Position, Token, TokenType, is_keyword, is_symbol
 
@@ -120,9 +120,9 @@ def lex_char(reader: Reader) -> Result[Token]:
         reader.read()
 
     # Read literal contents
-    char = reader.peek()
+    c = reader.peek()
     
-    if char == '\\':
+    if c == '\\':
         reader.read()
         escaped_char = reader.read()
 
@@ -140,10 +140,10 @@ def lex_char(reader: Reader) -> Result[Token]:
             return Error(ErrorType.UNEXPECTED_EOF, position, "Char literal must be closed with a '.")
         else:
             return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain only one character.")
-    elif char == '\'':
+    elif c == '\'':
         reader.read()
         return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain one character.")
-    elif char == EOF:
+    elif c == EOF:
         return Error(ErrorType.UNEXPECTED_EOF, position, "Char literal must contain one character'.")
     else:
         result += reader.read()
@@ -153,7 +153,7 @@ def lex_char(reader: Reader) -> Result[Token]:
     else:
         reader.read()
 
-    return Success(Token.Char(position, result))
+    return Success(Token.Char(position, char(result)))
 
 def lex(reader: Reader) -> Result[Token]:
     # Skip whitespace

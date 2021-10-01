@@ -25,7 +25,6 @@ if __name__ == '__main__':
         print(result.get().execute_in(env, ctx))
         exit(0)
 
-    5
     # with open(file_path) as f:
     #     result = ede_lexer.tokenize(ede_lexer.Reader(f.read()))
 

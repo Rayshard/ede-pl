@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from enum import Enum, auto
 from ede_utils import Position, Result, Success, char
 from .ede_ast import ExecContext, ExecValue
@@ -10,20 +11,15 @@ T = TypeVar('T', int, str, char, bool)
 class LiteralType(Enum):
     '''Enumeration of AST literal types'''
 
-    INTEGER = (auto(), int, EdeType.INT)
-    BOOL = (auto(), bool, EdeType.BOOL)
-    CHAR = (auto(), char, EdeType.CHAR)
-    STRING = (auto(), str, EdeType.STR)
-
-    def get_type(self) -> Any:
-        '''Returns the underlying python type'''
-        return self.value[1]
+    INTEGER = (auto(), EdeType.INT)
+    BOOL = (auto(), EdeType.BOOL)
+    CHAR = (auto(), EdeType.CHAR)
+    STRING = (auto(), EdeType.STR)
 
     def get_ede_type(self) -> EdeType:
         '''Returns the associated ede type'''
-        return cast(EdeType, self.value[2])
+        return cast(EdeType, self.value[1])
 
-LIT_TYPE_DICT = {item.get_type(): item for item in LiteralType}  # Map between python types and ast literal types
 LIT_EDE_TYPE_DICT = {item: item.get_ede_type() for item in LiteralType}  # Map between python types and ast literal types
 
 class Literal(Expression, Generic[T]):
@@ -47,15 +43,34 @@ class Literal(Expression, Generic[T]):
             "value": self.value
         }
 
-    def get_lit_type(self) -> LiteralType:
-        '''Returns the LiteralType'''
-        return LIT_TYPE_DICT[type(self.value)]
-
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         return Success(LIT_EDE_TYPE_DICT[self.get_lit_type()])
 
-# Literal Class Types
-IntLiteral = Literal[int]
-StringLiteral = Literal[str]
-CharLiteral = Literal[char]
-BoolLiteral = Literal[bool]
+    @abstractmethod
+    def get_lit_type(self) -> LiteralType:
+        '''Returns the LiteralType'''
+        pass
+
+class IntLiteral(Literal[int]):
+    '''AST Int Literal'''
+
+    def get_lit_type(self) -> LiteralType:
+        return LiteralType.INTEGER
+
+class StringLiteral(Literal[str]):
+    '''AST String Literal'''
+
+    def get_lit_type(self) -> LiteralType:
+        return LiteralType.STRING
+
+class BoolLiteral(Literal[bool]):
+    '''AST Bool Literal'''
+
+    def get_lit_type(self) -> LiteralType:
+        return LiteralType.BOOL
+
+class CharLiteral(Literal[char]):
+    '''AST Char Literal'''
+
+    def get_lit_type(self) -> LiteralType:
+        return LiteralType.CHAR
