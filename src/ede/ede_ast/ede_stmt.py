@@ -5,12 +5,13 @@ from ede_ast.ede_ast import Node, NodeType
 from ede_ast.ede_expr import Expression
 from ede_utils import Position, Result
 from interpreter import ExecContext, ExecValue
-from .ede_type import EdeType, Environment
+from .ede_typesystem import EdeType, Environment
 
 class StmtType(Enum):
     '''Enumeration of AST statement types'''
 
     EXPR = auto()
+    VAR_DECL = auto()
     
 class Statement(Node):
     '''AST statement node'''

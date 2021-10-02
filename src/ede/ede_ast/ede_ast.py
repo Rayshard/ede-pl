@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, Optional
 from ede_utils import Position, Result, Success
 from interpreter import ExecContext, ExecValue
-from .ede_type import EdeType, Environment
+from .ede_typesystem import EdeType, Environment
 
 class NodeType(Enum):
     '''Enumeration of AST node types'''

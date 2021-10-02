@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 from ede_utils import Position, Result, Success, Error, ErrorType
-from .ede_type import EdeType, Environment, TypeCheckError
+from .ede_typesystem import EdeType, Environment, TypeCheckError
 from .ede_expr import Expression, ExprType, IdentifierExpr
 from interpreter import ExecContext, ExecException, ExecValue
 

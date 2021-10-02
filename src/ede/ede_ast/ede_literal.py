@@ -3,7 +3,7 @@ from enum import Enum, auto
 from ede_utils import Position, Result, Success, char
 from .ede_ast import ExecContext, ExecValue
 from .ede_expr import Expression, ExprType
-from .ede_type import EdeType, Environment
+from .ede_typesystem import EdeType, Environment
 from typing import Any, Dict, Generic, TypeVar, cast
 
 T = TypeVar('T', int, str, char, bool)

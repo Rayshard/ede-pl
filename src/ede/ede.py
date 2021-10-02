@@ -2,7 +2,7 @@
 
 import sys, click, json
 import ede_lexer, ede_parser
-from ede_ast.ede_type import Environment
+from ede_ast.ede_typesystem import Environment
 from ede_ast.ede_ast import ExecContext
 from ede_token import TokenType
 
