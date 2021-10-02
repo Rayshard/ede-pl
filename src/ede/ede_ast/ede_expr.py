@@ -2,8 +2,9 @@ from abc import abstractmethod
 from enum import Enum, auto
 from typing import Any, Dict
 from ede_utils import Position, Result
+from interpreter import ExecContext, ExecValue
 from .ede_type import EdeType, Environment
-from .ede_ast import ExecContext, ExecValue, Node, NodeType
+from .ede_ast import Node, NodeType
 
 class ExprType(Enum):
     '''Enumeration of AST expression types'''

@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, cast
 from ede_utils import Position, Result, Success, Error, ErrorType
 from .ede_type import EdeType, Environment, TypeCheckError
 from .ede_expr import Expression, ExprType, IdentifierExpr
-from .ede_ast import ExecContext, ExecException, ExecValue
+from interpreter import ExecContext, ExecException, ExecValue
 
 def TypeCheckError_InvalidBinop(op: 'BinopType', ltype: EdeType, rtype: EdeType, pos: Position) -> Error:
     return Error(ErrorType.TYPECHECKING_INVALID_BINOP, pos, f"Cannot perform {op} on {ltype} and {rtype}")

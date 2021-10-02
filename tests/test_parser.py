@@ -1,7 +1,7 @@
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
 from ede_parser import TokenReader, parse
-from src.ede_lexer import Reader, tokenize
+from ede_lexer import Reader, tokenize
 
 def get_token_reader(text: str) -> TokenReader:
     return TokenReader(tokenize(Reader(text)).get())

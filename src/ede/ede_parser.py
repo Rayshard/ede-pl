@@ -2,6 +2,7 @@ from enum import Enum, auto
 from typing import Dict, List, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
+from ede_ast.ede_stmt import ExprStmt
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Result, Success, char
 from ede_ast.ede_ast import Node
@@ -156,7 +157,7 @@ def parse(reader: TokenReader) -> Result[Node]:
     'Parses a stream of tokens and returns the AST'
 
     node = parse_expr(reader)
-    return Success(cast(Node, node.get())) if node.is_success() else cast(Error, node)
+    return Success(cast(Node, ExprStmt(node.get()))) if node.is_success() else cast(Error, node)
 
 class ParseError:
     '''Wrapper for parsing errors'''
