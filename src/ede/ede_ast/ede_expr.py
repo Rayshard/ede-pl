@@ -26,21 +26,14 @@ class Expression(Node):
     def get_node_type(self) -> NodeType:
         return NodeType.EXPR
 
+    def to_json(self) -> Dict[str, Any]:
+        result = super().to_json()
+        result['expr_type'] = self.get_expr_type().name
+        return result
+
     @abstractmethod
     def get_expr_type(self) -> ExprType:
         '''Returns the ExpressionType'''
-        pass
-
-    @abstractmethod
-    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
-        pass
-
-    @abstractmethod
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        pass
-
-    @abstractmethod
-    def to_json(self) -> Dict[str, Any]:
         pass
     
 class IdentifierExpr(Expression):
@@ -67,7 +60,7 @@ class IdentifierExpr(Expression):
     def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         return ctx.get(self.id)
 
-    def to_json(self) -> Dict[str, Any]:
+    def _to_json(self) -> Dict[str, Any]:
         return {
             "_type_": "Identifier Expression",
             "id": self.id

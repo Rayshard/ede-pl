@@ -18,7 +18,7 @@ class TypeSymbol(Node):
     def _execute(self, ctx: ExecContext) -> ExecValue:
         assert False, 'Type symbols are not executable'
     
-    def to_json(self) -> Dict[str, Any]:
+    def _to_json(self) -> Dict[str, Any]:
         return {"repr": str(self)}
 
 class PrimitiveTypeSymbol(TypeSymbol):

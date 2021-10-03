@@ -24,7 +24,7 @@ def cli(simulate, ast, file_paths):
             with open(file_path) as f:
                 lex_result = ede_lexer.tokenize(ede_lexer.Reader(f.read()))
                 if lex_result.is_error():
-                    print(lex_result)
+                    print(lex_result.get_output_msg(file_path))
                     exit(1)
                 
                 reader = ede_parser.TokenReader(lex_result.get())
@@ -33,11 +33,11 @@ def cli(simulate, ast, file_paths):
                 
                 parse_result = ede_parser.parse(reader)
                 if parse_result.is_error():
-                    print(parse_result)
+                    print(parse_result.get_output_msg(file_path))
                     exit(1)
                 
                 if ast:
-                    with open(file_path + '.ast', 'w+') as f_ast:
+                    with open(file_path + '.json', 'w+') as f_ast:
                         json.dump({
                             "source": file_path,
                             "ast": parse_result.get().to_json()
@@ -54,7 +54,7 @@ def cli(simulate, ast, file_paths):
 
                 exec_res = parse_result.get().execute_in(env, ctx)
                 if exec_res.is_error():
-                    print(exec_res)
+                    print(exec_res.get_output_msg(file_path))
                 
                 print(exec_res.get())
 

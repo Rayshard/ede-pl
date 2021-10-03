@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from enum import Enum, auto
 import json
-from typing import Optional, cast
+from typing import Any, Dict, Optional, cast
 from ede_utils import Error, JSONSerializable, Position, Result, Success
 from interpreter import ExecContext, ExecValue
 from .ede_typesystem import EdeType, Environment
@@ -64,6 +64,11 @@ class Node(JSONSerializable):
 
         return Success(self.execute(ctx))
 
+    def to_json(self) -> Dict[str, Any]:
+        result = {'node_type': self.get_node_type().name}
+        result.update(self._to_json())
+        return result
+
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=4, sort_keys=False)
 
@@ -78,7 +83,11 @@ class Node(JSONSerializable):
         pass
 
     @abstractmethod
+    def _to_json(self) -> Dict[str, Any]:
+        '''Protected version for self.to_json to be overriden in child classes'''
+        pass
+
+    @abstractmethod
     def get_node_type(self) -> NodeType:
         '''Returns the NodeType'''
         pass
-    

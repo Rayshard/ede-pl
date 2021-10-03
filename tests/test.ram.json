@@ -1,0 +1,37 @@
+{
+    "source": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\test.ram",
+    "ast": {
+        "node_type": "STMT",
+        "id": "var",
+        "type_symbol": "int",
+        "expr": {
+            "node_type": "EXPR",
+            "left": {
+                "node_type": "EXPR",
+                "type": "INTEGER",
+                "value": 3,
+                "expr_type": "LITERAL"
+            },
+            "right": {
+                "node_type": "EXPR",
+                "left": {
+                    "node_type": "EXPR",
+                    "type": "INTEGER",
+                    "value": 7,
+                    "expr_type": "LITERAL"
+                },
+                "right": {
+                    "node_type": "EXPR",
+                    "type": "INTEGER",
+                    "value": 3,
+                    "expr_type": "LITERAL"
+                },
+                "op": "BinopType.MUL",
+                "expr_type": "BINOP"
+            },
+            "op": "BinopType.ADD",
+            "expr_type": "BINOP"
+        },
+        "stmt_type": "VAR_DECL"
+    }
+}

@@ -78,12 +78,12 @@ class BinopExpr(Expression):
         else:
             return TypeCheckError_InvalidBinop(self.op, left_type.get(), right_type.get(), self.position)
 
-    def _execute(self, ctx: ExecContext) -> ExecValue:
+    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         if self.op == BinopType.ASSIGN:
             id = cast(IdentifierExpr, self.left).id
 
             # execute RHS; return if exception
-            right_res = self.right.execute(ctx)
+            right_res = cast(ExecValue, self.right.execute(ctx))
             if right_res.is_exception():
                 return right_res
 
@@ -92,21 +92,20 @@ class BinopExpr(Expression):
             return right_res
         else:
             # execute LHS; return if exception
-            left_res = self.left.execute(ctx)
+            left_res = cast(ExecValue, self.left.execute(ctx))
             if left_res.is_exception():
                 return left_res
 
             # execute RHS; return if exception
-            right_res = self.right.execute(ctx)
+            right_res = cast(ExecValue, self.right.execute(ctx))
             if right_res.is_exception():
                 return right_res
 
             # execute function associated with pattern
             return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res, right_res, self.position, ctx)
 
-    def to_json(self) -> Dict[str, Any]:
+    def _to_json(self) -> Dict[str, Any]:
         return {
-            "_type_": "Binary Expression",
             "left": self.left.to_json(),
             "right": self.right.to_json(),
             "op": str(self.op),

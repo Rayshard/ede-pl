@@ -37,9 +37,10 @@ class Statement(Node):
     def _typecheck(self, env: Environment) -> Result[EdeType]:
         pass
 
-    @abstractmethod
     def to_json(self) -> Dict[str, Any]:
-        pass
+        result = super().to_json()
+        result['stmt_type'] = self.get_stmt_type().name
+        return result
     
 class ExprStmt(Statement):
     '''AST expression statement node'''
@@ -59,7 +60,7 @@ class ExprStmt(Statement):
     def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         return self.expr.execute(ctx)
 
-    def to_json(self) -> Dict[str, Any]:
+    def _to_json(self) -> Dict[str, Any]:
         return self.expr.to_json()
 
 class VarDeclStmt(Statement):
@@ -108,9 +109,8 @@ class VarDeclStmt(Statement):
         ctx.set(self.id, self.expr.execute(ctx) if self.expr is not None else None, self.position)
         return None
 
-    def to_json(self) -> Dict[str, Any]:
+    def _to_json(self) -> Dict[str, Any]:
         return {
-            "_type_": "Variable Declarartion",
             "id": self.id,
             "type_symbol": str(self.type_symbol) if self.type_symbol is not None else None,
             "expr": self.expr.to_json() if self.expr is not None else None,

@@ -37,9 +37,9 @@ class Literal(Expression, Generic[T]):
     def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         return ExecValue(self.value)
 
-    def to_json(self) -> Dict[str, Any]:
+    def _to_json(self) -> Dict[str, Any]:
         return {
-            "_type_": str(self.get_lit_type()),
+            "type": self.get_lit_type().name,
             "value": self.value
         }
 

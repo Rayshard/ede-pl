@@ -1,7 +1,7 @@
 
 Todo:
   ✔ make type symbol a node @done(21-10-03 12:32)
-  ☐ make to_json have the __type__ be the str reprentatoin of the node/expr/stmt type
+  ✔ make to_json have the __type__ be the str reprentatoin of the node/expr/stmt type @done(21-10-03 12:54)
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string
 
