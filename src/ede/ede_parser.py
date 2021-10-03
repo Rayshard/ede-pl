@@ -2,6 +2,7 @@ from enum import Enum, auto
 from typing import Dict, List, Optional, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
+from ede_ast.ede_stmt import ExprStmt, Statement, VarDeclStmt
 from ede_ast.ede_typesystem import ArrayTypeSymbol, EdeBool, EdeChar, EdeInt, EdeString, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Result, Success, char
@@ -256,10 +257,55 @@ def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expressio
 
     return Success(expr)
 
+def parse_declaration(reader: TokenReader) -> Result[Statement]:
+    '''Parse a declaration'''
+
+    position = reader.get_position()
+
+    if reader.peek_read(TokenType.KW_LET) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.KW_LET])
+    
+    if reader.peek_read(TokenType.IDENTIFIER) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+
+    id = reader.prev().value
+    type_symbol: Optional[TypeSymbol] = None
+    expr : Optional[Expression] = None
+
+    if reader.peek_read(TokenType.SYM_COLON) is not None:
+        ts_res = parse_type_symbol(reader)
+        if ts_res.is_error():
+            return cast(Error, ts_res)
+
+        type_symbol = ts_res.get()
+    elif reader.peek().type != TokenType.SYM_EQUALS:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_EQUALS])
+    
+    if reader.peek_read(TokenType.SYM_EQUALS) is not None:
+        expr_res = parse_expr(reader)
+        if expr_res.is_error():
+            return cast(Error, expr_res)
+
+        expr = expr_res.get()
+
+    return Success(VarDeclStmt(position, id, type_symbol, expr))     
+
+def parse_stmt(reader: TokenReader) -> Result[Statement]:
+    '''Parse a statement'''
+
+    if reader.peek().type == TokenType.KW_LET:
+        return parse_declaration(reader)
+        
+    node = parse_expr(reader)
+    if node.is_success():
+        return Success(ExprStmt(node.get()))
+
+    return cast(Error, node)
+
 def parse(reader: TokenReader) -> Result[Node]:
     'Parses a stream of tokens and returns the AST'
 
-    node = parse_expr(reader)
+    node = parse_stmt(reader)
     return Success(cast(Node, node.get())) if node.is_success() else cast(Error, node)
 
 class ParseError:

@@ -78,14 +78,17 @@ class ExecContext:
         '''Create an execution environment'''
 
         self.parent : Optional[ExecContext] = parent
-        self.variables : Dict[str, ExecValue] = {} 
+        self.variables : Dict[str, Optional[ExecValue]] = {} 
 
-    def get(self, id: str) -> ExecValue:
+    def get(self, id: str) -> Optional[ExecValue]:
         '''Returns the typed value of a entry. Existence of the entry is assumed.'''
         
         return self.variables[id]
 
-    def set(self, id: str, value: ExecValue, pos: Position):
+    def set(self, id: str, value: Optional[ExecValue], pos: Position):
         '''Sets the typed value for the given id and creates the id if not already in the context.'''
         
         self.variables[id] = value
+
+    def __str__(self) -> str:
+        return '\n'.join([f"{id}: {value}" for id, value in self.variables.items()])

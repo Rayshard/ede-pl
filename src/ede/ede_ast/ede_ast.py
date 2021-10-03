@@ -1,8 +1,8 @@
 from abc import abstractmethod
 from enum import Enum, auto
 import json
-from typing import Optional
-from ede_utils import JSONSerializable, Position, Result, Success
+from typing import Optional, cast
+from ede_utils import Error, JSONSerializable, Position, Result, Success
 from interpreter import ExecContext, ExecValue
 from .ede_typesystem import EdeType, Environment
 
@@ -10,8 +10,8 @@ class NodeType(Enum):
     '''Enumeration of AST node types'''
 
     STMT = auto()
-    TYPE_SYMBOL = auto()
-
+    EXPR = auto()
+    
 class Node(JSONSerializable):
     '''AST node'''
 
@@ -36,7 +36,7 @@ class Node(JSONSerializable):
             self.__type = result.get()
             return Success(self.__type)
 
-    def execute(self, ctx: ExecContext) -> ExecValue:
+    def execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         '''
         Under the assumption of a successful type checking, simulates execution
         of the node in the given execution context.
@@ -51,14 +51,17 @@ class Node(JSONSerializable):
         assert self.__type is not None, "Node has not been type checked!"
         return self.__type
 
-    def execute_in(self, env: Environment, ctx: ExecContext) -> ExecValue:
+    def execute_in(self, env: Environment, ctx: ExecContext) -> Result[Optional[ExecValue]]:
         '''
         Typechecks the node in the given environment and under the assumption of 
         a success, simulates execution of the node in the given execution context.
         '''
 
-        assert self.typecheck(env).is_success()
-        return self.execute(ctx)
+        tc_res = self.typecheck(env)
+        if tc_res.is_error():
+            return cast(Error, tc_res)
+
+        return Success(self.execute(ctx))
 
     def __str__(self) -> str:
         return json.dumps(self.to_json(), indent=4, sort_keys=False)
@@ -69,7 +72,7 @@ class Node(JSONSerializable):
         pass
 
     @abstractmethod
-    def _execute(self, ctx: ExecContext) -> ExecValue:
+    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         '''Protected version for self.execute to be overriden in child classes'''
         pass
 

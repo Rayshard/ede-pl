@@ -4,7 +4,7 @@ from ede_utils import Position, Result, Success, char
 from .ede_ast import ExecContext, ExecValue
 from .ede_expr import Expression, ExprType
 from .ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeType, Environment
-from typing import Any, Dict, Generic, TypeVar, cast
+from typing import Any, Dict, Generic, Optional, TypeVar, cast
 
 T = TypeVar('T', int, str, char, bool)
 
@@ -34,7 +34,7 @@ class Literal(Expression, Generic[T]):
     def get_expr_type(self) -> ExprType:
         return ExprType.LITERAL
 
-    def _execute(self, ctx: ExecContext) -> ExecValue:
+    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         return ExecValue(self.value)
 
     def to_json(self) -> Dict[str, Any]:

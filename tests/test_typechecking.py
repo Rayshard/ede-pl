@@ -1,7 +1,7 @@
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, Environment
+from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EnvEntry, EnvEntryType, Environment
 from ede_utils import Position, char
 
 
@@ -28,5 +28,5 @@ def test_binop():
 def test_identifier():
     env = Environment()
     
-    env.declare('name', EdeChar, Position())
+    env.declare('name', EnvEntry(EnvEntryType.VARIABLE, EdeChar, Position()), True)
     assert IdentifierExpr(Position(1, 1), 'name').typecheck(env).get() == EdeChar

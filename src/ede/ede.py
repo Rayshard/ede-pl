@@ -2,9 +2,10 @@
 
 import sys, click, json
 import ede_lexer, ede_parser
-from ede_ast.ede_typesystem import Environment
+from ede_ast.ede_typesystem import EdeInt, EdeString, EdeChar, EdeBool, EdeUnit, EnvEntry, EnvEntryType, Environment
 from ede_ast.ede_ast import ExecContext
 from ede_token import TokenType
+from ede_utils import Position
 
 # TODO: Comment File
 
@@ -44,7 +45,22 @@ def cli(simulate, ast, file_paths):
                         
                 env = Environment()
                 ctx = ExecContext()
-                print(parse_result.get().execute_in(env, ctx))
+
+                env.declare('int', EnvEntry(EnvEntryType.TYPENAME, EdeInt, Position()), False)
+                env.declare('string', EnvEntry(EnvEntryType.TYPENAME, EdeString, Position()), False)
+                env.declare('char', EnvEntry(EnvEntryType.TYPENAME, EdeChar, Position()), False)
+                env.declare('bool', EnvEntry(EnvEntryType.TYPENAME, EdeBool, Position()), False)
+                env.declare('unit', EnvEntry(EnvEntryType.TYPENAME, EdeUnit, Position()), False)
+
+                exec_res = parse_result.get().execute_in(env, ctx)
+                if exec_res.is_error():
+                    print(exec_res)
+                
+                print(exec_res.get())
+
+                print("=================== Execution Context ====================")
+                print(ctx)
+                print("=================== ================= ====================")
     else:
         click.echo(f"Compiling files: {file_paths}")
 

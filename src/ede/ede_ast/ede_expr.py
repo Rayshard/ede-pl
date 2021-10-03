@@ -1,10 +1,10 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import Any, Dict
-from ede_ast.ede_stmt import Statement, StmtType
-from ede_utils import Position, Result
+from typing import Any, Dict, Optional, cast
+from .ede_ast import Node, NodeType
+from ede_utils import Error, Position, Result, Success
 from interpreter import ExecContext, ExecValue
-from .ede_typesystem import EdeType, Environment
+from .ede_typesystem import EdeType, EnvEntryType, Environment, TypeCheckError
 
 class ExprType(Enum):
     '''Enumeration of AST expression types'''
@@ -15,7 +15,7 @@ class ExprType(Enum):
     ID = auto()
     TYPE_SYMBOL = auto()
 
-class Expression(Statement):
+class Expression(Node):
     '''AST expression node'''
 
     def __init__(self, pos: Position) -> None:
@@ -23,8 +23,8 @@ class Expression(Statement):
 
         super().__init__(pos)
 
-    def get_stmt_type(self) -> StmtType:
-        return StmtType.EXPR
+    def get_node_type(self) -> NodeType:
+        return NodeType.EXPR
 
     @abstractmethod
     def get_expr_type(self) -> ExprType:
@@ -32,7 +32,7 @@ class Expression(Statement):
         pass
 
     @abstractmethod
-    def _execute(self, ctx: ExecContext) -> ExecValue:
+    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         pass
 
     @abstractmethod
@@ -56,7 +56,13 @@ class IdentifierExpr(Expression):
         return ExprType.ID
 
     def _typecheck(self, env: Environment) -> Result[EdeType]:
-        return env.get(self.id, self.position)
+        entry = env.get(self.id, self.position, True)
+        if entry.is_error():
+            return cast(Error, entry)
+        elif entry.get().type != EnvEntryType.VARIABLE:
+            return TypeCheckError.UnknownVariable(self.id, self.position)
+
+        return Success(entry.get().ede_type)
 
     def _execute(self, ctx: ExecContext) -> ExecValue:
         return ctx.get(self.id)

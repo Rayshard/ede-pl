@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import Any, Dict, List, NamedTuple, Optional, Type, Union
+from typing import Any, Dict, List, NamedTuple, Optional, Type, Union, cast
 from ede_utils import Error, ErrorType, JSONSerializable, Position, Result, Success
 
 class ArrayTypeSymbol:
@@ -59,7 +59,7 @@ class TSType(Enum):
 class TSPrimitiveType(Enum):
     '''Enumeration for type system primitive types'''
 
-    NULL = (auto(), 'null')
+    UNIT = (auto(), 'unit')
     INT = (auto(), 'int')
     STR = (auto(), 'string')
     CHAR = (auto(), 'char')
@@ -109,7 +109,7 @@ class EdePrimitive(EdeType):
         return self.__type.get_type_symbol()
 
 # Primitive Instances
-EdeNull = EdePrimitive(TSPrimitiveType.NULL)
+EdeUnit = EdePrimitive(TSPrimitiveType.UNIT)
 EdeInt = EdePrimitive(TSPrimitiveType.INT)
 EdeString = EdePrimitive(TSPrimitiveType.STR)
 EdeChar = EdePrimitive(TSPrimitiveType.CHAR)
@@ -181,6 +181,9 @@ class EdeRecord(EdeType):
             '__type__': 'record',
             'items': {name: type.to_json() for name, type in self.__items.items()}
         }
+    
+    def as_type_symbol(self) -> TypeSymbol:
+        return RecordTypeSymbol({name: item.as_type_symbol() for name, item in self.__items.items()})
 
 class EdeObject(EdeType):
     '''Ede object type'''
@@ -206,10 +209,17 @@ class EdeObject(EdeType):
             'members': {name: type.to_json() for name, type in self.__members.items()}
         }
 
+class EnvEntryType(Enum):
+    '''Enumeration of environment entry types'''
+
+    VARIABLE = auto()
+    TYPENAME = auto()
+
 class EnvEntry(NamedTuple):
     '''Environment entry struct; holds the metadata for entries in a type checking environment'''
     
-    type: EdeType
+    type: EnvEntryType
+    ede_type: EdeType
     pos: Position
 
 class Environment:
@@ -219,32 +229,77 @@ class Environment:
         '''Create a new type checking environment'''
 
         self.parent : Optional[Environment] = parent
-        self.variables : Dict[str, EnvEntry] = {}
+        self.namespace : Dict[EnvEntryType, Dict[str, EnvEntry]] = {type: {} for type in EnvEntryType}
 
-    def get(self, id: str, pos: Position) -> Result[EdeType]:
+    def get(self, id: str, pos: Position, check_parent: bool) -> Result[EnvEntry]:
         '''
         Attempts to look up a the Ede type of the given id, first in the current environment,
-        then recursively in the parent environments if they exists.
+        then recursively in the parent environments if they exists and `check_parent` is True.
         '''
 
-        if id in self.variables:
-            return Success(self.variables[id].type)
-        elif self.parent is not None:
-            return self.parent.get(id, pos)
-        else:
-            return TypeCheckError.UnknownID(id, pos)
+        for _, items in self.namespace.items():
+            if id in items:
+                return Success(items[id])            
 
-    def declare(self, id: str, type: EdeType, pos: Position, check_parent: bool = False) -> Optional[Error]:
+        if check_parent and self.parent is not None:
+            return self.parent.get(id, pos, True)
+
+        return TypeCheckError.UnknownID(id, pos)
+
+    def declare(self, id: str, entry: EnvEntry, check_parent: bool) -> Optional[Error]:
         '''
-        Adds the given id to the environment with the given type if it does not already exist.
+        Adds the given id to the environment with the given type and ede type if it does not already exist.
         Existence in parent environments is not checked unless specified.
         '''
         
-        if id in self.variables or (check_parent and self.parent is not None and self.parent.get(id, pos).is_success()):
-            return TypeCheckError.MultipleDeclaration(id, self.variables[id].pos, pos)
+        for _, items in self.namespace.items():
+            if id in items:
+                return TypeCheckError.MultipleDeclaration(id, items[id].pos, entry.pos)
 
-        self.variables[id] = EnvEntry(type, pos)
+        if check_parent and self.parent is not None:
+            return self.parent.declare(id, entry, True)
+
+        self.namespace[entry.type][id] = entry
         return None
+
+    def resolve(self, type_symbol: TypeSymbol, pos: Position, check_parent: bool) -> Result[EdeType]:
+        # TODO: convert to match
+        if isinstance(type_symbol, str):
+            get_res = self.get(type_symbol, pos, check_parent)
+            if get_res.is_error():
+                return cast(Error, get_res)
+                
+            return Success(get_res.get().ede_type)
+        elif isinstance(type_symbol, ArrayTypeSymbol):
+            inner_res = self.resolve(type_symbol.inner, pos, check_parent)
+            if inner_res.is_error():
+                return cast(Error, inner_res)
+                
+            return Success(EdeArray(inner_res.get()))
+        elif isinstance(type_symbol, TupleTypeSymbol):
+            inners : List[EdeType] = []
+
+            for inner in type_symbol.inners:
+                inner_res = self.resolve(inner, pos, check_parent)
+                if inner_res.is_error():
+                    return cast(Error, inner_res)
+            
+                inners.append(inner_res.get())
+                
+            return Success(EdeTuple(inners))
+        elif isinstance(type_symbol, RecordTypeSymbol): # type: ignore
+            items : Dict[str, EdeType] = {}
+
+            for name, item in type_symbol.items.items():
+                item_res = self.resolve(item, pos, check_parent)
+                if item_res.is_error():
+                    return cast(Error, item_res)
+            
+                items[name] = item_res.get()
+                
+            return Success(EdeRecord(items))
+
+        return TypeCheckError.UnresolvableTypeName(str(type_symbol), pos)
 
 class TypeCheckError:
     '''Wrapper for type checking errors'''
@@ -258,5 +313,13 @@ class TypeCheckError:
         return Error(ErrorType.TYPECHECKING_UNKNOWN_ID, pos, f"Unknown id \"{id}\"")
 
     @staticmethod
+    def UnknownVariable(id: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_UNKNOWN_VAR, pos, f"Unknown variable \"{id}\"")
+
+    @staticmethod
     def MultipleDeclaration(id: str, init_decl_pos: Position, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_MULTIPLE_DECL, pos, f"Declaration of \"{id}\" already exists at {init_decl_pos}")
+
+    @staticmethod
+    def UnresolvableTypeName(typename: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_UNRESOLVABLE_TYPENAME, pos, f"Could not resolve \"{typename}\" to a valid type")
