@@ -1,26 +1,23 @@
 {
     "source": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\test.ram",
     "ast": {
-        "_type_": "Expression Statement",
-        "expr": {
+        "_type_": "Binary Expression",
+        "left": {
+            "_type_": "LiteralType.INTEGER",
+            "value": 3
+        },
+        "right": {
             "_type_": "Binary Expression",
             "left": {
                 "_type_": "LiteralType.INTEGER",
-                "value": 3
+                "value": 7
             },
             "right": {
-                "_type_": "Binary Expression",
-                "left": {
-                    "_type_": "LiteralType.INTEGER",
-                    "value": 7
-                },
-                "right": {
-                    "_type_": "LiteralType.INTEGER",
-                    "value": 3
-                },
-                "op": "BinopType.MUL"
+                "_type_": "LiteralType.INTEGER",
+                "value": 3
             },
-            "op": "BinopType.ADD"
-        }
+            "op": "BinopType.MUL"
+        },
+        "op": "BinopType.ADD"
     }
 }

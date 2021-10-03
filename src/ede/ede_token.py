@@ -17,6 +17,14 @@ class TokenType(IntEnum):
     SYM_FWD_SLASH = auto()
     SYM_SEMICOLON = auto()
     SYM_EQUALS = auto()
+    SYM_LEFT_SBRACKET = auto()
+    SYM_RIGHT_SBRACKET = auto()
+    SYM_LEFT_CBRACKET = auto()
+    SYM_RIGHT_CBRACKET = auto()
+    SYM_LPAREN = auto()
+    SYM_RPAREN = auto()
+    SYM_COMMA = auto()
+    SYM_COLON = auto()
     KW_LET = auto()
     KW_IF = auto()
     KW_ELSE = auto()
@@ -31,6 +39,14 @@ SYMBOL_DICT = {
     '/': TokenType.SYM_FWD_SLASH,
     ';': TokenType.SYM_SEMICOLON,
     '=': TokenType.SYM_EQUALS,
+    '[': TokenType.SYM_LEFT_SBRACKET,
+    ']': TokenType.SYM_RIGHT_SBRACKET,
+    '{': TokenType.SYM_LEFT_CBRACKET,
+    '}': TokenType.SYM_RIGHT_CBRACKET,
+    '(': TokenType.SYM_LPAREN,
+    ')': TokenType.SYM_RPAREN,
+    ',': TokenType.SYM_COMMA,
+    ':': TokenType.SYM_COLON,
 }
 
 KEYWORD_DICT = {
