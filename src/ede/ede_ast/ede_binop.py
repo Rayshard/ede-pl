@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 from ede_utils import Position, Result, Success, Error, ErrorType
-from .ede_typesystem import EdeType, Environment, TypeCheckError
+from .ede_typesystem import EdeInt, EdeString, EdeType, Environment, TypeCheckError
 from .ede_expr import Expression, ExprType, IdentifierExpr
 from interpreter import ExecContext, ExecException, ExecValue
 
@@ -20,20 +20,20 @@ class BinopType(Enum):
 # TODO: use match expressions in below functions instead of these dicts
 # Map of binop type patterns to resulting type 
 BINOP_EDE_TYPE_DICT : Dict[Tuple[EdeType, EdeType, BinopType], EdeType] = {
-    (EdeType.INT, EdeType.INT, BinopType.ADD): EdeType.INT,
-    (EdeType.INT, EdeType.INT, BinopType.SUB): EdeType.INT,
-    (EdeType.INT, EdeType.INT, BinopType.MUL): EdeType.INT,
-    (EdeType.INT, EdeType.INT, BinopType.DIV): EdeType.INT,
-    (EdeType.STR, EdeType.STR, BinopType.ADD): EdeType.STR,
+    (EdeInt, EdeInt, BinopType.ADD): EdeInt,
+    (EdeInt, EdeInt, BinopType.SUB): EdeInt,
+    (EdeInt, EdeInt, BinopType.MUL): EdeInt,
+    (EdeInt, EdeInt, BinopType.DIV): EdeInt,
+    (EdeString, EdeString, BinopType.ADD): EdeString,
 }
 
 # Map of binop type patterns to execution functions
 BINOP_EXEC_FUNCS : Dict[Tuple[EdeType, EdeType, BinopType], Callable[[ExecValue, ExecValue, Position, ExecContext], ExecValue]] = {
-    (EdeType.INT, EdeType.INT, BinopType.ADD): lambda left, right, _, __: ExecValue(left.to_int() + right.to_int()),
-    (EdeType.INT, EdeType.INT, BinopType.SUB): lambda left, right, _, __: ExecValue(left.to_int() - right.to_int()),
-    (EdeType.INT, EdeType.INT, BinopType.MUL): lambda left, right, _, __: ExecValue(left.to_int() * right.to_int()),
-    (EdeType.INT, EdeType.INT, BinopType.DIV): lambda left, right, pos, _: ExecValue(left.to_int() // right.to_int() if right.to_int() != 0 else ExecException.DivisionByZero(pos)),
-    (EdeType.STR, EdeType.STR, BinopType.ADD): lambda left, right, _, __: ExecValue(left.to_str() + right.to_str())
+    (EdeInt, EdeInt, BinopType.ADD): lambda left, right, _, __: ExecValue(left.to_int() + right.to_int()),
+    (EdeInt, EdeInt, BinopType.SUB): lambda left, right, _, __: ExecValue(left.to_int() - right.to_int()),
+    (EdeInt, EdeInt, BinopType.MUL): lambda left, right, _, __: ExecValue(left.to_int() * right.to_int()),
+    (EdeInt, EdeInt, BinopType.DIV): lambda left, right, pos, _: ExecValue(left.to_int() // right.to_int() if right.to_int() != 0 else ExecException.DivisionByZero(pos)),
+    (EdeString, EdeString, BinopType.ADD): lambda left, right, _, __: ExecValue(left.to_str() + right.to_str())
 }
 
 # Ensures there patterns exist in both maps

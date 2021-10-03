@@ -2,7 +2,6 @@ from abc import abstractmethod
 from enum import Enum, auto
 from typing import Any, Dict
 from ede_ast.ede_ast import Node, NodeType
-from ede_ast.ede_expr import Expression
 from ede_utils import Position, Result
 from interpreter import ExecContext, ExecValue
 from .ede_typesystem import EdeType, Environment
@@ -40,26 +39,3 @@ class Statement(Node):
     def to_json(self) -> Dict[str, Any]:
         pass
     
-class ExprStmt(Statement):
-    '''AST expression statement node'''
-
-    def __init__(self, expr: Expression) -> None:
-        '''Creates an AST expression statement node'''
-
-        super().__init__(expr.position)
-        self.expr = expr
-
-    def get_stmt_type(self) -> StmtType:
-        return StmtType.EXPR
-
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        return self.expr.typecheck(env)
-
-    def _execute(self, ctx: ExecContext) -> ExecValue:
-        return self.expr.execute(ctx)
-
-    def to_json(self) -> Dict[str, Any]:
-        return {
-            "_type_": "Expression Statement",
-            "expr": self.expr.to_json()
-        }

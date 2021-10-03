@@ -1,18 +1,18 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from enum import Enum, auto
 import json
-from typing import Any, Dict, Optional
-from ede_utils import Position, Result, Success
+from typing import Optional
+from ede_utils import JSONSerializable, Position, Result, Success
 from interpreter import ExecContext, ExecValue
 from .ede_typesystem import EdeType, Environment
 
 class NodeType(Enum):
     '''Enumeration of AST node types'''
 
-    EXPR = auto()
     STMT = auto()
+    TYPE_SYMBOL = auto()
 
-class Node(ABC):
+class Node(JSONSerializable):
     '''AST node'''
 
     def __init__(self, pos: Position) -> None:
@@ -77,8 +77,4 @@ class Node(ABC):
     def get_node_type(self) -> NodeType:
         '''Returns the NodeType'''
         pass
-
-    @abstractmethod
-    def to_json(self) -> Dict[str, Any]:
-        '''Returns a json representation of the node'''
-        pass        
+    

@@ -1,4 +1,5 @@
-from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar, Union
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Generic, NamedTuple, NoReturn, Optional, TypeVar, Union
 from enum import IntEnum, auto
 
 # TODO: Comment File
@@ -19,6 +20,12 @@ class Position(NamedTuple):
     def __str__(self) -> str:
         return str((self.line, self.column))
 
+class JSONSerializable(ABC):
+    @abstractmethod
+    def to_json(self) -> Dict[str, Any]:
+        '''Returns a json representation'''
+        pass
+
 T = TypeVar('T')
 
 class ErrorType(IntEnum):
@@ -36,6 +43,7 @@ class ErrorType(IntEnum):
 
     PARSING_UNEXPECTED_TOKEN = auto()
     PARSING_INVALID_OPERATOR = auto()
+    PARSING_DUP_RECORD_ITEM_NAME = auto()
 
 class Success(Generic[T]):
     def __init__(self, value: T) -> None:

@@ -1,8 +1,8 @@
 from ede_ast.ede_expr import IdentifierExpr
+from ede_ast.ede_typesystem import EdeChar, Environment
 from interpreter import ExecContext, ExecException, ExecValue
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_ast.ede_type import EdeType, Environment
 from ede_utils import Position, char
 
 def test_literals():
@@ -29,7 +29,7 @@ def test_identifier():
     env = Environment()
     ctx = ExecContext()
     
-    env.declare('name', EdeType.CHAR, Position())
+    env.declare('name', EdeChar, Position())
     ctx.set('name', ExecValue(char('r')), Position())
     assert IdentifierExpr(Position(1, 1), 'name').execute_in(env, ctx) == char('r')
     

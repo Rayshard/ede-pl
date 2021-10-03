@@ -1,8 +1,8 @@
 from enum import Enum, auto
-from typing import Dict, List, cast
+from typing import Dict, List, Optional, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
-from ede_ast.ede_stmt import ExprStmt
+from ede_ast.ede_typesystem import ArrayTypeSymbol, EdeBool, EdeChar, EdeInt, EdeString, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Result, Success, char
 from ede_ast.ede_ast import Node
@@ -32,9 +32,17 @@ class TokenReader:
 
         return tok
 
+    def peek_read(self, type: TokenType) -> Optional[Token]:
+        '''Determines if the next token is of the specified type, and if so, reads it.'''
+        return self.read() if self.peek().type == type else None
+
+    def prev(self) -> Token:
+        '''Retrieve the prev token in the stream without consuming'''
+        return self.stream[max(0, self.ptr - 1)]
+
     def unread(self) -> None:
         '''Moves stream pointer back by 1'''
-        self.ptr = min(0, self.ptr - 1)
+        self.ptr = max(0, self.ptr - 1)
 
     def get_position(self):
         '''Returns the current position of token reader'''
@@ -73,6 +81,19 @@ RIGHT_ASSOC_OPERATORS : List[OperatorType] = [OperatorType.ASSIGN]
 # Ensures each operator has a precedence
 assert len(OperatorType) == len(OPERATOR_PREC_DICT)
 
+# TODO: convert to match expression
+# Map between intrinsic type symbols and their ede types
+INTRINSIC_TYPE_SYMBOLS_DICT = {
+    'int': EdeInt,
+    'string': EdeString,
+    'bool': EdeBool,
+    'char': EdeChar,
+}
+
+def is_intrinsic_type_symbol(name: str) -> bool:
+    '''Determines if the given name is an intrinsic type symbol'''
+    return name in INTRINSIC_TYPE_SYMBOLS_DICT
+
 def is_operator(type: TokenType) -> bool:
     '''Determines if the given token type is an operator'''
     return type in OPERATOR_DICT
@@ -84,6 +105,89 @@ def get_op_prec(op: OperatorType) -> int:
 def is_op_right_assoc(op: OperatorType) -> bool:
     '''Determines if the operator is right associative'''
     return op in RIGHT_ASSOC_OPERATORS
+
+def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
+    '''Parse an type symbol'''
+
+    # TODO: convert to match?
+    if reader.peek_read(TokenType.IDENTIFIER) is not None:
+        return Success(reader.prev().value)
+    elif reader.peek_read(TokenType.SYM_LEFT_SBRACKET) is not None: # Array Type Symbol
+        # Get inner type symbol
+        inner_type_symbol = parse_type_symbol(reader)
+        if inner_type_symbol.is_error():
+            return inner_type_symbol
+
+        # Read right bracket
+        if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
+            return Success(ArrayTypeSymbol(inner_type_symbol.get()))
+
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
+    elif reader.peek_read(TokenType.SYM_LPAREN) is not None: # Tuple Type Symbol
+        # Get inner type symbols
+        type_symbols : List[TypeSymbol] = []
+
+        while True:
+            type_symbol = parse_type_symbol(reader)
+            if type_symbol.is_error():
+                return type_symbol
+
+            type_symbols.append(type_symbol.get())
+
+            # Try to read a comma
+            if reader.peek_read(TokenType.SYM_COMMA) is None:
+                break
+
+        # Ensure there are at least two inner type symbols
+        if len(type_symbols) == 1:
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COMMA])
+
+        # Read right parenthesis
+        if reader.peek_read(TokenType.SYM_RPAREN) is not None:
+            return Success(TupleTypeSymbol(type_symbols))
+
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
+    elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is not None: # Record Type Symbol
+        # Get items
+        items : Dict[str, TypeSymbol] = {}
+
+        while True:
+            # Read item id
+            if reader.peek_read(TokenType.IDENTIFIER) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+
+            name = reader.prev().value
+
+            # Ensure there are no duplicate names
+            if name in items:
+                return ParseError.DuplicateRecordItemName(name, reader.prev().position)
+
+            # Try to read a colon
+            if reader.peek_read(TokenType.SYM_COLON) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
+
+            # Try item type symbol
+            type_symbol = parse_type_symbol(reader)
+            if type_symbol.is_error():
+                return type_symbol
+
+            items[name] = type_symbol.get()
+
+            # Try to read a comma
+            if reader.peek_read(TokenType.SYM_COMMA) is None:
+                break
+
+        # Read right curly bracket
+        if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
+            return Success(RecordTypeSymbol(items))
+
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
+
+    return ParseError.UnexpectedToken(reader.peek(), [
+        TokenType.IDENTIFIER,
+        TokenType.SYM_LEFT_SBRACKET,
+        TokenType.SYM_LEFT_CBRACKET,
+        TokenType.SYM_LPAREN]) 
 
 def parse_atom(reader: TokenReader) -> Result[Expression]:
     'Parse an atom node'
@@ -111,8 +215,7 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
         TokenType.CHAR,
         TokenType.IDENTIFIER,
         TokenType.KW_TRUE,
-        TokenType.KW_FALSE],
-        tok.position) 
+        TokenType.KW_FALSE]) 
 
 def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expression]:
     '''Parse an expression'''
@@ -157,14 +260,18 @@ def parse(reader: TokenReader) -> Result[Node]:
     'Parses a stream of tokens and returns the AST'
 
     node = parse_expr(reader)
-    return Success(cast(Node, ExprStmt(node.get()))) if node.is_success() else cast(Error, node)
+    return Success(cast(Node, node.get())) if node.is_success() else cast(Error, node)
 
 class ParseError:
     '''Wrapper for parsing errors'''
 
     @staticmethod
-    def UnexpectedToken(found: Token, expected: List[TokenType], pos: Position) -> Error:
-        return Error(ErrorType.PARSING_UNEXPECTED_TOKEN, pos, f"Encountered unexpected token '{found.type.name}' but expected {[item.name for item in expected]}")
+    def DuplicateRecordItemName(name: str, pos: Position) -> Error:
+        return Error(ErrorType.PARSING_DUP_RECORD_ITEM_NAME, pos, f"Duplicate record item name '{name}' found")
+
+    @staticmethod
+    def UnexpectedToken(found: Token, expected: List[TokenType]) -> Error:
+        return Error(ErrorType.PARSING_UNEXPECTED_TOKEN, found.position, f"Encountered unexpected token '{found.type.name}' but expected {[item.name for item in expected]}")
 
     @staticmethod
     def InvalidOperator(op: OperatorType, pos: Position) -> Error:

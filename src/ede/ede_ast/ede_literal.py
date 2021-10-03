@@ -3,7 +3,7 @@ from enum import Enum, auto
 from ede_utils import Position, Result, Success, char
 from .ede_ast import ExecContext, ExecValue
 from .ede_expr import Expression, ExprType
-from .ede_typesystem import EdeType, Environment
+from .ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeType, Environment
 from typing import Any, Dict, Generic, TypeVar, cast
 
 T = TypeVar('T', int, str, char, bool)
@@ -11,10 +11,10 @@ T = TypeVar('T', int, str, char, bool)
 class LiteralType(Enum):
     '''Enumeration of AST literal types'''
 
-    INTEGER = (auto(), EdeType.INT)
-    BOOL = (auto(), EdeType.BOOL)
-    CHAR = (auto(), EdeType.CHAR)
-    STRING = (auto(), EdeType.STR)
+    INTEGER = (auto(), EdeInt)
+    BOOL = (auto(), EdeBool)
+    CHAR = (auto(), EdeChar)
+    STRING = (auto(), EdeString)
 
     def get_ede_type(self) -> EdeType:
         '''Returns the associated ede type'''
