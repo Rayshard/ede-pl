@@ -11,6 +11,7 @@ class NodeType(Enum):
 
     STMT = auto()
     EXPR = auto()
+    TYPE_SYMBOL = auto()
     
 class Node(JSONSerializable):
     '''AST node'''

@@ -1,44 +1,68 @@
+from typing import Union, cast
+from ede_ast.ede_ast import Node
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_ast.ede_typesystem import ArrayTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
-from ede_parser import TokenReader, parse_atom, parse_type_symbol
+from ede_ast.ede_stmt import VarDeclStmt
+from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
+from ede_ast.ede_typesystem import EdeChar, EdeInt, EdeString
+from ede_parser import TokenReader, parse, parse_expr, parse_type_symbol
 from ede_lexer import Reader, tokenize
-from ede_utils import ErrorType
+from ede_utils import Error, ErrorType, Position, Result, Success, char
 
 def get_token_reader(text: str) -> TokenReader:
     return TokenReader(tokenize(Reader(text)).get())
 
-def test_atom():
-    assert isinstance(parse_atom(get_token_reader('5')).get(), IntLiteral)
-    assert isinstance(parse_atom(get_token_reader('"Hello World"')).get(), StringLiteral)
-    assert isinstance(parse_atom(get_token_reader('\'c\'')).get(), CharLiteral)
-    assert isinstance(parse_atom(get_token_reader('true')).get(), BoolLiteral)
-    assert isinstance(parse_atom(get_token_reader('false')).get(), BoolLiteral)
-    assert isinstance(parse_atom(get_token_reader('name')).get(), IdentifierExpr)
+def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> bool:
+    res = parse(get_token_reader(value)) if isinstance(value, str) else cast(Result[Node], value)
+
+    if res.is_success():
+        assert isinstance(expected, Node)
+        return res.get().to_json() == expected.to_json()
+
+    assert isinstance(expected, ErrorType)
+    return res.is_error(expected)
 
 def test_expr():
-    # TODO
-    pass
+    def check_expr(text: str, expected: Union[Node, ErrorType]) -> bool:
+        res = parse_expr(get_token_reader(text))
+        return check(Success(res.get()), expected) if res.is_success() else check(cast(Error, res), expected)
+
+    assert check_expr('5', IntLiteral(Position(), 5))
+    assert check_expr('"Hello World"', StringLiteral(Position(), 'Hello World'))
+    assert check_expr("'c'", CharLiteral(Position(), char('c')))
+    assert check_expr('true', BoolLiteral(Position(), True))
+    assert check_expr('false', BoolLiteral(Position(), False))
+    assert check_expr('name', IdentifierExpr(Position(), 'name'))
 
 def test_decls():
-    # TODO
-    pass
+    assert check('let a : int = 10', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), IntLiteral(Position(), 10)))
+    assert check('let a = 10', VarDeclStmt(Position(), 'a', None, IntLiteral(Position(), 10)))
+    assert check('let a : int', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), None))
+    assert check('let', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check('let a', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check('let a : = 10', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check('let a : int =', ErrorType.PARSING_UNEXPECTED_TOKEN)
 
 def test_type_symbols():
-    assert parse_type_symbol(get_token_reader('int')).get() == 'int'
-    assert parse_type_symbol(get_token_reader('[int]')).get() == ArrayTypeSymbol('int')
-    assert parse_type_symbol(get_token_reader('(int, char)')).get() == TupleTypeSymbol(['int', 'char'])
-    assert parse_type_symbol(get_token_reader('{name: string, age: int, children: [string]}')).get() == RecordTypeSymbol({'name': 'string', 'age': 'int', 'children': ArrayTypeSymbol('string')})
-    assert parse_type_symbol(get_token_reader('[]')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('[int}')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('(int)')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('()')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('(int,)')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('(int, char}')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('{}')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('{name}')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('{name:}')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('{name:string')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('{name:string,')).is_error(ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert parse_type_symbol(get_token_reader('{name:string, age:int, name:int}')).is_error(ErrorType.PARSING_DUP_RECORD_ITEM_NAME)
+    def check_ts(text: str, expected: Union[Node, ErrorType]) -> bool:
+        res = parse_type_symbol(get_token_reader(text))
+        return check(Success(res.get()), expected) if res.is_success() else check(cast(Error, res), expected)
+
+    assert check_ts('int', PrimitiveTypeSymbol(EdeInt, Position()))
+    assert check_ts('MyType', NameTypeSymbol('MyType', Position()))
+    assert check_ts('[int]', ArrayTypeSymbol(PrimitiveTypeSymbol(EdeInt, Position()), Position()))
+    assert check_ts('(int, char)', TupleTypeSymbol([PrimitiveTypeSymbol(EdeInt, Position()), PrimitiveTypeSymbol(EdeChar, Position())], Position()))
+    assert check_ts('{name: string, age: int}', RecordTypeSymbol({'name': PrimitiveTypeSymbol(EdeString, Position()), 'age': PrimitiveTypeSymbol(EdeInt, Position())}, Position()))
+    assert check_ts('[]', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('[int}', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('(int)', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('()', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('(int,)', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('(int, char}', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('{}', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('{name}', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('{name:}', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('{name:string', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('{name:string,', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check_ts('{name:string, age:int, name:int}', ErrorType.PARSING_DUP_RECORD_ITEM_NAME)
 

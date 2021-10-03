@@ -3,7 +3,8 @@ from typing import Dict, List, Optional, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
 from ede_ast.ede_stmt import ExprStmt, Statement, VarDeclStmt
-from ede_ast.ede_typesystem import ArrayTypeSymbol, EdeBool, EdeChar, EdeInt, EdeString, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
+from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeUnit, TSPrimitiveType
+from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Result, Success, char
 from ede_ast.ede_ast import Node
@@ -85,11 +86,15 @@ assert len(OperatorType) == len(OPERATOR_PREC_DICT)
 # TODO: convert to match expression
 # Map between intrinsic type symbols and their ede types
 INTRINSIC_TYPE_SYMBOLS_DICT = {
-    'int': EdeInt,
-    'string': EdeString,
-    'bool': EdeBool,
-    'char': EdeChar,
+    TSPrimitiveType.UNIT.get_type_symbol(): EdeUnit,
+    TSPrimitiveType.INT.get_type_symbol(): EdeInt,
+    TSPrimitiveType.STR.get_type_symbol(): EdeString,
+    TSPrimitiveType.BOOL.get_type_symbol(): EdeBool,
+    TSPrimitiveType.CHAR.get_type_symbol(): EdeChar,
 }
+
+# Ensure all primitive type symbols are covered
+assert len(INTRINSIC_TYPE_SYMBOLS_DICT) == len(TSPrimitiveType)
 
 def is_intrinsic_type_symbol(name: str) -> bool:
     '''Determines if the given name is an intrinsic type symbol'''
@@ -110,9 +115,12 @@ def is_op_right_assoc(op: OperatorType) -> bool:
 def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
     '''Parse an type symbol'''
 
+    position = reader.get_position()
+
     # TODO: convert to match?
     if reader.peek_read(TokenType.IDENTIFIER) is not None:
-        return Success(reader.prev().value)
+        value = reader.prev().value
+        return Success(PrimitiveTypeSymbol(INTRINSIC_TYPE_SYMBOLS_DICT[value], position) if is_intrinsic_type_symbol(value) else NameTypeSymbol(value, position))
     elif reader.peek_read(TokenType.SYM_LEFT_SBRACKET) is not None: # Array Type Symbol
         # Get inner type symbol
         inner_type_symbol = parse_type_symbol(reader)
@@ -121,7 +129,7 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
 
         # Read right bracket
         if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
-            return Success(ArrayTypeSymbol(inner_type_symbol.get()))
+            return Success(ArrayTypeSymbol(inner_type_symbol.get(), position))
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
     elif reader.peek_read(TokenType.SYM_LPAREN) is not None: # Tuple Type Symbol
@@ -145,7 +153,7 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
 
         # Read right parenthesis
         if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-            return Success(TupleTypeSymbol(type_symbols))
+            return Success(TupleTypeSymbol(type_symbols, position))
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
     elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is not None: # Record Type Symbol
@@ -180,7 +188,7 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
 
         # Read right curly bracket
         if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
-            return Success(RecordTypeSymbol(items))
+            return Success(RecordTypeSymbol(items, position))
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
 

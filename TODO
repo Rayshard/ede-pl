@@ -1,5 +1,15 @@
 
 Todo:
-  ☐ implement variable declaration
+  ✔ make type symbol a node @done(21-10-03 12:32)
+  ☐ make to_json have the __type__ be the str reprentatoin of the node/expr/stmt type
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string
+
+Features To Implement:
+  ☐ statement blocks
+  ☐ if else statements
+    ☐ to solve the dangling else problem, just attach the else to the closest if
+  ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`
+  ☐ arrays
+  ☐ tuples
+  ☐ records

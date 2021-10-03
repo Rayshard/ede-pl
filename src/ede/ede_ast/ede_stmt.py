@@ -1,10 +1,11 @@
 from abc import abstractmethod
 from enum import Enum, auto
 from typing import Any, Dict, Optional, cast
+from .ede_type_symbol import TypeSymbol
 from .ede_ast import Node, NodeType
-from ede_utils import Error, Position, Result, Success
+from ede_utils import Position, Result, Success
 from interpreter import ExecContext, ExecValue
-from .ede_typesystem import EdeType, EdeUnit, EnvEntry, EnvEntryType, Environment, TypeCheckError, TypeSymbol
+from .ede_typesystem import EdeType, EdeUnit, EnvEntry, EnvEntryType, Environment, TypeCheckError
 from .ede_expr import Expression
 
 class StmtType(Enum):
@@ -81,11 +82,11 @@ class VarDeclStmt(Statement):
         ede_type: Optional[EdeType] = None
 
         if self.type_symbol is not None:
-            env_res = env.resolve(self.type_symbol, self.position, True)
-            if env_res.is_error():
-                return cast(Error, env_res)
+            ts_res = self.type_symbol.typecheck(env)
+            if ts_res.is_error():
+                return ts_res
 
-            ede_type = env_res.get()
+            ede_type = ts_res.get()
 
         if self.expr is not None:
             expr_res = self.expr.typecheck(env)

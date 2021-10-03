@@ -1,52 +1,6 @@
-from abc import abstractmethod
 from enum import Enum, auto
-from typing import Any, Dict, List, NamedTuple, Optional, Type, Union, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Type
 from ede_utils import Error, ErrorType, JSONSerializable, Position, Result, Success
-
-class ArrayTypeSymbol:
-    '''Representation of an array type symbol'''
-
-    def __init__(self, inner: 'TypeSymbol') -> None:
-        '''Create array type symbol'''
-        self.inner = inner
-
-    def __eq__(self, o: object) -> bool:
-        return isinstance(o, ArrayTypeSymbol) and o.inner == self.inner
-
-    def __str__(self) -> str:
-        return f"[{str(self.inner)}]"
-
-class TupleTypeSymbol:
-    '''Representation of a tuple type symbol'''
-
-    def __init__(self, inners: List['TypeSymbol']) -> None:
-        '''Create tuple type symbol'''
-        
-        assert len(inners) > 1, 'Tuple type symbols must have at least 2 inner type symbols'
-        self.inners = inners
-
-    def __eq__(self, o: object) -> bool:
-        return isinstance(o, TupleTypeSymbol) and o.inners == self.inners
-
-    def __str__(self) -> str:
-        return f"({','.join([str(inner) for inner in self.inners])})"
-
-class RecordTypeSymbol:
-    '''Representation of a record type symbol'''
-
-    def __init__(self, items: Dict[str, 'TypeSymbol']) -> None:
-        '''Create record type symbol'''
-        
-        assert len(items) > 0, 'Record type symbols must have at least 1 item'
-        self.items = items
-
-    def __eq__(self, o: object) -> bool:
-        return isinstance(o, RecordTypeSymbol) and o.items == self.items
-
-    def __str__(self) -> str:
-        return "{" + ','.join([f"{name}:{str(type_symbol)}" for name, type_symbol in self.items.items()]) + "}"
-
-TypeSymbol = Union[str, ArrayTypeSymbol, TupleTypeSymbol, RecordTypeSymbol]
 
 class TSType(Enum):
     '''Enumeration for type system base types'''
@@ -81,11 +35,6 @@ class EdeType(JSONSerializable):
     def __str__(self) -> str:
         return str(self.to_json())
 
-    @abstractmethod
-    def as_type_symbol(self) -> TypeSymbol:
-        '''Converts type to its type symbol representation'''
-        pass
-
 class EdePrimitive(EdeType):
     '''Ede primitive type'''
 
@@ -104,9 +53,6 @@ class EdePrimitive(EdeType):
             '__type__': 'primitive',
             'type': self.__type.name
         }
-
-    def as_type_symbol(self) -> TypeSymbol:
-        return self.__type.get_type_symbol()
 
 # Primitive Instances
 EdeUnit = EdePrimitive(TSPrimitiveType.UNIT)
@@ -133,9 +79,6 @@ class EdeArray(EdeType):
             'inner_type': self.__inner_type.to_json()
         }
 
-    def as_type_symbol(self) -> TypeSymbol:
-        return ArrayTypeSymbol(self.__inner_type.as_type_symbol())
-
 class EdeTuple(EdeType):
     '''Ede tuple type'''
 
@@ -160,9 +103,6 @@ class EdeTuple(EdeType):
             'inner_types': [type.to_json() for type in self.__inner_types]
         }
 
-    def as_type_symbol(self) -> TypeSymbol:
-        return TupleTypeSymbol([type.as_type_symbol() for type in self.__inner_types])
-
 class EdeRecord(EdeType):
     '''Ede record type'''
 
@@ -181,9 +121,6 @@ class EdeRecord(EdeType):
             '__type__': 'record',
             'items': {name: type.to_json() for name, type in self.__items.items()}
         }
-    
-    def as_type_symbol(self) -> TypeSymbol:
-        return RecordTypeSymbol({name: item.as_type_symbol() for name, item in self.__items.items()})
 
 class EdeObject(EdeType):
     '''Ede object type'''
@@ -261,45 +198,6 @@ class Environment:
 
         self.namespace[entry.type][id] = entry
         return None
-
-    def resolve(self, type_symbol: TypeSymbol, pos: Position, check_parent: bool) -> Result[EdeType]:
-        # TODO: convert to match
-        if isinstance(type_symbol, str):
-            get_res = self.get(type_symbol, pos, check_parent)
-            if get_res.is_error():
-                return cast(Error, get_res)
-                
-            return Success(get_res.get().ede_type)
-        elif isinstance(type_symbol, ArrayTypeSymbol):
-            inner_res = self.resolve(type_symbol.inner, pos, check_parent)
-            if inner_res.is_error():
-                return cast(Error, inner_res)
-                
-            return Success(EdeArray(inner_res.get()))
-        elif isinstance(type_symbol, TupleTypeSymbol):
-            inners : List[EdeType] = []
-
-            for inner in type_symbol.inners:
-                inner_res = self.resolve(inner, pos, check_parent)
-                if inner_res.is_error():
-                    return cast(Error, inner_res)
-            
-                inners.append(inner_res.get())
-                
-            return Success(EdeTuple(inners))
-        elif isinstance(type_symbol, RecordTypeSymbol): # type: ignore
-            items : Dict[str, EdeType] = {}
-
-            for name, item in type_symbol.items.items():
-                item_res = self.resolve(item, pos, check_parent)
-                if item_res.is_error():
-                    return cast(Error, item_res)
-            
-                items[name] = item_res.get()
-                
-            return Success(EdeRecord(items))
-
-        return TypeCheckError.UnresolvableTypeName(str(type_symbol), pos)
 
 class TypeCheckError:
     '''Wrapper for type checking errors'''

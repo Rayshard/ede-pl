@@ -64,7 +64,7 @@ class IdentifierExpr(Expression):
 
         return Success(entry.get().ede_type)
 
-    def _execute(self, ctx: ExecContext) -> ExecValue:
+    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         return ctx.get(self.id)
 
     def to_json(self) -> Dict[str, Any]:
