@@ -1,6 +1,6 @@
 from enum import Enum, auto
-from typing import Dict, NamedTuple, Optional, Union, cast, get_args
-from ede_utils import Position, char
+from typing import Dict, List, NamedTuple, Optional, Union, cast, get_args
+from ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
     '''Enumeration of execution exception types'''
@@ -19,7 +19,31 @@ class ExecException(NamedTuple):
     def DivisionByZero(pos: Position) -> 'ExecException':
         return ExecException(ExecExceptionType.DIV_BY_ZERO, 'Division By Zero', pos, "Unable to divide by 0")
 
-ExecValueTypes = Union[int, str, bool, char, ExecException]
+class ArrayValue(NamedTuple):
+    '''Array value'''
+
+    values: List['ExecValue']
+
+    def __str__(self) -> str:
+        return f"[{', '.join([str(value) for value in self.values])}]"
+
+class TupleValue(NamedTuple):
+    '''Tuple value'''
+
+    values: List['ExecValue']
+
+    def __str__(self) -> str:
+        return f"({', '.join([str(value) for value in self.values])})"
+
+class RecordValue(NamedTuple):
+    '''Record value'''
+
+    items: Dict[str, 'ExecValue']
+
+    def __str__(self) -> str:
+        return '{' + f"{', '.join([name + '=' + str(value) for name, value in self.items.items()])}" + '}'
+
+ExecValueTypes = Union[int, str, bool, char, unit, ArrayValue, TupleValue, RecordValue, ExecException]
 class ExecValue:
     '''Representation of the possible values return on execution of an AST node'''
 
@@ -37,10 +61,20 @@ class ExecValue:
         return False 
 
     def __str__(self) -> str:
-        return f"Value: {self.value}, Type: {type(self.value).__name__}"
+        if isinstance(self.value, char):
+            return "'" + str(self.value) + "'"
+        elif isinstance(self.value, str):
+            return '"' + str(self.value) + '"'
+        
+        return str(self.value)
 
     def is_exception(self) -> bool:
         return isinstance(self.value, ExecException)
+
+    def to_unit(self) -> unit:
+        '''Returns value casted as unit'''
+        assert type(self.value) == unit
+        return cast(unit, self.value)
 
     def to_int(self) -> int:
         '''Returns value casted as int'''
@@ -70,6 +104,28 @@ class ExecValue:
 
         assert type(self.value) == ExecException
         return cast(ExecException, self.value)
+
+    def to_array(self) -> ArrayValue:
+        '''Returns value casted as array value'''
+
+        assert type(self.value) == ArrayValue
+        return cast(ArrayValue, self.value)
+
+    def to_tuple(self) -> TupleValue:
+        '''Returns value casted as tuple value'''
+
+        assert type(self.value) == TupleValue
+        return cast(TupleValue, self.value)
+
+    def to_record(self) -> RecordValue:
+        '''Returns value casted as record value'''
+
+        assert type(self.value) == RecordValue
+        return cast(RecordValue, self.value)
+
+    @staticmethod
+    def UNIT() -> 'ExecValue':
+        return ExecValue(unit())
 
 class ExecContext:
     '''Execution Context: a mutale environment that holds the state of a program during AST execution'''

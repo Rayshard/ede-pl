@@ -196,6 +196,10 @@ class TypeCheckError:
         return Error(ErrorType.TYPECHECKING_INVALID_ASSIGN, pos, f"Cannot assign {rtype} to {ltype}")
 
     @staticmethod
+    def IncompatibleIfElseClause(then_type: EdeType, else_type: EdeType, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_INCOMPATIBLE_IF_ELSE_CLAUSES, pos, f"Cannot convert else clause type {else_type} to then clause type {then_type}")
+
+    @staticmethod
     def UnknownID(id: str, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_UNKNOWN_ID, pos, f"Unknown id \"{id}\"")
 
@@ -210,3 +214,11 @@ class TypeCheckError:
     @staticmethod
     def UnresolvableTypeName(typename: str, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_UNRESOLVABLE_TYPENAME, pos, f"Could not resolve \"{typename}\" to a valid type")
+
+    @staticmethod
+    def DuplicateRecordItemName(name: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_DUP_RECORD_ITEM_NAME, pos, f"Duplicate record item name '{name}' found")
+
+    @staticmethod
+    def UnexpectedType(found: EdeType, expected: EdeType, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_UNEXPECTED_TYPE, pos, f"Found '{found}' but expected {expected}")

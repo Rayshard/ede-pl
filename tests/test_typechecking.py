@@ -31,3 +31,7 @@ def test_identifier():
     
     env.declare('name', EnvEntry(EnvEntryType.VARIABLE, EdeChar, Position()), True)
     assert TypecheckVisitor.visit(IdentifierExpr(Position(1, 1), 'name'), env).get() == EdeChar
+
+def test_if_else():
+    # TODO
+    pass

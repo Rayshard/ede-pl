@@ -12,6 +12,12 @@ class char(str):
         obj = str.__new__(cls, value)
         return obj
 
+class unit:
+    '''Unit data type'''
+    
+    def __str__(self) -> str:
+        return "()"
+
 class Position(NamedTuple):
     line: int = 1
     column: int = 1
@@ -35,6 +41,9 @@ class ErrorType(IntEnum):
     TYPECHECKING_INVALID_ASSIGN = auto()
     TYPECHECKING_MULTIPLE_DECL = auto()
     TYPECHECKING_UNRESOLVABLE_TYPENAME = auto()
+    TYPECHECKING_INCOMPATIBLE_IF_ELSE_CLAUSES = auto()
+    TYPECHECKING_DUP_RECORD_ITEM_NAME = auto()
+    TYPECHECKING_UNEXPECTED_TYPE = auto()
 
     PARSING_UNEXPECTED_TOKEN = auto()
     PARSING_INVALID_OPERATOR = auto()

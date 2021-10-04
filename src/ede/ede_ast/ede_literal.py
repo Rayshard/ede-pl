@@ -1,15 +1,16 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from ede_utils import Position, char
+from ede_utils import Position, char, unit
 from .ede_expr import Expression, ExprType
-from .ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeType
+from .ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeType, EdeUnit
 from typing import Generic, TypeVar, cast
 
-T = TypeVar('T', int, str, char, bool)
+T = TypeVar('T', int, str, char, bool, unit)
 
 class LiteralType(Enum):
     '''Enumeration of AST literal types'''
 
+    UNIT = (auto(), EdeUnit)
     INTEGER = (auto(), EdeInt)
     BOOL = (auto(), EdeBool)
     CHAR = (auto(), EdeChar)
@@ -37,6 +38,15 @@ class Literal(Expression, Generic[T]):
     def get_lit_type(self) -> LiteralType:
         '''Returns the LiteralType'''
         pass
+
+class UnitLiteral(Literal[unit]):
+    '''AST Unit Literal'''
+
+    def __init__(self, pos: Position) -> None:
+        super().__init__(pos, unit())
+
+    def get_lit_type(self) -> LiteralType:
+        return LiteralType.UNIT
 
 class IntLiteral(Literal[int]):
     '''AST Int Literal'''

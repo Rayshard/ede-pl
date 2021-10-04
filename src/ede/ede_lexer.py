@@ -149,7 +149,7 @@ def lex_char(reader: Reader) -> Result[Token]:
         result += reader.read()
 
     if reader.peek() != '\'':
-        return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must be closed with a '.")
+        return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain one character and be closed with a '.")
     else:
         reader.read()
 

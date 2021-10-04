@@ -8,9 +8,12 @@ Todo:
 
 Features To Implement:
   ✔ statement blocks @done(21-10-04 00:09)
-  ☐ if else statements
-    ☐ to solve the dangling else problem, just attach the else to the closest if
+  ✔ if else statements @done(21-10-04 01:37)
+    ✔ to solve the dangling else problem, just attach the else to the closest if @done(21-10-04 01:37)
   ☐ arrays
   ☐ tuples
   ☐ records
   ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`
+  ☐ while statement
+    ☐ `loop {}` will be syntax sugar for `while True { }`
+  ☐ for loop

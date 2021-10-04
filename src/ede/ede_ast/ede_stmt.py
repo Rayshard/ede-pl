@@ -12,6 +12,7 @@ class StmtType(Enum):
     EXPR = auto()
     VAR_DECL = auto()
     BLOCK = auto()
+    IF_ELSE = auto()
     
 class Statement(Node):
     '''AST statement node'''
@@ -67,3 +68,17 @@ class VarDeclStmt(Statement):
 
     def get_stmt_type(self) -> StmtType:
         return StmtType.VAR_DECL
+
+class IfElseStmt(Statement):
+    '''AST ifelse statement node'''
+
+    def __init__(self, cond: Expression, thenClause: Statement, elseClause: Optional[Statement], pos: Position) -> None:
+        '''Creates an AST ifelse statement node'''
+
+        super().__init__(pos)
+        self.condition = cond
+        self.thenClause = thenClause
+        self.elseClause = elseClause
+
+    def get_stmt_type(self) -> StmtType:
+        return StmtType.IF_ELSE

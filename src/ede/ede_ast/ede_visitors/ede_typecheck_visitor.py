@@ -1,10 +1,10 @@
 from typing import Any, Callable, Dict, List, Optional, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BINOP_EDE_TYPE_DICT, BinopExpr, BinopType, TypeCheckError_InvalidBinop
-from ede_ast.ede_expr import IdentifierExpr
+from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, RecordExpr, TupleExpr
 from ede_ast.ede_literal import LIT_EDE_TYPE_DICT, BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
 from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
 from ede_ast.ede_typesystem import EdeArray, EdeRecord, EdeTuple, EdeType, EdeUnit, EnvEntry, EnvEntryType, Environment, TypeCheckError
 from ede_utils import Result, Success
@@ -137,7 +137,7 @@ def visit_Block(b: Block, env: Environment) -> TCResult:
         if last_tc_res.is_error():
             return last_tc_res
 
-    return cast(TCResult, last_tc_res)
+    return cast(TCResult, last_tc_res) if last_tc_res is not None else Success(EdeUnit)
 
 def visit_Module(m: Module, env: Environment) -> TCResult:
     sub_env = Environment(env)
@@ -148,12 +148,80 @@ def visit_Module(m: Module, env: Environment) -> TCResult:
         if last_tc_res.is_error():
             return last_tc_res
 
-    return cast(TCResult, last_tc_res)
+    return cast(TCResult, last_tc_res) if last_tc_res is not None else Success(EdeUnit)
+
+def visit_IfElseStmt(stmt: IfElseStmt, env: Environment) -> TCResult:
+    cond_res = TypecheckVisitor.visit(stmt.condition, env)
+    if cond_res.is_error():
+        return cond_res
+
+    then_res = TypecheckVisitor.visit(stmt.thenClause, env)
+    if then_res.is_error():
+        return then_res
+
+    if stmt.elseClause is not None:
+        else_res = TypecheckVisitor.visit(stmt.elseClause, env)
+        if else_res.is_error():
+            return else_res
+        elif else_res.get() != then_res.get():
+            return TypeCheckError.IncompatibleIfElseClause(then_res.get(), else_res.get(), stmt.elseClause.position)
+
+    return then_res
+
+def visit_ArrayExpr(a: ArrayExpr, env: Environment) -> TCResult:
+    if len(a.exprs) == 0:
+        # TODO
+        raise Exception('Not handled')
+    else:
+        last_type: Optional[EdeType] = None
+
+        for expr in a.exprs:
+            type_res = TypecheckVisitor.visit(expr, env)
+            if type_res.is_error():
+                return type_res
+
+            if last_type is None:
+                last_type = type_res.get()
+            elif type_res.get() != last_type:
+                return TypeCheckError.UnexpectedType(type_res.get(), last_type, expr.position)
+
+        return Success(EdeArray(cast(EdeType, last_type)))
+
+def visit_TupleExpr(t: TupleExpr, env: Environment) -> TCResult:
+    inner_types: List[EdeType] = []
+
+    for expr in t.exprs:
+        inner_type_res = TypecheckVisitor.visit(expr, env)
+        if inner_type_res.is_error():
+            return inner_type_res
+
+        inner_types.append(inner_type_res.get())
+
+    return Success(EdeTuple(inner_types))
+
+def visit_RecordExpr(r: RecordExpr, env: Environment) -> TCResult:
+    items: Dict[str, EdeType] = {}
+
+    for name, item in r.items.items():
+        if name in items:
+            return TypeCheckError.DuplicateRecordItemName(name, item.position)
+
+        item_type_res = TypecheckVisitor.visit(item, env)
+        if item_type_res.is_error():
+            return item_type_res
+
+        items[name] = item_type_res.get()
+
+    return Success(EdeRecord(items))
 
 VISITORS : Dict[Type[Any], Callable[[Any, Environment], TCResult]] = {
     ExprStmt: lambda node, env: TypecheckVisitor.visit(cast(ExprStmt, node).expr, env),
     IdentifierExpr: visit_IdentifierExpr,
     BinopExpr: visit_BinopExpr,
+    ArrayExpr: visit_ArrayExpr,
+    TupleExpr: visit_TupleExpr,
+    RecordExpr: visit_RecordExpr,
+    IfElseStmt: visit_IfElseStmt,
     Module: visit_Module,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,

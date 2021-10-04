@@ -1,17 +1,15 @@
-from typing import Any, Callable, Dict, Optional, Tuple, Type, cast
+from typing import Any, Callable, Dict, Tuple, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BINOP_EXEC_FUNCS, BinopExpr, BinopType
-from ede_ast.ede_expr import IdentifierExpr
+from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, RecordExpr, TupleExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
 from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_ast.ede_typesystem import EdeType, Environment
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 from ede_utils import Result, Success
-from interpreter import ExecContext, ExecValue
-
-ExecResult = Optional[ExecValue]
+from interpreter import ArrayValue, ExecContext, ExecValue, RecordValue, TupleValue
 
 class ExecutionVisitor:
     '''
@@ -20,12 +18,12 @@ class ExecutionVisitor:
     '''
 
     @staticmethod
-    def visit(node: Node, ctx: ExecContext) -> ExecResult:
+    def visit(node: Node, ctx: ExecContext) -> ExecValue:
         assert node.get_node_type() is not None # technically this is redunant since get_node_type asserts already
         return VISITORS[type(node)](node, ctx)
 
     @staticmethod
-    def visit_in(node: Node, env: Environment, ctx: ExecContext) -> Result[ExecResult]:
+    def visit_in(node: Node, env: Environment, ctx: ExecContext) -> Result[ExecValue]:
         if env is not None:
             tc_res = TypecheckVisitor.visit(node, env)
             if tc_res.is_error():
@@ -33,15 +31,18 @@ class ExecutionVisitor:
         
         return Success(ExecutionVisitor.visit(node, ctx))
 
-def visit_IdentifierExpr(expr: IdentifierExpr, ctx: ExecContext) -> ExecResult:
-    return ctx.get(expr.id)
+def visit_IdentifierExpr(expr: IdentifierExpr, ctx: ExecContext) -> ExecValue:
+    get_res = ctx.get(expr.id)
 
-def visit_BinopExpr(expr: BinopExpr, ctx: ExecContext) -> ExecResult:
+    assert get_res is not None, 'Type checking should have ensured that the id was assigned'
+    return get_res
+
+def visit_BinopExpr(expr: BinopExpr, ctx: ExecContext) -> ExecValue:
     if expr.op == BinopType.ASSIGN:
         id = cast(IdentifierExpr, expr.left).id
 
         # execute RHS; return if exception
-        right_res = cast(ExecValue, ExecutionVisitor.visit(expr.right, ctx))
+        right_res = ExecutionVisitor.visit(expr.right, ctx)
         if right_res.is_exception():
             return right_res
 
@@ -50,51 +51,116 @@ def visit_BinopExpr(expr: BinopExpr, ctx: ExecContext) -> ExecResult:
         return right_res
     else:
         # execute LHS; return if exception
-        left_res = cast(ExecValue, ExecutionVisitor.visit(expr.left, ctx))
+        left_res = ExecutionVisitor.visit(expr.left, ctx)
         if left_res.is_exception():
             return left_res
 
         # execute RHS; return if exception
-        right_res = cast(ExecValue, ExecutionVisitor.visit(expr.right, ctx))
+        right_res = ExecutionVisitor.visit(expr.right, ctx)
         if right_res.is_exception():
             return right_res
 
         # execute function associated with pattern
         return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], expr.type_pattern)](left_res, right_res, expr.position, ctx)
 
-def visit_Literal(expr: Literal[Any], ctx: ExecContext) -> ExecResult:
+def visit_Literal(expr: Literal[Any], ctx: ExecContext) -> ExecValue:
     return ExecValue(expr.value)
 
-def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: ExecContext) -> ExecResult:
-    ctx.set(stmt.id, ExecutionVisitor.visit(stmt.expr, ctx) if stmt.expr is not None else None, stmt.position)
-    return None
+def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: ExecContext) -> ExecValue:
+    expr_res = ExecutionVisitor.visit(stmt.expr, ctx) if stmt.expr is not None else None
+    if expr_res is not None and expr_res.is_exception():
+        return expr_res
 
-def visit_TypeSymbol(t: TypeSymbol, ctx: ExecContext) -> ExecResult:
+    ctx.set(stmt.id, expr_res, stmt.position)
+    return ExecValue.UNIT()
+
+def visit_IfElseStmt(stmt: IfElseStmt, ctx: ExecContext) -> ExecValue:
+    cond_res = ExecutionVisitor.visit(stmt.condition, ctx)
+    if cond_res.is_exception():
+        return cond_res
+
+    if cond_res.to_bool():
+        return ExecutionVisitor.visit(stmt.thenClause, ctx)
+    elif stmt.elseClause is not None:
+        return ExecutionVisitor.visit(stmt.elseClause, ctx)
+
+    return ExecValue.UNIT()
+
+def visit_TypeSymbol(t: TypeSymbol, ctx: ExecContext) -> ExecValue:
     assert False, 'Type symbols are not executable'
 
-def visit_Block(b: Block, ctx: ExecContext) -> ExecResult:
+def visit_Block(b: Block, ctx: ExecContext) -> ExecValue:
     sub_ctx = ExecContext(ctx)
-    last_exec_res = None
+    last_exec_res = ExecValue.UNIT()
 
     for stmt in b.stmts:
         last_exec_res = ExecutionVisitor.visit(stmt, sub_ctx)
+        if last_exec_res.is_exception():
+            return last_exec_res
 
     return last_exec_res
 
-def visit_Module(m: Module, ctx: ExecContext) -> ExecResult:
+def visit_ArrayExpr(a: ArrayExpr, ctx: ExecContext) -> ExecValue:
+    value = ArrayValue([])
+
+    for expr in a.exprs:
+        expr_value = ExecutionVisitor.visit(expr, ctx)
+        if expr_value.is_exception():
+            return expr_value
+
+        value.values.append(expr_value)
+
+    return ExecValue(value)
+
+def visit_TupleExpr(t: TupleExpr, ctx: ExecContext) -> ExecValue:
+    value = TupleValue([])
+
+    for expr in t.exprs:
+        expr_value = ExecutionVisitor.visit(expr, ctx)
+        if expr_value.is_exception():
+            return expr_value
+
+        value.values.append(expr_value)
+
+    return ExecValue(value)
+
+def visit_RecordExpr(r: RecordExpr, ctx: ExecContext) -> ExecValue:
+    value = RecordValue({})
+
+    for name, expr in r.items.items():
+        expr_value = ExecutionVisitor.visit(expr, ctx)
+        if expr_value.is_exception():
+            return expr_value
+
+        value.items[name] = expr_value
+
+    return ExecValue(value)
+
+def visit_Module(m: Module, ctx: ExecContext) -> ExecValue:
     sub_ctx = ExecContext(ctx)
-    last_exec_res = None
+    last_exec_res = ExecValue.UNIT()
 
     for stmt in m.stmts:
         last_exec_res = ExecutionVisitor.visit(stmt, sub_ctx)
+        if last_exec_res.is_exception():
+            return last_exec_res
 
     return last_exec_res
 
-VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecResult]] = {
-    ExprStmt: lambda node, env: ExecutionVisitor.visit(cast(ExprStmt, node).expr, env),
+def visit_ExprStmt(e: ExprStmt, ctx: ExecContext) -> ExecValue:
+    value = ExecutionVisitor.visit(e.expr, ctx)
+    print(value)
+    return value
+
+VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
+    ExprStmt: visit_ExprStmt,
     IdentifierExpr: visit_IdentifierExpr,
     Module: visit_Module,
+    ArrayExpr: visit_ArrayExpr,
+    TupleExpr: visit_TupleExpr,
+    RecordExpr: visit_RecordExpr,
     BinopExpr: visit_BinopExpr,
+    IfElseStmt: visit_IfElseStmt,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
     StringLiteral: visit_Literal,

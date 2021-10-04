@@ -64,8 +64,6 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
                 if exec_res.is_error():
                     print(exec_res.error().get_output_msg(file_path))
                 
-                print(exec_res.get())
-
                 print("=================== Execution Context ====================")
                 print(ctx)
                 print("=================== ================= ====================")

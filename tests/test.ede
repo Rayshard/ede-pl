@@ -1,1 +1,9 @@
-3 + 7 * 3;
+if true {
+    1 + 2;
+} else {
+    5 + 7;
+}
+
+[1, 2, 3];
+("hi", 4, true, '5');
+{name = "Rayshard Thompson", age = 22, male = true};

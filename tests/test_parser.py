@@ -2,7 +2,7 @@ from typing import Union, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_ast.ede_stmt import Block, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
 from ede_ast.ede_typesystem import EdeChar, EdeInt, EdeString
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
@@ -18,6 +18,8 @@ def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> 
 
     if res.is_success():
         assert isinstance(expected, Node)
+        print(JsonVisitor.visit(expected))
+        print(JsonVisitor.visit(res.get()))
         return JsonVisitor.visit(res.get()) == JsonVisitor.visit(expected)
 
     assert isinstance(expected, ErrorType)
@@ -51,6 +53,21 @@ def test_block():
         VarDeclStmt(Position(), 'b', None, IntLiteral(Position(), 10))
     ], Position()))
     assert check('{ let a = 5; let b = 10;', ErrorType.PARSING_UNEXPECTED_TOKEN)
+
+def test_if_else():
+    assert check('if true { 5; } else { 6; }', IfElseStmt(
+        BoolLiteral(Position(), True),
+        Block([ExprStmt(IntLiteral(Position(), 5))], Position()),
+        Block([ExprStmt(IntLiteral(Position(), 6))], Position()),
+        Position()))
+    assert check('if true { 5; }', IfElseStmt(
+        BoolLiteral(Position(), True),
+        Block([ExprStmt(IntLiteral(Position(), 5))], Position()),
+        None,
+        Position()))
+    assert check('if', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check('if true', ErrorType.PARSING_UNEXPECTED_TOKEN)
+    assert check('if true else', ErrorType.PARSING_UNEXPECTED_TOKEN)
 
 def test_type_symbols():
     def check_ts(text: str, expected: Union[Node, ErrorType]) -> bool:

@@ -4,31 +4,116 @@
         "name": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\test",
         "statments": [
             {
-                "left": {
-                    "type": "INTEGER",
-                    "value": 3,
+                "condition": {
+                    "type": "BOOL",
+                    "value": true,
                     "expr_type": "LITERAL",
                     "node_type": "EXPR"
                 },
-                "right": {
-                    "left": {
+                "then": {
+                    "statements": [
+                        {
+                            "left": {
+                                "type": "INTEGER",
+                                "value": 1,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            "right": {
+                                "type": "INTEGER",
+                                "value": 2,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            "op": "ADD",
+                            "expr_type": "BINOP",
+                            "node_type": "STMT",
+                            "stmt_type": "EXPR"
+                        }
+                    ],
+                    "stmt_type": "BLOCK",
+                    "node_type": "STMT"
+                },
+                "else": {
+                    "statements": [
+                        {
+                            "left": {
+                                "type": "INTEGER",
+                                "value": 5,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            "right": {
+                                "type": "INTEGER",
+                                "value": 7,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            "op": "ADD",
+                            "expr_type": "BINOP",
+                            "node_type": "STMT",
+                            "stmt_type": "EXPR"
+                        }
+                    ],
+                    "stmt_type": "BLOCK",
+                    "node_type": "STMT"
+                },
+                "stmt_type": "IF_ELSE",
+                "node_type": "STMT"
+            },
+            {
+                "elements": [
+                    {
                         "type": "INTEGER",
-                        "value": 7,
+                        "value": 1,
                         "expr_type": "LITERAL",
                         "node_type": "EXPR"
                     },
-                    "right": {
+                    {
+                        "type": "INTEGER",
+                        "value": 2,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    },
+                    {
                         "type": "INTEGER",
                         "value": 3,
                         "expr_type": "LITERAL",
                         "node_type": "EXPR"
+                    }
+                ],
+                "expr_type": "ARRAY",
+                "node_type": "STMT",
+                "stmt_type": "EXPR"
+            },
+            {
+                "elements": [
+                    {
+                        "type": "STRING",
+                        "value": "hi",
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
                     },
-                    "op": "MUL",
-                    "expr_type": "BINOP",
-                    "node_type": "EXPR"
-                },
-                "op": "ADD",
-                "expr_type": "BINOP",
+                    {
+                        "type": "INTEGER",
+                        "value": 4,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    },
+                    {
+                        "type": "BOOL",
+                        "value": true,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    },
+                    {
+                        "type": "CHAR",
+                        "value": "5",
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    }
+                ],
+                "expr_type": "TUPLE",
                 "node_type": "STMT",
                 "stmt_type": "EXPR"
             }

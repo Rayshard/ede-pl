@@ -1,10 +1,10 @@
 from typing import Any, Callable, Dict, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BinopExpr
-from ede_ast.ede_expr import Expression, IdentifierExpr
+from ede_ast.ede_expr import ArrayExpr, Expression, IdentifierExpr, RecordExpr, TupleExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
 from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, Statement, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeRecord, EdeTuple, EdeType
 
@@ -55,10 +55,30 @@ def visit_Module(m: Module) -> JSON:
         "statments": [JsonVisitor.visit(stmt) for stmt in m.stmts]
     }
 
+def visit_IfElseStmt(stmt: IfElseStmt) -> JSON:
+    return {
+        'condition': JsonVisitor.visit(stmt.condition),
+        'then': JsonVisitor.visit(stmt.thenClause),
+        'else': JsonVisitor.visit(stmt.elseClause) if stmt.elseClause is not None else None,
+    }
+
+def visit_ArrayExpr(a: ArrayExpr) -> JSON:
+    return {"elements": [JsonVisitor.visit(expr) for expr in a.exprs]}
+
+def visit_TupleExpr(t: TupleExpr) -> JSON:
+    return {"elements": [JsonVisitor.visit(expr) for expr in t.exprs]}
+
+def visit_RecordExpr(r: RecordExpr) -> JSON:
+    return {"items": {name: JsonVisitor.visit(expr) for name, expr in r.items.items()}}
+
 VISITORS : Dict[Type[Any], Callable[[Any], JSON]]= {
     ExprStmt: lambda node: JsonVisitor.visit(cast(ExprStmt, node).expr),
     IdentifierExpr: lambda i: {"id": cast(IdentifierExpr, i).id},
     Module: visit_Module,
+    ArrayExpr: visit_ArrayExpr,
+    TupleExpr: visit_TupleExpr,
+    RecordExpr: visit_RecordExpr,
+    IfElseStmt: visit_IfElseStmt,
     BinopExpr: visit_BinopExpr,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
