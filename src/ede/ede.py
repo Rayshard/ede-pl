@@ -1,11 +1,11 @@
 
-from typing import List, cast
+from typing import List
 import click, json
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
 import ede_lexer, ede_parser
 from ede_ast.ede_typesystem import EdeInt, EdeString, EdeChar, EdeBool, EdeUnit, EnvEntry, EnvEntryType, Environment
 from ede_token import TokenType
-from ede_utils import Error, Position
+from ede_utils import Position
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
 from interpreter import ExecContext
 
@@ -26,7 +26,7 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
             with open(file_path) as f:
                 lex_result = ede_lexer.tokenize(ede_lexer.Reader(f.read()))
                 if lex_result.is_error():
-                    print(cast(Error, lex_result).get_output_msg(file_path))
+                    print(lex_result.error().get_output_msg(file_path))
                     exit(1)
                 
                 reader = ede_parser.TokenReader(lex_result.get())
@@ -35,7 +35,7 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
                 
                 parse_result = ede_parser.parse(reader)
                 if parse_result.is_error():
-                    print(cast(Error, parse_result).get_output_msg(file_path))
+                    print(parse_result.error().get_output_msg(file_path))
                     exit(1)
                 
                 if ast:
@@ -57,7 +57,7 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
 
                 exec_res = ExecutionVisitor.visit_in(parse_result.get(), env, ctx)
                 if exec_res.is_error():
-                    print(cast(Error, exec_res).get_output_msg(file_path))
+                    print(exec_res.error().get_output_msg(file_path))
                 
                 print(exec_res.get())
 

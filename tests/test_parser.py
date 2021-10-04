@@ -8,7 +8,7 @@ from ede_ast.ede_typesystem import EdeChar, EdeInt, EdeString
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
 from ede_parser import TokenReader, parse, parse_expr, parse_type_symbol
 from ede_lexer import Reader, tokenize
-from ede_utils import Error, ErrorType, Position, Result, Success, char
+from ede_utils import ErrorType, Position, Result, Success, char
 
 def get_token_reader(text: str) -> TokenReader:
     return TokenReader(tokenize(Reader(text)).get())
@@ -26,7 +26,7 @@ def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> 
 def test_expr():
     def check_expr(text: str, expected: Union[Node, ErrorType]) -> bool:
         res = parse_expr(get_token_reader(text))
-        return check(Success(res.get()), expected) if res.is_success() else check(cast(Error, res), expected)
+        return check(Success(res.get()), expected) if res.is_success() else check(res.error(), expected)
 
     assert check_expr('5', IntLiteral(Position(), 5))
     assert check_expr('"Hello World"', StringLiteral(Position(), 'Hello World'))
@@ -47,7 +47,7 @@ def test_decls():
 def test_type_symbols():
     def check_ts(text: str, expected: Union[Node, ErrorType]) -> bool:
         res = parse_type_symbol(get_token_reader(text))
-        return check(Success(res.get()), expected) if res.is_success() else check(cast(Error, res), expected)
+        return check(Success(res.get()), expected) if res.is_success() else check(res.error(), expected)
 
     assert check_ts('int', PrimitiveTypeSymbol(EdeInt, Position()))
     assert check_ts('MyType', NameTypeSymbol('MyType', Position()))

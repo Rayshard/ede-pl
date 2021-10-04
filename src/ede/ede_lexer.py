@@ -1,5 +1,5 @@
 from ede_utils import Error, ErrorType, Result, Success, char
-from typing import List, cast
+from typing import List
 from ede_token import Position, Token, TokenType, is_keyword, is_symbol
 
 # TODO: Comment File
@@ -187,7 +187,7 @@ def tokenize(reader: Reader) -> Result[List[Token]]:
         result = lex(reader)
 
         if result.is_error():
-            return cast(Error, result)
+            return result.error()
 
         tokens.append(result.get())
         if tokens[-1].type == TokenType.EOF:

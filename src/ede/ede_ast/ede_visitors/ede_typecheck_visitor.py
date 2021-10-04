@@ -6,7 +6,7 @@ from ede_ast.ede_literal import LIT_EDE_TYPE_DICT, BoolLiteral, CharLiteral, Int
 from ede_ast.ede_stmt import ExprStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
 from ede_ast.ede_typesystem import EdeArray, EdeRecord, EdeTuple, EdeType, EdeUnit, EnvEntry, EnvEntryType, Environment, TypeCheckError
-from ede_utils import Error, Result, Success
+from ede_utils import Result, Success
 
 TCResult = Result[EdeType]
 
@@ -30,7 +30,7 @@ class TypecheckVisitor:
 def visit_IdentifierExpr(expr: IdentifierExpr, env: Environment) -> TCResult:
     entry = env.get(expr.id, expr.position, True)
     if entry.is_error():
-        return cast(Error, entry)
+        return entry.error()
     elif entry.get().type != EnvEntryType.VARIABLE:
         return TypeCheckError.UnknownVariable(expr.id, expr.position)
 
@@ -90,7 +90,7 @@ def visit_VarDeclStmt(stmt: VarDeclStmt, env: Environment) -> TCResult:
 def visit_NameTypeSymbol(n: NameTypeSymbol, env: Environment) -> TCResult:
     get_res = env.get(n.name, n.position, True)
     if get_res.is_error():
-        return cast(Error, get_res)
+        return get_res.error()
     elif get_res.get().type != EnvEntryType.TYPENAME:
         return TypeCheckError.UnresolvableTypeName(n.name, n.position)
         

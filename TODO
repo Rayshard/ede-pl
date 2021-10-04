@@ -2,7 +2,7 @@
 Todo:
   ✔ make type symbol a node @done(21-10-03 12:32)
   ✔ make to_json have the __type__ be the str reprentatoin of the node/expr/stmt type @done(21-10-03 12:54)
-  ☐ make Result a base class and add error as a func
+  ✘ make Result a base class and add error as a func @cancelled(21-10-03 22:49)
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string
 

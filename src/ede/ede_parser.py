@@ -283,7 +283,7 @@ def parse_declaration(reader: TokenReader) -> Result[Statement]:
     if reader.peek_read(TokenType.SYM_COLON) is not None:
         ts_res = parse_type_symbol(reader)
         if ts_res.is_error():
-            return cast(Error, ts_res)
+            return ts_res.error()
 
         type_symbol = ts_res.get()
     elif reader.peek().type != TokenType.SYM_EQUALS:
@@ -292,7 +292,7 @@ def parse_declaration(reader: TokenReader) -> Result[Statement]:
     if reader.peek_read(TokenType.SYM_EQUALS) is not None:
         expr_res = parse_expr(reader)
         if expr_res.is_error():
-            return cast(Error, expr_res)
+            return expr_res.error()
 
         expr = expr_res.get()
 
@@ -308,13 +308,13 @@ def parse_stmt(reader: TokenReader) -> Result[Statement]:
     if node.is_success():
         return Success(ExprStmt(node.get()))
 
-    return cast(Error, node)
+    return node.error()
 
 def parse(reader: TokenReader) -> Result[Node]:
     'Parses a stream of tokens and returns the AST'
 
     node = parse_stmt(reader)
-    return Success(cast(Node, node.get())) if node.is_success() else cast(Error, node)
+    return Success(cast(Node, node.get())) if node.is_success() else node.error()
 
 class ParseError:
     '''Wrapper for parsing errors'''

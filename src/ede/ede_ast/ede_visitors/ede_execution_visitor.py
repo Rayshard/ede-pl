@@ -7,7 +7,7 @@ from ede_ast.ede_stmt import ExprStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_ast.ede_typesystem import EdeType, Environment
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
-from ede_utils import Error, Result, Success
+from ede_utils import Result, Success
 from interpreter import ExecContext, ExecValue
 
 ExecResult = Optional[ExecValue]
@@ -28,7 +28,7 @@ class ExecutionVisitor:
         if env is not None:
             tc_res = TypecheckVisitor.visit(node, env)
             if tc_res.is_error():
-                return cast(Error, tc_res)
+                return tc_res.error()
         
         return Success(ExecutionVisitor.visit(node, ctx))
 

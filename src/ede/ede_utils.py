@@ -53,6 +53,9 @@ class Success(Generic[T]):
     def get(self) -> T:
         return self.value
 
+    def error(self) -> 'Error':
+        raise Exception('Called error on a success')
+
 class Error(NamedTuple):
     type: ErrorType
     position: Position = Position(1, 1)
@@ -67,7 +70,10 @@ class Error(NamedTuple):
     def get(self) -> NoReturn:
         raise Exception("Called 'get' on an Error")
 
+    def error(self) -> 'Error':
+        return self
+
     def get_output_msg(self, file_path: str) -> str:
-        return f"{file_path}:{self.position.line}:{self.position.column} {self.type.name}: {self.msg}"
+        return f"{file_path}:{self.position.line}:{self.position.column} {self.type.name}: {self.msg}"    
 
 Result = Union[Success[T], Error]
