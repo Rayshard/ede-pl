@@ -6,6 +6,7 @@ from ede_ast.ede_typesystem import EdeInt, EdeString, EdeChar, EdeBool, EdeUnit,
 from ede_ast.ede_ast import ExecContext
 from ede_token import TokenType
 from ede_utils import Position
+from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
 
 # TODO: Comment File
 
@@ -40,7 +41,8 @@ def cli(simulate, ast, file_paths):
                     with open(file_path + '.json', 'w+') as f_ast:
                         json.dump({
                             "source": file_path,
-                            "ast": parse_result.get().to_json()
+                            #"ast": parse_result.get().to_json()
+                            "ast": JsonVisitor.visit(parse_result.get())
                         }, f_ast, indent=4, sort_keys=False)
                         
                 env = Environment()

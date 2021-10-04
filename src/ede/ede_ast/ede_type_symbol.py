@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, cast
+from typing import Dict, List, cast
 from .ede_ast import Node, NodeType
 from interpreter import ExecContext, ExecValue
 from .ede_typesystem import EdeArray, EdePrimitive, EdeRecord, EdeTuple, EdeType, EnvEntryType, Environment, TypeCheckError
@@ -17,9 +17,6 @@ class TypeSymbol(Node):
 
     def _execute(self, ctx: ExecContext) -> ExecValue:
         assert False, 'Type symbols are not executable'
-    
-    def _to_json(self) -> Dict[str, Any]:
-        return {"repr": str(self)}
 
 class PrimitiveTypeSymbol(TypeSymbol):
     '''Representation of an primitive type symbol'''

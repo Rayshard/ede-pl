@@ -5,6 +5,7 @@ from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLite
 from ede_ast.ede_stmt import VarDeclStmt
 from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
 from ede_ast.ede_typesystem import EdeChar, EdeInt, EdeString
+from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
 from ede_parser import TokenReader, parse, parse_expr, parse_type_symbol
 from ede_lexer import Reader, tokenize
 from ede_utils import Error, ErrorType, Position, Result, Success, char
@@ -17,7 +18,7 @@ def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> 
 
     if res.is_success():
         assert isinstance(expected, Node)
-        return res.get().to_json() == expected.to_json()
+        return JsonVisitor.visit(res.get()) == JsonVisitor.visit(expected)
 
     assert isinstance(expected, ErrorType)
     return res.is_error(expected)

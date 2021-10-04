@@ -1,6 +1,7 @@
+from abc import abstractmethod
 from enum import Enum, auto
-from typing import Any, Dict, List, NamedTuple, Optional, Type
-from ede_utils import Error, ErrorType, JSONSerializable, Position, Result, Success
+from typing import Dict, List, NamedTuple, Optional, Type
+from ede_utils import Error, ErrorType, Position, Result, Success
 
 class TSType(Enum):
     '''Enumeration for type system base types'''
@@ -8,6 +9,7 @@ class TSType(Enum):
     PRIMITIVE = auto()
     TUPLE = auto()
     ARRAY = auto()
+    RECORD = auto()
     OBJECT = auto()
 
 class TSPrimitiveType(Enum):
@@ -22,7 +24,7 @@ class TSPrimitiveType(Enum):
     def get_type_symbol(self):
         return self.value[1]
 
-class EdeType(JSONSerializable):
+class EdeType:
     '''Type system type'''
 
     def __init__(self) -> None:
@@ -32,8 +34,10 @@ class EdeType(JSONSerializable):
     def is_type(self, type: Type['EdeType']):
         return isinstance(self, type)
 
-    def __str__(self) -> str:
-        return str(self.to_json())
+    @abstractmethod
+    def get_ts_type(self) -> TSType:
+        '''Returns the type system type'''
+        pass
 
 class EdePrimitive(EdeType):
     '''Ede primitive type'''
@@ -44,15 +48,12 @@ class EdePrimitive(EdeType):
         super().__init__()
         self.__type = type
 
+    def get_ts_type(self) -> TSType:
+        return TSType.PRIMITIVE
+
     def get_type(self) -> TSPrimitiveType:
         '''Returns the primitive type'''
         return self.__type
-
-    def to_json(self) -> Dict[str, Any]:
-        return {
-            '__type__': 'primitive',
-            'type': self.__type.name
-        }
 
 # Primitive Instances
 EdeUnit = EdePrimitive(TSPrimitiveType.UNIT)
@@ -69,15 +70,12 @@ class EdeArray(EdeType):
         super().__init__()
         self.__inner_type = inner_type
 
+    def get_ts_type(self) -> TSType:
+        return TSType.ARRAY
+
     def get_inner_type(self) -> EdeType:
         '''Returns the inner ede type'''
         return self.__inner_type
-
-    def to_json(self) -> Dict[str, Any]:
-        return {
-            '__type__': 'array',
-            'inner_type': self.__inner_type.to_json()
-        }
 
 class EdeTuple(EdeType):
     '''Ede tuple type'''
@@ -90,18 +88,15 @@ class EdeTuple(EdeType):
         super().__init__()
         self.__inner_types = inner_types
 
+    def get_ts_type(self) -> TSType:
+        return TSType.TUPLE
+
     def get_inner_types(self) -> List[EdeType]:
         '''Returns the inner ede types'''
         return self.__inner_types
 
     def get_count(self) -> int:
         return len(self.__inner_types)
-
-    def to_json(self) -> Dict[str, Any]:
-        return {
-            '__type__': 'tuple',
-            'inner_types': [type.to_json() for type in self.__inner_types]
-        }
 
 class EdeRecord(EdeType):
     '''Ede record type'''
@@ -112,15 +107,12 @@ class EdeRecord(EdeType):
         super().__init__()
         self.__items = items
 
+    def get_ts_type(self) -> TSType:
+        return TSType.RECORD
+
     def get_members(self) -> Dict[str, EdeType]:
         '''Returns the items of the record'''
         return self.__items
-        
-    def to_json(self) -> Dict[str, Any]:
-        return {
-            '__type__': 'record',
-            'items': {name: type.to_json() for name, type in self.__items.items()}
-        }
 
 class EdeObject(EdeType):
     '''Ede object type'''
@@ -132,6 +124,9 @@ class EdeObject(EdeType):
         self.__name = name
         self.__members = members
 
+    def get_ts_type(self) -> TSType:
+        return TSType.OBJECT
+
     def get_name(self) -> str:
         '''Returns the name of the object'''
         return self.__name
@@ -140,12 +135,6 @@ class EdeObject(EdeType):
         '''Returns the members of the object'''
         return self.__members
         
-    def to_json(self) -> Dict[str, Any]:
-        return {
-            '__type__': 'object',
-            'members': {name: type.to_json() for name, type in self.__members.items()}
-        }
-
 class EnvEntryType(Enum):
     '''Enumeration of environment entry types'''
 

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import Any, Dict, Optional, cast
+from typing import Optional, cast
 from .ede_ast import Node, NodeType
 from ede_utils import Error, Position, Result, Success
 from interpreter import ExecContext, ExecValue
@@ -25,11 +25,6 @@ class Expression(Node):
 
     def get_node_type(self) -> NodeType:
         return NodeType.EXPR
-
-    def to_json(self) -> Dict[str, Any]:
-        result = super().to_json()
-        result['expr_type'] = self.get_expr_type().name
-        return result
 
     @abstractmethod
     def get_expr_type(self) -> ExprType:
@@ -59,9 +54,3 @@ class IdentifierExpr(Expression):
 
     def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
         return ctx.get(self.id)
-
-    def _to_json(self) -> Dict[str, Any]:
-        return {
-            "_type_": "Identifier Expression",
-            "id": self.id
-        }
