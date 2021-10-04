@@ -70,5 +70,4 @@ class Error(NamedTuple):
     def get_output_msg(self, file_path: str) -> str:
         return f"{file_path}:{self.position.line}:{self.position.column} {self.type.name}: {self.msg}"
 
-
 Result = Union[Success[T], Error]

@@ -1,7 +1,7 @@
 from enum import Enum, auto
-from typing import Callable, Dict, Optional, Tuple, cast
-from ede_utils import Position, Result, Success, Error, ErrorType
-from .ede_typesystem import EdeInt, EdeString, EdeType, Environment, TypeCheckError
+from typing import Callable, Dict, Optional, Tuple
+from ede_utils import Position, Error, ErrorType
+from .ede_typesystem import EdeInt, EdeString, EdeType
 from .ede_expr import Expression, ExprType, IdentifierExpr
 from interpreter import ExecContext, ExecException, ExecValue
 
@@ -55,51 +55,3 @@ class BinopExpr(Expression):
 
     def get_expr_type(self) -> ExprType:
         return ExprType.BINOP
-
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        # typecheck LHS; return if fails
-        left_type = self.left.typecheck(env)
-        if left_type.is_error():
-            return left_type
-
-        # typecheck RHS; return if fails
-        right_type = self.right.typecheck(env)
-        if right_type.is_error():
-            return right_type
-
-        # set pattern and associated type; fail if pattern is not defined above
-        # TODO: when we implement user defined types and inheritance and eq operator overloading, we'll have to update this
-        self.type_pattern = (left_type.get(), right_type.get(), self.op)
-        
-        if self.op == BinopType.ASSIGN:
-            return left_type if left_type.get() == right_type.get() else TypeCheckError.InvalidAssignment(left_type.get(), right_type.get(), self.position)
-        elif self.type_pattern in BINOP_EDE_TYPE_DICT:
-            return Success(BINOP_EDE_TYPE_DICT[self.type_pattern])
-        else:
-            return TypeCheckError_InvalidBinop(self.op, left_type.get(), right_type.get(), self.position)
-
-    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
-        if self.op == BinopType.ASSIGN:
-            id = cast(IdentifierExpr, self.left).id
-
-            # execute RHS; return if exception
-            right_res = cast(ExecValue, self.right.execute(ctx))
-            if right_res.is_exception():
-                return right_res
-
-            # set the value of the id to the value of the expression
-            ctx.set(id, right_res, self.position)
-            return right_res
-        else:
-            # execute LHS; return if exception
-            left_res = cast(ExecValue, self.left.execute(ctx))
-            if left_res.is_exception():
-                return left_res
-
-            # execute RHS; return if exception
-            right_res = cast(ExecValue, self.right.execute(ctx))
-            if right_res.is_exception():
-                return right_res
-
-            # execute function associated with pattern
-            return BINOP_EXEC_FUNCS[cast(Tuple[EdeType, EdeType, BinopType], self.type_pattern)](left_res, right_res, self.position, ctx)

@@ -1,10 +1,7 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import Optional, cast
 from .ede_ast import Node, NodeType
-from ede_utils import Error, Position, Result, Success
-from interpreter import ExecContext, ExecValue
-from .ede_typesystem import EdeType, EnvEntryType, Environment, TypeCheckError
+from ede_utils import Position
 
 class ExprType(Enum):
     '''Enumeration of AST expression types'''
@@ -42,15 +39,3 @@ class IdentifierExpr(Expression):
 
     def get_expr_type(self) -> ExprType:
         return ExprType.ID
-
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        entry = env.get(self.id, self.position, True)
-        if entry.is_error():
-            return cast(Error, entry)
-        elif entry.get().type != EnvEntryType.VARIABLE:
-            return TypeCheckError.UnknownVariable(self.id, self.position)
-
-        return Success(entry.get().ede_type)
-
-    def _execute(self, ctx: ExecContext) -> Optional[ExecValue]:
-        return ctx.get(self.id)
