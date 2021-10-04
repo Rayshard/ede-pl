@@ -1,10 +1,9 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import Optional
+from typing import List, Optional
 from .ede_type_symbol import TypeSymbol
 from .ede_ast import Node, NodeType
-from ede_utils import Position, Result
-from .ede_typesystem import EdeType, Environment
+from ede_utils import Position
 from .ede_expr import Expression
 
 class StmtType(Enum):
@@ -12,6 +11,7 @@ class StmtType(Enum):
 
     EXPR = auto()
     VAR_DECL = auto()
+    BLOCK = auto()
     
 class Statement(Node):
     '''AST statement node'''
@@ -27,11 +27,19 @@ class Statement(Node):
     def get_stmt_type(self) -> StmtType:
         '''Returns the StmtType'''
         pass
-
-    @abstractmethod
-    def _typecheck(self, env: Environment) -> Result[EdeType]:
-        pass
     
+class Block(Statement):
+    '''AST block node'''
+
+    def __init__(self, stmts: List[Statement], pos: Position) -> None:
+        '''Creates an AST block node'''
+
+        super().__init__(pos)
+        self.stmts = stmts
+
+    def get_stmt_type(self) -> StmtType:
+        return StmtType.BLOCK
+
 class ExprStmt(Statement):
     '''AST expression statement node'''
 

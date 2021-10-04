@@ -3,7 +3,8 @@ from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BinopExpr
 from ede_ast.ede_expr import Expression, IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
-from ede_ast.ede_stmt import ExprStmt, Statement, VarDeclStmt
+from ede_ast.ede_module import Module
+from ede_ast.ede_stmt import Block, ExprStmt, Statement, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeRecord, EdeTuple, EdeType
 
@@ -24,9 +25,6 @@ class JsonVisitor:
             result['ts_type'] = obj.get_ts_type().name
 
         return result 
-
-def visit_IdentifierExpr(expr: IdentifierExpr) -> JSON:
-    return {"id": expr.id}
 
 def visit_BinopExpr(expr: BinopExpr) -> JSON:
     return {
@@ -51,9 +49,16 @@ def visit_VarDeclStmt(stmt: VarDeclStmt) -> JSON:
 def visit_TypeSymbol(ts: TypeSymbol) -> JSON:
     return {"repr": str(ts)}
 
+def visit_Module(m: Module) -> JSON:
+    return {
+        "name": m.name,
+        "statments": [JsonVisitor.visit(stmt) for stmt in m.stmts]
+    }
+
 VISITORS : Dict[Type[Any], Callable[[Any], JSON]]= {
     ExprStmt: lambda node: JsonVisitor.visit(cast(ExprStmt, node).expr),
-    IdentifierExpr: visit_IdentifierExpr,
+    IdentifierExpr: lambda i: {"id": cast(IdentifierExpr, i).id},
+    Module: visit_Module,
     BinopExpr: visit_BinopExpr,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
@@ -65,6 +70,7 @@ VISITORS : Dict[Type[Any], Callable[[Any], JSON]]= {
     TupleTypeSymbol: visit_TypeSymbol,
     RecordTypeSymbol: visit_TypeSymbol,
     NameTypeSymbol: visit_TypeSymbol,
+    Block: lambda b: {'statements': [JsonVisitor.visit(stmt) for stmt in cast(Block, b).stmts]},
     EdePrimitive: lambda p: {"type": cast(EdePrimitive, p).get_type().name},
     EdeArray: lambda a: {'inner_type': JsonVisitor.visit(cast(EdeArray, a).get_inner_type())},
     EdeTuple: lambda t: {'inner_types': [JsonVisitor.visit(type) for type in cast(EdeTuple, t).get_inner_types()]},

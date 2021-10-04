@@ -1,0 +1,38 @@
+{
+    "source": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\test.ede",
+    "ast": {
+        "name": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\test",
+        "statments": [
+            {
+                "left": {
+                    "type": "INTEGER",
+                    "value": 3,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "right": {
+                    "left": {
+                        "type": "INTEGER",
+                        "value": 7,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    },
+                    "right": {
+                        "type": "INTEGER",
+                        "value": 3,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    },
+                    "op": "MUL",
+                    "expr_type": "BINOP",
+                    "node_type": "EXPR"
+                },
+                "op": "ADD",
+                "expr_type": "BINOP",
+                "node_type": "STMT",
+                "stmt_type": "EXPR"
+            }
+        ],
+        "node_type": "MODULE"
+    }
+}

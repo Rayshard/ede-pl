@@ -3,7 +3,8 @@ from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BINOP_EDE_TYPE_DICT, BinopExpr, BinopType, TypeCheckError_InvalidBinop
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import LIT_EDE_TYPE_DICT, BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
-from ede_ast.ede_stmt import ExprStmt, VarDeclStmt
+from ede_ast.ede_module import Module
+from ede_ast.ede_stmt import Block, ExprStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
 from ede_ast.ede_typesystem import EdeArray, EdeRecord, EdeTuple, EdeType, EdeUnit, EnvEntry, EnvEntryType, Environment, TypeCheckError
 from ede_utils import Result, Success
@@ -127,10 +128,33 @@ def visit_RecordTypeSymbol(r: RecordTypeSymbol, env: Environment) -> TCResult:
         
     return Success(EdeRecord(items))
 
+def visit_Block(b: Block, env: Environment) -> TCResult:
+    sub_env = Environment(env)
+    last_tc_res: Optional[TCResult] = None
+
+    for stmt in b.stmts:
+        last_tc_res = TypecheckVisitor.visit(stmt, sub_env)
+        if last_tc_res.is_error():
+            return last_tc_res
+
+    return cast(TCResult, last_tc_res)
+
+def visit_Module(m: Module, env: Environment) -> TCResult:
+    sub_env = Environment(env)
+    last_tc_res: Optional[TCResult] = None
+
+    for stmt in m.stmts:
+        last_tc_res = TypecheckVisitor.visit(stmt, sub_env)
+        if last_tc_res.is_error():
+            return last_tc_res
+
+    return cast(TCResult, last_tc_res)
+
 VISITORS : Dict[Type[Any], Callable[[Any, Environment], TCResult]] = {
     ExprStmt: lambda node, env: TypecheckVisitor.visit(cast(ExprStmt, node).expr, env),
     IdentifierExpr: visit_IdentifierExpr,
     BinopExpr: visit_BinopExpr,
+    Module: visit_Module,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
     StringLiteral: visit_Literal,
@@ -140,5 +164,6 @@ VISITORS : Dict[Type[Any], Callable[[Any, Environment], TCResult]] = {
     ArrayTypeSymbol: visit_ArrayTypeSymbol,
     TupleTypeSymbol: visit_TupleTypeSymbol,
     RecordTypeSymbol: visit_RecordTypeSymbol,
-    NameTypeSymbol: visit_NameTypeSymbol
+    NameTypeSymbol: visit_NameTypeSymbol,
+    Block: visit_Block
 }

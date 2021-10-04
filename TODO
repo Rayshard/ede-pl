@@ -7,10 +7,10 @@ Todo:
   ☐ add binop to add to char and string together to make a string
 
 Features To Implement:
-  ☐ statement blocks
+  ✔ statement blocks @done(21-10-04 00:09)
   ☐ if else statements
     ☐ to solve the dangling else problem, just attach the else to the closest if
-  ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`
   ☐ arrays
   ☐ tuples
   ☐ records
+  ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`

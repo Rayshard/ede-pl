@@ -7,6 +7,7 @@ from .ede_typesystem import EdeType
 class NodeType(Enum):
     '''Enumeration of AST node types'''
 
+    MODULE = auto()
     STMT = auto()
     EXPR = auto()
     TYPE_SYMBOL = auto()
@@ -33,3 +34,4 @@ class Node:
     def get_node_type(self) -> NodeType:
         '''Returns the NodeType'''
         pass
+    

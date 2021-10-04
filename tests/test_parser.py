@@ -2,11 +2,11 @@ from typing import Union, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_ast.ede_stmt import VarDeclStmt
+from ede_ast.ede_stmt import Block, VarDeclStmt
 from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
 from ede_ast.ede_typesystem import EdeChar, EdeInt, EdeString
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
-from ede_parser import TokenReader, parse, parse_expr, parse_type_symbol
+from ede_parser import TokenReader, parse_expr, parse_stmt, parse_type_symbol
 from ede_lexer import Reader, tokenize
 from ede_utils import ErrorType, Position, Result, Success, char
 
@@ -14,7 +14,7 @@ def get_token_reader(text: str) -> TokenReader:
     return TokenReader(tokenize(Reader(text)).get())
 
 def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> bool:
-    res = parse(get_token_reader(value)) if isinstance(value, str) else cast(Result[Node], value)
+    res = parse_stmt(get_token_reader(value)) if isinstance(value, str) else cast(Result[Node], value)
 
     if res.is_success():
         assert isinstance(expected, Node)
@@ -36,13 +36,21 @@ def test_expr():
     assert check_expr('name', IdentifierExpr(Position(), 'name'))
 
 def test_decls():
-    assert check('let a : int = 10', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), IntLiteral(Position(), 10)))
-    assert check('let a = 10', VarDeclStmt(Position(), 'a', None, IntLiteral(Position(), 10)))
-    assert check('let a : int', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), None))
+    assert check('let a : int = 10;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), IntLiteral(Position(), 10)))
+    assert check('let a = 10;', VarDeclStmt(Position(), 'a', None, IntLiteral(Position(), 10)))
+    assert check('let a : int;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), None))
     assert check('let', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check('let a', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check('let a : = 10', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check('let a : int =', ErrorType.PARSING_UNEXPECTED_TOKEN)
+
+def test_block():
+    assert check('{ }', Block([], Position()))
+    assert check('{ let a = 5; let b = 10; }', Block([
+        VarDeclStmt(Position(), 'a', None, IntLiteral(Position(), 5)),
+        VarDeclStmt(Position(), 'b', None, IntLiteral(Position(), 10))
+    ], Position()))
+    assert check('{ let a = 5; let b = 10;', ErrorType.PARSING_UNEXPECTED_TOKEN)
 
 def test_type_symbols():
     def check_ts(text: str, expected: Union[Node, ErrorType]) -> bool:

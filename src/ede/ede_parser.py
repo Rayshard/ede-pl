@@ -2,7 +2,8 @@ from enum import Enum, auto
 from typing import Dict, List, Optional, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_expr import ExprType, Expression, IdentifierExpr
-from ede_ast.ede_stmt import ExprStmt, Statement, VarDeclStmt
+from ede_ast.ede_module import Module
+from ede_ast.ede_stmt import Block, ExprStmt, Statement, VarDeclStmt
 from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeUnit, TSPrimitiveType
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_token import Token, TokenType
@@ -49,6 +50,9 @@ class TokenReader:
     def get_position(self):
         '''Returns the current position of token reader'''
         return self.peek().position
+
+    def is_eof(self) -> bool:
+        return self.peek().type == TokenType.EOF
 
 class OperatorType(Enum):
     '''Enumeration of operators'''
@@ -300,21 +304,56 @@ def parse_declaration(reader: TokenReader) -> Result[Statement]:
 
 def parse_stmt(reader: TokenReader) -> Result[Statement]:
     '''Parse a statement'''
+    stmt : Optional[Result[Statement]] = None
 
-    if reader.peek().type == TokenType.KW_LET:
-        return parse_declaration(reader)
-        
-    node = parse_expr(reader)
-    if node.is_success():
-        return Success(ExprStmt(node.get()))
+    if reader.peek().type == TokenType.KW_LET: # Declaration
+        stmt = parse_declaration(reader)
+        if stmt.is_error():
+            return stmt
+    elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET): # Parse Block
+        position = reader.get_position()
+        stmts : List[Statement] = []
 
-    return node.error()
+        while True:
+            # Try to read a closing bracket
+            if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
+                break
+            elif reader.is_eof():
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
 
-def parse(reader: TokenReader) -> Result[Node]:
-    'Parses a stream of tokens and returns the AST'
+            block_stmt = parse_stmt(reader)
+            if block_stmt.is_error():
+                return block_stmt
 
-    node = parse_stmt(reader)
-    return Success(cast(Node, node.get())) if node.is_success() else node.error()
+            stmts.append(block_stmt.get())
+
+        return Success(Block(stmts, position))
+    else: # Expression
+        expr = parse_expr(reader)
+        if expr.is_error():
+            return expr.error()
+
+        stmt = Success(ExprStmt(expr.get()))
+
+    # Try to read a semicolon
+    if reader.peek_read(TokenType.SYM_SEMICOLON) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_SEMICOLON])
+
+    return stmt
+
+def parse_module(name: str, reader: TokenReader) -> Result[Node]:
+    'Parses a stream of tokens and returns the AST module'
+
+    stmts : List[Statement] = []
+
+    while not reader.is_eof():
+        stmt = parse_stmt(reader)
+        if stmt.is_error():
+            return stmt.error()
+
+        stmts.append(stmt.get())
+
+    return Success(Module(name, stmts))
 
 class ParseError:
     '''Wrapper for parsing errors'''

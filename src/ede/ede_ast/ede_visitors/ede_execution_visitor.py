@@ -3,7 +3,8 @@ from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BINOP_EXEC_FUNCS, BinopExpr, BinopType
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
-from ede_ast.ede_stmt import ExprStmt, VarDeclStmt
+from ede_ast.ede_module import Module
+from ede_ast.ede_stmt import Block, ExprStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_ast.ede_typesystem import EdeType, Environment
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
@@ -71,9 +72,28 @@ def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: ExecContext) -> ExecResult:
 def visit_TypeSymbol(t: TypeSymbol, ctx: ExecContext) -> ExecResult:
     assert False, 'Type symbols are not executable'
 
+def visit_Block(b: Block, ctx: ExecContext) -> ExecResult:
+    sub_ctx = ExecContext(ctx)
+    last_exec_res = None
+
+    for stmt in b.stmts:
+        last_exec_res = ExecutionVisitor.visit(stmt, sub_ctx)
+
+    return last_exec_res
+
+def visit_Module(m: Module, ctx: ExecContext) -> ExecResult:
+    sub_ctx = ExecContext(ctx)
+    last_exec_res = None
+
+    for stmt in m.stmts:
+        last_exec_res = ExecutionVisitor.visit(stmt, sub_ctx)
+
+    return last_exec_res
+
 VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecResult]] = {
     ExprStmt: lambda node, env: ExecutionVisitor.visit(cast(ExprStmt, node).expr, env),
     IdentifierExpr: visit_IdentifierExpr,
+    Module: visit_Module,
     BinopExpr: visit_BinopExpr,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
@@ -84,5 +104,6 @@ VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecResult]] = {
     ArrayTypeSymbol: visit_TypeSymbol,
     TupleTypeSymbol: visit_TypeSymbol,
     RecordTypeSymbol: visit_TypeSymbol,
-    NameTypeSymbol: visit_TypeSymbol
+    NameTypeSymbol: visit_TypeSymbol,
+    Block: visit_Block
 }
