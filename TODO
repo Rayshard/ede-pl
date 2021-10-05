@@ -12,9 +12,9 @@ Features To Implement:
   ✔ statement blocks @done(21-10-04 00:09)
   ✔ if else statements @done(21-10-04 01:37)
     ✔ to solve the dangling else problem, just attach the else to the closest if @done(21-10-04 01:37)
-  ☐ arrays
-  ☐ tuples
-  ☐ objects
+  ✔ arrays @done(21-10-05 04:25)
+  ✔ tuples @done(21-10-05 04:25)
+  ✔ objects @done(21-10-05 04:25)
   ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`
   ☐ while statement
     ☐ `loop {}` will be syntax sugar for `while True { }`

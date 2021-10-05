@@ -5,4 +5,4 @@ test:
 	pytest
 
 lines_of_code:
-	pygount --format=summary .
+	pygount --format=summary .\src\
