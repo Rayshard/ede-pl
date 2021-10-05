@@ -1,7 +1,8 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import Dict, List, NamedTuple, Optional, Type
-from ede_utils import Error, ErrorType, Position, Result, Success
+from typing import Dict, List, Optional, Type
+from .ede_context import Context, CtxEntry, CtxEntryType
+from ede_utils import Error, ErrorType, Position, Result
 
 class TSType(Enum):
     '''Enumeration for type system base types'''
@@ -9,7 +10,6 @@ class TSType(Enum):
     PRIMITIVE = auto()
     TUPLE = auto()
     ARRAY = auto()
-    RECORD = auto()
     OBJECT = auto()
 
 class TSPrimitiveType(Enum):
@@ -98,22 +98,6 @@ class EdeTuple(EdeType):
     def get_count(self) -> int:
         return len(self.__inner_types)
 
-class EdeRecord(EdeType):
-    '''Ede record type'''
-
-    def __init__(self, items: Dict[str, EdeType]) -> None:
-        '''Create Ede record type'''
-        
-        super().__init__()
-        self.__items = items
-
-    def get_ts_type(self) -> TSType:
-        return TSType.RECORD
-
-    def get_members(self) -> Dict[str, EdeType]:
-        '''Returns the items of the record'''
-        return self.__items
-
 class EdeObject(EdeType):
     '''Ede object type'''
 
@@ -135,58 +119,26 @@ class EdeObject(EdeType):
         '''Returns the members of the object'''
         return self.__members
         
-class EnvEntryType(Enum):
-    '''Enumeration of environment entry types'''
-
-    VARIABLE = auto()
-    TYPENAME = auto()
-
-class EnvEntry(NamedTuple):
-    '''Environment entry struct; holds the metadata for entries in a type checking environment'''
+class TCEntry(CtxEntry):
+    '''Type checking context entry'''
     
-    type: EnvEntryType
-    ede_type: EdeType
-    pos: Position
+    def __init__(self, type: CtxEntryType, ede_type: EdeType, pos: Position) -> None:
+        '''Create entry'''
 
-class Environment:
-    '''Type checking environment class; used as a context when type checking the ast'''
+        super().__init__(type, pos)
+        self.ede_type = ede_type
 
-    def __init__(self, parent: Optional['Environment'] = None) -> None:
-        '''Create a new type checking environment'''
+class TCContext(Context[TCEntry]):
+    def __init__(self, parent: Optional['Context[TCEntry]'] = None) -> None:
+        super().__init__(parent=parent)
 
-        self.parent : Optional[Environment] = parent
-        self.namespace : Dict[EnvEntryType, Dict[str, EnvEntry]] = {type: {} for type in EnvEntryType}
-
-    def get(self, id: str, pos: Position, check_parent: bool) -> Result[EnvEntry]:
-        '''
-        Attempts to look up a the Ede type of the given id, first in the current environment,
-        then recursively in the parent environments if they exists and `check_parent` is True.
-        '''
-
-        for _, items in self.namespace.items():
-            if id in items:
-                return Success(items[id])            
-
-        if check_parent and self.parent is not None:
-            return self.parent.get(id, pos, True)
-
-        return TypeCheckError.UnknownID(id, pos)
-
-    def declare(self, id: str, entry: EnvEntry, check_parent: bool) -> Optional[Error]:
-        '''
-        Adds the given id to the environment with the given type and ede type if it does not already exist.
-        Existence in parent environments is not checked unless specified.
-        '''
-        
-        for _, items in self.namespace.items():
-            if id in items:
-                return TypeCheckError.MultipleDeclaration(id, items[id].pos, entry.pos)
-
-        if check_parent and self.parent is not None:
-            return self.parent.declare(id, entry, True)
-
-        self.namespace[entry.type][id] = entry
-        return None
+    def get(self, id: str, pos: Position, check_parent: bool) -> Result[TCEntry]:
+        result = super().get(id, pos, check_parent)
+        return result.error().convert_to(ErrorType.TYPECHECKING_UNKNOWN_ID) if result.is_error(ErrorType.CONTEXT_UNKNOWN_ID) else result 
+    
+    def add(self, id: str, entry: TCEntry, check_parent: bool) -> Optional[Error]:
+        result = super().add(id, entry, check_parent)
+        return result.convert_to(ErrorType.TYPECHECKING_ID_CONFLICT) if result is not None and result.is_error(ErrorType.CONTEXT_ID_CONFLICT) else result 
 
 class TypeCheckError:
     '''Wrapper for type checking errors'''
@@ -208,17 +160,25 @@ class TypeCheckError:
         return Error(ErrorType.TYPECHECKING_UNKNOWN_VAR, pos, f"Unknown variable \"{id}\"")
 
     @staticmethod
-    def MultipleDeclaration(id: str, init_decl_pos: Position, pos: Position) -> Error:
-        return Error(ErrorType.TYPECHECKING_MULTIPLE_DECL, pos, f"Declaration of \"{id}\" already exists at {init_decl_pos}")
+    def IDConflict(id: str, init_decl_pos: Position, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_ID_CONFLICT, pos, f"\"{id}\" conflict with id at {init_decl_pos}")
 
     @staticmethod
     def UnresolvableTypeName(typename: str, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_UNRESOLVABLE_TYPENAME, pos, f"Could not resolve \"{typename}\" to a valid type")
 
     @staticmethod
-    def DuplicateRecordItemName(name: str, pos: Position) -> Error:
-        return Error(ErrorType.TYPECHECKING_DUP_RECORD_ITEM_NAME, pos, f"Duplicate record item name '{name}' found")
+    def Reinitialization(id: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_REINIT, pos, f"'{id}' is already initialized")
+
+    @staticmethod
+    def UnexpectedInitialization(name: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_UNEXPECTED_INIT, pos, f"Unexected initialized of '{name}'")
 
     @staticmethod
     def UnexpectedType(found: EdeType, expected: EdeType, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_UNEXPECTED_TYPE, pos, f"Found '{found}' but expected {expected}")
+
+    @staticmethod
+    def UndefinedObject(found: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_UNDEF_OBJ, pos, f"'{found}' is not a defined object")

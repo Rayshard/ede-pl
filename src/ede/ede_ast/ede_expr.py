@@ -2,7 +2,7 @@ from abc import abstractmethod
 from enum import Enum, auto
 from typing import Dict, List
 from .ede_ast import Node, NodeType
-from ede_utils import Position
+from ede_utils import Position, Positioned
 
 class ExprType(Enum):
     '''Enumeration of AST expression types'''
@@ -13,7 +13,7 @@ class ExprType(Enum):
     ID = auto()
     ARRAY = auto()
     TUPLE = auto()
-    RECORD = auto()
+    OBJ_INIT = auto()
 
 class Expression(Node):
     '''AST expression node'''
@@ -34,7 +34,7 @@ class Expression(Node):
 class IdentifierExpr(Expression):
     '''AST identifier expression node'''
 
-    def __init__(self, pos: Position, id: str) -> None:
+    def __init__(self, pos: Position, id: str) -> None: 
         '''Creates an AST identifier expression node'''
 
         super().__init__(pos)
@@ -67,14 +67,15 @@ class TupleExpr(Expression):
     def get_expr_type(self) -> ExprType:
         return ExprType.TUPLE
 
-class RecordExpr(Expression):
-    '''AST record expression node'''
+class ObjInitExpr(Expression):
+    '''AST object initializer expression node'''
 
-    def __init__(self, items: Dict[str, Expression], pos: Position) -> None:
-        '''Creates an AST record expression node'''
+    def __init__(self, name: str, items: Dict[Positioned[str], Expression], pos: Position) -> None:
+        '''Creates an AST object initializer expression node'''
 
         super().__init__(pos)
+        self.name = name
         self.items = items
 
     def get_expr_type(self) -> ExprType:
-        return ExprType.RECORD
+        return ExprType.OBJ_INIT

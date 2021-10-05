@@ -31,6 +31,7 @@ class TokenType(IntEnum):
     KW_WHILE = auto()
     KW_TRUE = auto()
     KW_FALSE = auto()
+    KW_OBJECT = auto()
 
 SYMBOL_DICT = {
     '+': TokenType.SYM_PLUS,
@@ -56,6 +57,7 @@ KEYWORD_DICT = {
     "while": TokenType.KW_WHILE,
     "true": TokenType.KW_TRUE,
     "false": TokenType.KW_FALSE,
+    "object": TokenType.KW_FALSE,
 }
 
 OPERATOR_DICT = {

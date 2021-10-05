@@ -6,4 +6,9 @@ if true {
 
 [1, 2, 3];
 ("hi", 4, true, '5');
-{name = "Rayshard Thompson", age = 22, male = true};
+
+def Person = object {
+    name: string,
+    age: int,
+    is_male: bool
+};

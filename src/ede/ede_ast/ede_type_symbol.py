@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import List
 from .ede_ast import Node, NodeType
 from .ede_typesystem import EdePrimitive
 from ede_utils import Position
@@ -62,16 +62,3 @@ class TupleTypeSymbol(TypeSymbol):
 
     def __str__(self) -> str:
         return f"({','.join([str(inner) for inner in self.inners])})"
-
-class RecordTypeSymbol(TypeSymbol):
-    '''Representation of a record type symbol'''
-
-    def __init__(self, items: Dict[str, TypeSymbol], pos: Position) -> None:
-        '''Create record type symbol'''
-        
-        assert len(items) > 0, 'Record type symbols must have at least 1 item'
-        super().__init__(pos)
-        self.items = items
-
-    def __str__(self) -> str:
-        return "{" + ','.join([f"{name}:{str(type_symbol)}" for name, type_symbol in self.items.items()]) + "}"

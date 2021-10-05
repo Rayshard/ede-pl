@@ -1,12 +1,12 @@
 from typing import Any, Callable, Dict, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BinopExpr
-from ede_ast.ede_expr import ArrayExpr, Expression, IdentifierExpr, RecordExpr, TupleExpr
+from ede_ast.ede_expr import ArrayExpr, Expression, IdentifierExpr, ObjInitExpr, TupleExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
-from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeRecord, EdeTuple, EdeType
+from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
+from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, EdeType
 
 JSON = Dict[str, Any]
 
@@ -62,22 +62,19 @@ def visit_IfElseStmt(stmt: IfElseStmt) -> JSON:
         'else': JsonVisitor.visit(stmt.elseClause) if stmt.elseClause is not None else None,
     }
 
-def visit_ArrayExpr(a: ArrayExpr) -> JSON:
-    return {"elements": [JsonVisitor.visit(expr) for expr in a.exprs]}
-
-def visit_TupleExpr(t: TupleExpr) -> JSON:
-    return {"elements": [JsonVisitor.visit(expr) for expr in t.exprs]}
-
-def visit_RecordExpr(r: RecordExpr) -> JSON:
-    return {"items": {name: JsonVisitor.visit(expr) for name, expr in r.items.items()}}
+def visit_ObjInitExpr(oi: ObjInitExpr) -> JSON:
+    return {
+        "name": oi.name,
+        "items": {id.value: JsonVisitor.visit(expr) for id, expr in oi.items.items()}
+    }
 
 VISITORS : Dict[Type[Any], Callable[[Any], JSON]]= {
     ExprStmt: lambda node: JsonVisitor.visit(cast(ExprStmt, node).expr),
     IdentifierExpr: lambda i: {"id": cast(IdentifierExpr, i).id},
     Module: visit_Module,
-    ArrayExpr: visit_ArrayExpr,
-    TupleExpr: visit_TupleExpr,
-    RecordExpr: visit_RecordExpr,
+    ArrayExpr: lambda a: {"elements": [JsonVisitor.visit(expr) for expr in cast(ArrayExpr, a).exprs]},
+    TupleExpr: lambda t: {"elements": [JsonVisitor.visit(expr) for expr in cast(TupleExpr, t).exprs]},
+    ObjInitExpr: visit_ObjInitExpr,
     IfElseStmt: visit_IfElseStmt,
     BinopExpr: visit_BinopExpr,
     IntLiteral: visit_Literal,
@@ -88,12 +85,10 @@ VISITORS : Dict[Type[Any], Callable[[Any], JSON]]= {
     PrimitiveTypeSymbol: visit_TypeSymbol,
     ArrayTypeSymbol: visit_TypeSymbol,
     TupleTypeSymbol: visit_TypeSymbol,
-    RecordTypeSymbol: visit_TypeSymbol,
     NameTypeSymbol: visit_TypeSymbol,
     Block: lambda b: {'statements': [JsonVisitor.visit(stmt) for stmt in cast(Block, b).stmts]},
     EdePrimitive: lambda p: {"type": cast(EdePrimitive, p).get_type().name},
     EdeArray: lambda a: {'inner_type': JsonVisitor.visit(cast(EdeArray, a).get_inner_type())},
     EdeTuple: lambda t: {'inner_types': [JsonVisitor.visit(type) for type in cast(EdeTuple, t).get_inner_types()]},
-    EdeRecord: lambda r: {'items': {name: JsonVisitor.visit(type) for name, type in cast(EdeRecord, r).get_members().items()}},
-    EdeObject: lambda o: {'members': {name: JsonVisitor.visit(type) for name, type in cast(EdeObject, o).get_members().items()}},
+    EdeObject: lambda o: {'members': {id: JsonVisitor.visit(type) for id, type in cast(EdeObject, o).get_members().items()}},
 }

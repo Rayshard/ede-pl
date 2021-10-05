@@ -1,5 +1,7 @@
 from enum import Enum, auto
-from typing import Dict, List, NamedTuple, Optional, Union, cast, get_args
+from typing import Dict, List, NamedTuple, Optional, Type, Union, cast, get_args
+from ede_ast.ede_context import Context, CtxEntryType
+from ede_ast.ede_typesystem import EdeType, TCEntry
 from ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
@@ -35,15 +37,16 @@ class TupleValue(NamedTuple):
     def __str__(self) -> str:
         return f"({', '.join([str(value) for value in self.values])})"
 
-class RecordValue(NamedTuple):
-    '''Record value'''
+class ObjectValue(NamedTuple):
+    '''Object value'''
 
-    items: Dict[str, 'ExecValue']
+    name: str
+    members: Dict[str, 'ExecValue']
 
     def __str__(self) -> str:
-        return '{' + f"{', '.join([name + '=' + str(value) for name, value in self.items.items()])}" + '}'
+        return self.name + ' {' + f"{', '.join([name + '=' + str(value) for name, value in self.members.items()])}" + '}'
 
-ExecValueTypes = Union[int, str, bool, char, unit, ArrayValue, TupleValue, RecordValue, ExecException]
+ExecValueTypes = Union[int, str, bool, char, unit, ArrayValue, TupleValue, ObjectValue, ExecException]
 class ExecValue:
     '''Representation of the possible values return on execution of an AST node'''
 
@@ -71,80 +74,27 @@ class ExecValue:
     def is_exception(self) -> bool:
         return isinstance(self.value, ExecException)
 
-    def to_unit(self) -> unit:
-        '''Returns value casted as unit'''
-        assert type(self.value) == unit
-        return cast(unit, self.value)
-
-    def to_int(self) -> int:
-        '''Returns value casted as int'''
-        assert type(self.value) == int
-        return cast(int, self.value)
-
-    def to_str(self) -> str:
-        '''Returns value casted as str'''
-
-        assert type(self.value) == str
-        return cast(str, self.value)
-
-    def to_bool(self) -> bool:
-        '''Returns value casted as bool'''
-
-        assert type(self.value) == bool
-        return cast(bool, self.value)
-
-    def to_char(self) -> char:
-        '''Returns value casted as char'''
-
-        assert type(self.value) == char
-        return cast(char, self.value) 
-
-    def to_exception(self) -> ExecException:
-        '''Returns value casted as ExecException'''
-
-        assert type(self.value) == ExecException
-        return cast(ExecException, self.value)
-
-    def to_array(self) -> ArrayValue:
-        '''Returns value casted as array value'''
-
-        assert type(self.value) == ArrayValue
-        return cast(ArrayValue, self.value)
-
-    def to_tuple(self) -> TupleValue:
-        '''Returns value casted as tuple value'''
-
-        assert type(self.value) == TupleValue
-        return cast(TupleValue, self.value)
-
-    def to_record(self) -> RecordValue:
-        '''Returns value casted as record value'''
-
-        assert type(self.value) == RecordValue
-        return cast(RecordValue, self.value)
+    def to(self, t: Type[ExecValueTypes]) -> ExecValueTypes:
+        '''Returns value casted as t'''
+        assert type(self.value) == t
+        return cast(t, self.value)
 
     @staticmethod
     def UNIT() -> 'ExecValue':
         return ExecValue(unit())
 
-class ExecContext:
-    '''Execution Context: a mutale environment that holds the state of a program during AST execution'''
+class ExecEntry(TCEntry):
+    '''Execution context entry'''
+    
+    def __init__(self, type: CtxEntryType, ede_type: EdeType, value: ExecValue, pos: Position) -> None:
+        '''Create entry'''
 
-    def __init__(self, parent: Optional['ExecContext'] = None) -> None:
-        '''Create an execution environment'''
+        super().__init__(type, ede_type, pos)
+        self.value = value
 
-        self.parent : Optional[ExecContext] = parent
-        self.variables : Dict[str, Optional[ExecValue]] = {} 
-
-    def get(self, id: str) -> Optional[ExecValue]:
-        '''Returns the typed value of a entry. Existence of the entry is assumed.'''
-        
-        return self.variables[id]
-
-    def set(self, id: str, value: Optional[ExecValue], pos: Position):
-        '''Sets the typed value for the given id and creates the id if not already in the context.'''
-        
-        self.variables[id] = value
+class ExecContext(Context[ExecEntry]):
+    def __init__(self, parent: Optional['Context[ExecEntry]'] = None) -> None:
+        super().__init__(parent=parent)
 
     def __str__(self) -> str:
-        return '\n'.join([f"{id}: {value}" for id, value in self.variables.items()])
+        return '\n'.join([f"{id}: {value}" for id, value in self.get_entries(CtxEntryType.VARIABLE).items()])

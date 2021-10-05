@@ -27,6 +27,11 @@ class Position(NamedTuple):
 
 T = TypeVar('T')
 
+class Positioned(Generic[T]):
+    def __init__(self, value: T, pos: Position) -> None:
+        self.value = value
+        self.position = pos
+
 class ErrorType(IntEnum):
     DEFAULT = auto()
     INVALID_INT_LIT = auto()
@@ -39,15 +44,20 @@ class ErrorType(IntEnum):
     TYPECHECKING_UNKNOWN_ID = auto()
     TYPECHECKING_UNKNOWN_VAR = auto()
     TYPECHECKING_INVALID_ASSIGN = auto()
-    TYPECHECKING_MULTIPLE_DECL = auto()
+    TYPECHECKING_ID_CONFLICT = auto()
     TYPECHECKING_UNRESOLVABLE_TYPENAME = auto()
     TYPECHECKING_INCOMPATIBLE_IF_ELSE_CLAUSES = auto()
-    TYPECHECKING_DUP_RECORD_ITEM_NAME = auto()
+    TYPECHECKING_REINIT = auto()
     TYPECHECKING_UNEXPECTED_TYPE = auto()
+    TYPECHECKING_UNDEF_OBJ = auto()
+    TYPECHECKING_UNEXPECTED_INIT = auto()
 
     PARSING_UNEXPECTED_TOKEN = auto()
     PARSING_INVALID_OPERATOR = auto()
-    PARSING_DUP_RECORD_ITEM_NAME = auto()
+    PARSING_DUP_MEMBER_NAME = auto()
+
+    CONTEXT_UNKNOWN_ID = auto()
+    CONTEXT_ID_CONFLICT = auto()
 
 class Success(Generic[T]):
     def __init__(self, value: T) -> None:
@@ -84,5 +94,8 @@ class Error(NamedTuple):
 
     def get_output_msg(self, file_path: str) -> str:
         return f"{file_path}:{self.position.line}:{self.position.column} {self.type.name}: {self.msg}"    
+
+    def convert_to(self, type: ErrorType) -> 'Error':
+        return Error(type, self.position, self.msg)
 
 Result = Union[Success[T], Error]

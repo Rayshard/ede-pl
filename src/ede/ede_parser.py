@@ -161,30 +161,30 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
     elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is not None: # Record Type Symbol
-        # Get items
-        items : Dict[str, TypeSymbol] = {}
+        # Get members
+        members : Dict[str, TypeSymbol] = {}
 
         while True:
-            # Read item id
+            # Read member id
             if reader.peek_read(TokenType.IDENTIFIER) is None:
                 return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
 
             name = reader.prev().value
 
             # Ensure there are no duplicate names
-            if name in items:
-                return ParseError.DuplicateRecordItemName(name, reader.prev().position)
+            if name in members:
+                return ParseError.DuplicateRecordmemberName(name, reader.prev().position)
 
             # Try to read a colon
             if reader.peek_read(TokenType.SYM_COLON) is None:
                 return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
 
-            # Try item type symbol
+            # Try member type symbol
             type_symbol = parse_type_symbol(reader)
             if type_symbol.is_error():
                 return type_symbol
 
-            items[name] = type_symbol.get()
+            members[name] = type_symbol.get()
 
             # Try to read a comma
             if reader.peek_read(TokenType.SYM_COMMA) is None:
@@ -192,7 +192,7 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
 
         # Read right curly bracket
         if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
-            return Success(RecordTypeSymbol(items, position))
+            return Success(RecordTypeSymbol(members, position))
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
 
@@ -274,42 +274,41 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
             return Success(TupleExpr(exprs, position))
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
-    elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is not None: # Record
-        # FIXME: ambiguity between this and block statement
-        # Get items
-        items : Dict[str, Expression] = {}
+    # elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is not None: # Object
+    #     # Get members
+    #     members : Dict[str, Expression] = {}
 
-        while True:
-            # Read item id
-            if reader.peek_read(TokenType.IDENTIFIER) is None:
-                return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+    #     while True:
+    #         # Read member id
+    #         if reader.peek_read(TokenType.IDENTIFIER) is None:
+    #             return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
 
-            name = reader.prev().value
+    #         name = reader.prev().value
 
-            # Ensure there are no duplicate names
-            if name in items:
-                return ParseError.DuplicateRecordItemName(name, reader.prev().position)
+    #         # Ensure there are no duplicate names
+    #         if name in members:
+    #             return ParseError.DuplicateRecordmemberName(name, reader.prev().position)
 
-            # Try to read a equals
-            if reader.peek_read(TokenType.SYM_EQUALS) is None:
-                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_EQUALS])
+    #         # Try to read a equals
+    #         if reader.peek_read(TokenType.SYM_EQUALS) is None:
+    #             return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_EQUALS])
 
-            # Try item expression
-            expr = parse_expr(reader)
-            if expr.is_error():
-                return expr
+    #         # Try member expression
+    #         expr = parse_expr(reader)
+    #         if expr.is_error():
+    #             return expr
 
-            items[name] = expr.get()
+    #         members[name] = expr.get()
 
-            # Try to read a comma
-            if reader.peek_read(TokenType.SYM_COMMA) is None:
-                break
+    #         # Try to read a comma
+    #         if reader.peek_read(TokenType.SYM_COMMA) is None:
+    #             break
 
-        # Read right curly bracket
-        if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
-            return Success(RecordExpr(items, position))
+    #     # Read right curly bracket
+    #     if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
+    #         return Success(RecordExpr(members, position))
 
-        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
+    #     return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
 
     return ParseError.UnexpectedToken(reader.peek(), [
         TokenType.INTEGER,
@@ -491,8 +490,8 @@ class ParseError:
     '''Wrapper for parsing errors'''
 
     @staticmethod
-    def DuplicateRecordItemName(name: str, pos: Position) -> Error:
-        return Error(ErrorType.PARSING_DUP_RECORD_ITEM_NAME, pos, f"Duplicate record item name '{name}' found")
+    def DuplicateMemberName(name: str, pos: Position) -> Error:
+        return Error(ErrorType.PARSING_DUP_MEMBER_NAME, pos, f"Duplicate member name '{name}' found")
 
     @staticmethod
     def UnexpectedToken(found: Token, expected: List[TokenType]) -> Error:

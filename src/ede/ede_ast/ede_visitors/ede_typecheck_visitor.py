@@ -1,12 +1,12 @@
 from typing import Any, Callable, Dict, List, Optional, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BINOP_EDE_TYPE_DICT, BinopExpr, BinopType, TypeCheckError_InvalidBinop
-from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, RecordExpr, TupleExpr
+from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, ObjInitExpr, TupleExpr
 from ede_ast.ede_literal import LIT_EDE_TYPE_DICT, BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
-from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeRecord, EdeTuple, EdeType, EdeUnit, EnvEntry, EnvEntryType, Environment, TypeCheckError
+from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
+from ede_ast.ede_typesystem import EdeArray, EdeObject, EdeTuple, EdeType, EdeUnit, EnvEntry, EnvEntryType, Environment, TSType, TypeCheckError
 from ede_utils import Result, Success
 
 TCResult = Result[EdeType]
@@ -82,7 +82,7 @@ def visit_VarDeclStmt(stmt: VarDeclStmt, env: Environment) -> TCResult:
         elif expr_res.get() != ede_type:
             return TypeCheckError.InvalidAssignment(ede_type, expr_res.get(), stmt.position)
 
-    decl_res = env.declare(stmt.id, EnvEntry(EnvEntryType.VARIABLE, cast(EdeType, ede_type), stmt.position), False)
+    decl_res = env.set(stmt.id, EnvEntry(EnvEntryType.VARIABLE, cast(EdeType, ede_type), stmt.position), False)
     if decl_res is not None:
         return decl_res
 
@@ -115,18 +115,6 @@ def visit_TupleTypeSymbol(t: TupleTypeSymbol, env: Environment) -> TCResult:
         inners.append(inner_res.get())
         
     return Success(EdeTuple(inners))
-
-def visit_RecordTypeSymbol(r: RecordTypeSymbol, env: Environment) -> TCResult:
-    items : Dict[str, EdeType] = {}
-
-    for name, item in r.items.items():
-        item_res = TypecheckVisitor.visit(item, env)
-        if item_res.is_error():
-            return item_res
-    
-        items[name] = item_res.get()
-        
-    return Success(EdeRecord(items))
 
 def visit_Block(b: Block, env: Environment) -> TCResult:
     sub_env = Environment(env)
@@ -199,20 +187,34 @@ def visit_TupleExpr(t: TupleExpr, env: Environment) -> TCResult:
 
     return Success(EdeTuple(inner_types))
 
-def visit_RecordExpr(r: RecordExpr, env: Environment) -> TCResult:
-    items: Dict[str, EdeType] = {}
+def visit_ObjInitExpr(oi: ObjInitExpr, env: Environment) -> TCResult:
+    # Check that the object is defined
+    name_tc_res = visit_NameTypeSymbol(NameTypeSymbol(oi.name, oi.position), env)
+    if name_tc_res.is_error():
+        return name_tc_res
+    elif name_tc_res.get().get_ts_type() != TSType.OBJECT:
+        return TypeCheckError.UndefinedObject(oi.name, oi.position)
 
-    for name, item in r.items.items():
-        if name in items:
-            return TypeCheckError.DuplicateRecordItemName(name, item.position)
+    obj_type = cast(EdeObject, name_tc_res.get())
+    expected_members = obj_type.get_members()
+    inited_members = []
 
-        item_type_res = TypecheckVisitor.visit(item, env)
-        if item_type_res.is_error():
-            return item_type_res
+    for id, value in oi.items.items():
+        if id.value in inited_members:
+            return TypeCheckError.Reinitialization(id.value, id.position)
+        elif id.value not in expected_members:
+            return TypeCheckError.UnexpectedInitialization(id.value, id.position)
 
-        items[name] = item_type_res.get()
+        expected_type = expected_members[id.value]
+        value_type_res = TypecheckVisitor.visit(value, env)
+        if value_type_res.is_error():
+            return value_type_res
+        elif value_type_res.get() != expected_type:
+            return TypeCheckError.UnexpectedType(value_type_res.get(), expected_type, value.position)
 
-    return Success(EdeRecord(items))
+        inited_members.append(id)
+
+    return name_tc_res
 
 VISITORS : Dict[Type[Any], Callable[[Any, Environment], TCResult]] = {
     ExprStmt: lambda node, env: TypecheckVisitor.visit(cast(ExprStmt, node).expr, env),
@@ -220,7 +222,7 @@ VISITORS : Dict[Type[Any], Callable[[Any, Environment], TCResult]] = {
     BinopExpr: visit_BinopExpr,
     ArrayExpr: visit_ArrayExpr,
     TupleExpr: visit_TupleExpr,
-    RecordExpr: visit_RecordExpr,
+    ObjInitExpr: visit_ObjInitExpr,
     IfElseStmt: visit_IfElseStmt,
     Module: visit_Module,
     IntLiteral: visit_Literal,
@@ -231,7 +233,6 @@ VISITORS : Dict[Type[Any], Callable[[Any, Environment], TCResult]] = {
     PrimitiveTypeSymbol: lambda node, env: Success(cast(PrimitiveTypeSymbol, node).primitive),
     ArrayTypeSymbol: visit_ArrayTypeSymbol,
     TupleTypeSymbol: visit_TupleTypeSymbol,
-    RecordTypeSymbol: visit_RecordTypeSymbol,
     NameTypeSymbol: visit_NameTypeSymbol,
     Block: visit_Block
 }
