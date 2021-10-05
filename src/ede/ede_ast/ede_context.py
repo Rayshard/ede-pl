@@ -37,7 +37,7 @@ class Context(Generic[T]):
         '''Create a new context'''
 
         self.parent : Optional[Context[T]] = parent
-        self.namespace : Dict[str, T]
+        self.namespace : Dict[str, T] = {}
 
     def get(self, id: str, pos: Position, check_parent: bool) -> Result[T]:
         '''
@@ -79,6 +79,19 @@ class Context(Generic[T]):
             return self.parent.set(id, entry)
 
         raise Exception(f"ID '{id}' does not exist") # should not occur is type checking passed
+
+    def contains(self, id: str, type: CtxEntryType) -> bool:
+        '''
+        Determines if the given id exists as the given type. If the id is not in the current context, the first
+        occurrence upon traversing up the parent tree is searched for.
+        '''
+
+        if id in self.namespace:
+            return self.namespace[id].type == type
+        elif self.parent is not None:
+            return self.parent.contains(id, type)
+
+        return False
 
     def get_entries(self, type: CtxEntryType) -> Dict[str, T]:
         return dict(filter(lambda e: e[1].type == type, self.namespace.items()))

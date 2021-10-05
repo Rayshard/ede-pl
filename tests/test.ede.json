@@ -2,6 +2,26 @@
     "source": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\test.ede",
     "ast": {
         "name": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\test",
+        "definitions": [
+            {
+                "name": "Person",
+                "members": {
+                    "name": {
+                        "repr": "string",
+                        "node_type": "TYPE_SYMBOL"
+                    },
+                    "age": {
+                        "repr": "int",
+                        "node_type": "TYPE_SYMBOL"
+                    },
+                    "is_male": {
+                        "repr": "bool",
+                        "node_type": "TYPE_SYMBOL"
+                    }
+                },
+                "node_type": "DEF"
+            }
+        ],
         "statments": [
             {
                 "condition": {
@@ -114,6 +134,20 @@
                     }
                 ],
                 "expr_type": "TUPLE",
+                "node_type": "STMT",
+                "stmt_type": "EXPR"
+            },
+            {
+                "name": "Person",
+                "items": {
+                    "age": {
+                        "type": "INTEGER",
+                        "value": 22,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    }
+                },
+                "expr_type": "OBJ_INIT",
                 "node_type": "STMT",
                 "stmt_type": "EXPR"
             }

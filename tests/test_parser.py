@@ -3,8 +3,8 @@ from ede_ast.ede_ast import Node
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
-from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol
-from ede_ast.ede_typesystem import EdeChar, EdeInt, EdeString
+from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
+from ede_ast.ede_typesystem import EdeChar, EdeInt
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
 from ede_parser import TokenReader, parse_expr, parse_stmt, parse_type_symbol
 from ede_lexer import Reader, tokenize
@@ -78,7 +78,6 @@ def test_type_symbols():
     assert check_ts('MyType', NameTypeSymbol('MyType', Position()))
     assert check_ts('[int]', ArrayTypeSymbol(PrimitiveTypeSymbol(EdeInt, Position()), Position()))
     assert check_ts('(int, char)', TupleTypeSymbol([PrimitiveTypeSymbol(EdeInt, Position()), PrimitiveTypeSymbol(EdeChar, Position())], Position()))
-    assert check_ts('{name: string, age: int}', RecordTypeSymbol({'name': PrimitiveTypeSymbol(EdeString, Position()), 'age': PrimitiveTypeSymbol(EdeInt, Position())}, Position()))
     assert check_ts('[]', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('[int}', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('(int)', ErrorType.PARSING_UNEXPECTED_TOKEN)
@@ -90,5 +89,4 @@ def test_type_symbols():
     assert check_ts('{name:}', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('{name:string', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('{name:string,', ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert check_ts('{name:string, age:int, name:int}', ErrorType.PARSING_DUP_RECORD_ITEM_NAME)
 

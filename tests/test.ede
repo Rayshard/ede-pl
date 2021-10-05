@@ -11,4 +11,6 @@ def Person = object {
     name: string,
     age: int,
     is_male: bool
-};
+}
+
+Person { age = 22 };

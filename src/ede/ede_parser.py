@@ -1,13 +1,14 @@
 from enum import Enum, auto
 from typing import Dict, List, Optional, cast
 from ede_ast.ede_binop import BinopExpr, BinopType
-from ede_ast.ede_expr import ArrayExpr, ExprType, Expression, IdentifierExpr, RecordExpr, TupleExpr
+from ede_ast.ede_definition import Definition, ObjDef
+from ede_ast.ede_expr import ArrayExpr, ExprType, Expression, IdentifierExpr, ObjInitExpr, TupleExpr
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
 from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeUnit, TSPrimitiveType
-from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, RecordTypeSymbol, TupleTypeSymbol, TypeSymbol
+from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_token import Token, TokenType
-from ede_utils import Error, ErrorType, Position, Result, Success, char
+from ede_utils import Error, ErrorType, Position, Positioned, Result, Success, char
 from ede_ast.ede_ast import Node
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
 
@@ -160,50 +161,62 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
             return Success(TupleTypeSymbol(type_symbols, position))
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
-    elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is not None: # Record Type Symbol
-        # Get members
-        members : Dict[str, TypeSymbol] = {}
-
-        while True:
-            # Read member id
-            if reader.peek_read(TokenType.IDENTIFIER) is None:
-                return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
-
-            name = reader.prev().value
-
-            # Ensure there are no duplicate names
-            if name in members:
-                return ParseError.DuplicateRecordmemberName(name, reader.prev().position)
-
-            # Try to read a colon
-            if reader.peek_read(TokenType.SYM_COLON) is None:
-                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
-
-            # Try member type symbol
-            type_symbol = parse_type_symbol(reader)
-            if type_symbol.is_error():
-                return type_symbol
-
-            members[name] = type_symbol.get()
-
-            # Try to read a comma
-            if reader.peek_read(TokenType.SYM_COMMA) is None:
-                break
-
-        # Read right curly bracket
-        if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
-            return Success(RecordTypeSymbol(members, position))
-
-        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
 
     return ParseError.UnexpectedToken(reader.peek(), [
         TokenType.IDENTIFIER,
         TokenType.SYM_LEFT_SBRACKET,
-        TokenType.SYM_LEFT_CBRACKET,
         TokenType.SYM_LPAREN]) 
 
+def parse_obj_init_expr(reader: TokenReader) -> Result[Expression]:
+    '''Parse object initializer expression'''
+
+    position = reader.get_position()
+    
+    if reader.peek_read(TokenType.IDENTIFIER) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+
+    obj_name = cast(str, reader.prev().value)
+
+    if reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_LEFT_CBRACKET])
+
+    # Get members
+    members : Dict[Positioned[str], Expression] = {}
+
+    while True:
+        # Read member id
+        if reader.peek_read(TokenType.IDENTIFIER) is None:
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+
+        mem_name = Positioned[str](reader.prev().value, reader.prev().position)
+
+        # Ensure there are no duplicate names
+        if mem_name.value in members:
+            return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
+
+        # Try to read an equals
+        if reader.peek_read(TokenType.SYM_EQUALS) is None:
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_EQUALS])
+
+        # Try parse member expression
+        expr = parse_expr(reader)
+        if expr.is_error():
+            return expr
+
+        members[mem_name] = expr.get()
+
+        # Try to read a comma
+        if reader.peek_read(TokenType.SYM_COMMA) is None:
+            break
+
+    # Read right curly bracket
+    if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
+
+    return Success(ObjInitExpr(obj_name, members, position))
+
 def parse_atom(reader: TokenReader) -> Result[Expression]:
-    'Parse an atom node'
+    '''Parse an atom node'''
 
     position = reader.get_position()
 
@@ -219,6 +232,10 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
     elif reader.peek_read(TokenType.KW_FALSE) is not None:
         return Success(BoolLiteral(position, False))
     elif reader.peek_read(TokenType.IDENTIFIER) is not None:
+        if reader.peek().type == TokenType.SYM_LEFT_CBRACKET: # Object Initializer Expression
+            reader.unread()
+            return parse_obj_init_expr(reader)
+
         return Success(IdentifierExpr(position, cast(str, reader.prev().value)))
     elif reader.peek_read(TokenType.SYM_LEFT_SBRACKET) is not None: # Array
         # Get inner exprs
@@ -274,42 +291,7 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
             return Success(TupleExpr(exprs, position))
 
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
-    # elif reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is not None: # Object
-    #     # Get members
-    #     members : Dict[str, Expression] = {}
-
-    #     while True:
-    #         # Read member id
-    #         if reader.peek_read(TokenType.IDENTIFIER) is None:
-    #             return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
-
-    #         name = reader.prev().value
-
-    #         # Ensure there are no duplicate names
-    #         if name in members:
-    #             return ParseError.DuplicateRecordmemberName(name, reader.prev().position)
-
-    #         # Try to read a equals
-    #         if reader.peek_read(TokenType.SYM_EQUALS) is None:
-    #             return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_EQUALS])
-
-    #         # Try member expression
-    #         expr = parse_expr(reader)
-    #         if expr.is_error():
-    #             return expr
-
-    #         members[name] = expr.get()
-
-    #         # Try to read a comma
-    #         if reader.peek_read(TokenType.SYM_COMMA) is None:
-    #             break
-
-    #     # Read right curly bracket
-    #     if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is not None:
-    #         return Success(RecordExpr(members, position))
-
-    #     return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
-
+    
     return ParseError.UnexpectedToken(reader.peek(), [
         TokenType.INTEGER,
         TokenType.STRING,
@@ -317,7 +299,6 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
         TokenType.IDENTIFIER,
         TokenType.KW_TRUE,
         TokenType.KW_FALSE,
-        TokenType.SYM_LEFT_CBRACKET,
         TokenType.SYM_LEFT_SBRACKET,
         TokenType.SYM_LPAREN]) 
 
@@ -392,6 +373,71 @@ def parse_declaration(reader: TokenReader) -> Result[Statement]:
         expr = expr_res.get()
 
     return Success(VarDeclStmt(position, id, type_symbol, expr))     
+
+def parse_definition(reader: TokenReader) -> Result[Definition]:
+    '''Parse a definition'''
+
+    position = reader.get_position()
+
+    if reader.peek_read(TokenType.KW_DEF) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.KW_DEF])
+    
+    if reader.peek_read(TokenType.IDENTIFIER) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+
+    def_id = reader.prev().value
+
+    if reader.peek_read(TokenType.SYM_EQUALS) is None:
+        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_EQUALS])
+
+    # TODO: pattern match
+    if reader.peek_read(TokenType.KW_OBJECT) is not None:
+        if reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is None:
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_LEFT_CBRACKET])
+
+        # Get members
+        members : Dict[Positioned[str], TypeSymbol] = {}
+
+        while True:
+            # Read member id
+            if reader.peek_read(TokenType.IDENTIFIER) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+
+            mem_name = Positioned[str](reader.prev().value, reader.prev().position)
+
+            # Ensure there are no duplicate names
+            if mem_name.value in members:
+                return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
+
+            # Try to read an equals
+            if reader.peek_read(TokenType.SYM_COLON) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
+
+            # Try parse member expression
+            type_sym = parse_type_symbol(reader)
+            if type_sym.is_error():
+                return type_sym.error()
+
+            members[mem_name] = type_sym.get()
+
+            # Try to read a comma
+            if reader.peek_read(TokenType.SYM_COMMA) is None:
+                break
+
+        # Read right curly bracket
+        if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is None:
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
+
+        return Success(ObjDef(def_id, members, position))
+    elif reader.peek_read(TokenType.KW_ENUM) is not None:
+        raise Exception("Not Implemented")
+    elif reader.peek_read(TokenType.KW_FUNC) is not None:
+        raise Exception("Not Implemented")
+
+    return ParseError.UnexpectedToken(reader.peek(), [
+        TokenType.KW_OBJECT,
+        TokenType.KW_FUNC,
+        TokenType.KW_ENUM])     
 
 def parse_block(reader: TokenReader) -> Result[Statement]:
     '''Parse block'''
@@ -473,18 +519,27 @@ def parse_stmt(reader: TokenReader) -> Result[Statement]:
     return stmt
 
 def parse_module(name: str, reader: TokenReader) -> Result[Node]:
-    'Parses a stream of tokens and returns the AST module'
+    '''Parses a stream of tokens and returns the AST module'''
 
+    defs : List[Definition] = []
     stmts : List[Statement] = []
 
     while not reader.is_eof():
+        if reader.peek().type == TokenType.KW_DEF:
+            definition = parse_definition(reader)
+            if definition.is_error():
+                return definition.error()
+
+            defs.append(definition.get())
+            continue
+
         stmt = parse_stmt(reader)
         if stmt.is_error():
             return stmt.error()
 
         stmts.append(stmt.get())
 
-    return Success(Module(name, stmts))
+    return Success(Module(name, defs, stmts))
 
 class ParseError:
     '''Wrapper for parsing errors'''

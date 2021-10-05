@@ -1,6 +1,7 @@
 from typing import Any, Callable, Dict, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BinopExpr
+from ede_ast.ede_definition import ObjDef
 from ede_ast.ede_expr import ArrayExpr, Expression, IdentifierExpr, ObjInitExpr, TupleExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
 from ede_ast.ede_module import Module
@@ -52,6 +53,7 @@ def visit_TypeSymbol(ts: TypeSymbol) -> JSON:
 def visit_Module(m: Module) -> JSON:
     return {
         "name": m.name,
+        "definitions": [JsonVisitor.visit(definition) for definition in m.defs],
         "statments": [JsonVisitor.visit(stmt) for stmt in m.stmts]
     }
 
@@ -68,6 +70,12 @@ def visit_ObjInitExpr(oi: ObjInitExpr) -> JSON:
         "items": {id.value: JsonVisitor.visit(expr) for id, expr in oi.items.items()}
     }
 
+def visit_ObjDef(o: ObjDef) -> JSON:
+    return {
+        "name": o.name,
+        "members": {id.value: JsonVisitor.visit(type_symbol) for id, type_symbol in o.members.items()}
+    }
+
 VISITORS : Dict[Type[Any], Callable[[Any], JSON]]= {
     ExprStmt: lambda node: JsonVisitor.visit(cast(ExprStmt, node).expr),
     IdentifierExpr: lambda i: {"id": cast(IdentifierExpr, i).id},
@@ -75,6 +83,7 @@ VISITORS : Dict[Type[Any], Callable[[Any], JSON]]= {
     ArrayExpr: lambda a: {"elements": [JsonVisitor.visit(expr) for expr in cast(ArrayExpr, a).exprs]},
     TupleExpr: lambda t: {"elements": [JsonVisitor.visit(expr) for expr in cast(TupleExpr, t).exprs]},
     ObjInitExpr: visit_ObjInitExpr,
+    ObjDef: visit_ObjDef,
     IfElseStmt: visit_IfElseStmt,
     BinopExpr: visit_BinopExpr,
     IntLiteral: visit_Literal,

@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Dict, List, NamedTuple, Optional, Type, Union, cast, get_args
 from ede_ast.ede_context import Context, CtxEntryType
-from ede_ast.ede_typesystem import EdeType, TCEntry
+from ede_ast.ede_typesystem import EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType, TSType
 from ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
@@ -44,7 +44,7 @@ class ObjectValue(NamedTuple):
     members: Dict[str, 'ExecValue']
 
     def __str__(self) -> str:
-        return self.name + ' {' + f"{', '.join([name + '=' + str(value) for name, value in self.members.items()])}" + '}'
+        return self.name + ' { ' + f"{', '.join([name + ' = ' + str(value) for name, value in self.members.items()])}" + ' }'
 
 ExecValueTypes = Union[int, str, bool, char, unit, ArrayValue, TupleValue, ObjectValue, ExecException]
 class ExecValue:
@@ -74,16 +74,68 @@ class ExecValue:
     def is_exception(self) -> bool:
         return isinstance(self.value, ExecException)
 
-    def to(self, t: Type[ExecValueTypes]) -> ExecValueTypes:
+    def __to(self, t: Type[ExecValueTypes]) -> ExecValueTypes:
         '''Returns value casted as t'''
         assert type(self.value) == t
         return cast(t, self.value)
+
+    def to_int(self) -> int:
+        return cast(int, self.__to(int))
+
+    def to_str(self) -> str:
+        return cast(str, self.__to(str))
+
+    def to_bool(self) -> bool:
+        return cast(bool, self.__to(bool))
+
+    def to_char(self) -> char:
+        return cast(char, self.__to(char))
+
+    def to_unit(self) -> unit:
+        return cast(unit, self.__to(unit))
+
+    def to_array(self) -> ArrayValue:
+        return cast(ArrayValue, self.__to(ArrayValue))
+
+    def to_tuple(self) -> TupleValue:
+        return cast(TupleValue, self.__to(TupleValue))
+
+    def to_object(self) -> ObjectValue:
+        return cast(ObjectValue, self.__to(ObjectValue))
+
+    def to_exception(self) -> ExecException:
+        return cast(ExecException, self.__to(ExecException))
 
     @staticmethod
     def UNIT() -> 'ExecValue':
         return ExecValue(unit())
 
-class ExecEntry(TCEntry):
+    @staticmethod
+    def get_default_value(type: EdeType) -> 'ExecValue':
+        # TODO: convert to match
+        if type.get_ts_type() == TSType.PRIMITIVE:
+            prim = cast(EdePrimitive, type)
+            if prim.get_type() == TSPrimitiveType.UNIT:
+                return ExecValue(unit())
+            elif prim.get_type() == TSPrimitiveType.INT:
+                return ExecValue(0)
+            elif prim.get_type() == TSPrimitiveType.STR:
+                return ExecValue("")
+            elif prim.get_type() == TSPrimitiveType.CHAR:
+                return ExecValue('\0')
+            elif prim.get_type() == TSPrimitiveType.BOOL:
+                return ExecValue(False)
+        elif type.get_ts_type() == TSType.TUPLE:
+            t = cast(EdeTuple, type)
+            return ExecValue(TupleValue(list(map(ExecValue.get_default_value, t.get_inner_types()))))
+        elif type.get_ts_type() == TSType.ARRAY:
+            return ExecValue(ArrayValue([]))
+        elif type.get_ts_type() == TSType.OBJECT:
+            o = cast(EdeObject, type)
+            return ExecValue(ObjectValue(o.get_name(), {id: ExecValue.get_default_value(mem_type) for id, mem_type in o.get_members().items()}))
+
+        raise Exception('EdeType not handled')
+class ExecEntry(TCCtxEntry):
     '''Execution context entry'''
     
     def __init__(self, type: CtxEntryType, ede_type: EdeType, value: ExecValue, pos: Position) -> None:

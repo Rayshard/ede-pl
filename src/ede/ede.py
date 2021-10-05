@@ -4,7 +4,7 @@ from typing import List
 import click, json
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
 import ede_lexer, ede_parser
-from ede_ast.ede_typesystem import Environment
+from ede_ast.ede_typesystem import TCContext
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
 from interpreter import ExecContext
 
@@ -51,21 +51,15 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
                             "ast": JsonVisitor.visit(parse_result.get())
                         }, f_ast, indent=4, sort_keys=False)
                         
-                env = Environment()
-                ctx = ExecContext()
+                tc_ctx = TCContext()
+                exec_ctx = ExecContext()
 
-                # env.declare('int', EnvEntry(EnvEntryType.TYPENAME, EdeInt, Position()), False)
-                # env.declare('string', EnvEntry(EnvEntryType.TYPENAME, EdeString, Position()), False)
-                # env.declare('char', EnvEntry(EnvEntryType.TYPENAME, EdeChar, Position()), False)
-                # env.declare('bool', EnvEntry(EnvEntryType.TYPENAME, EdeBool, Position()), False)
-                # env.declare('unit', EnvEntry(EnvEntryType.TYPENAME, EdeUnit, Position()), False)
-
-                exec_res = ExecutionVisitor.visit_in(parse_result.get(), env, ctx)
+                exec_res = ExecutionVisitor.visit_in(parse_result.get(), tc_ctx, exec_ctx)
                 if exec_res.is_error():
                     print(exec_res.error().get_output_msg(file_path))
                 
                 print("=================== Execution Context ====================")
-                print(ctx)
+                print(exec_ctx)
                 print("=================== ================= ====================")
     else:
         click.echo(f"Compiling files: {file_paths}") # type: ignore

@@ -119,7 +119,7 @@ class EdeObject(EdeType):
         '''Returns the members of the object'''
         return self.__members
         
-class TCEntry(CtxEntry):
+class TCCtxEntry(CtxEntry):
     '''Type checking context entry'''
     
     def __init__(self, type: CtxEntryType, ede_type: EdeType, pos: Position) -> None:
@@ -128,15 +128,15 @@ class TCEntry(CtxEntry):
         super().__init__(type, pos)
         self.ede_type = ede_type
 
-class TCContext(Context[TCEntry]):
-    def __init__(self, parent: Optional['Context[TCEntry]'] = None) -> None:
+class TCContext(Context[TCCtxEntry]):
+    def __init__(self, parent: Optional['Context[TCCtxEntry]'] = None) -> None:
         super().__init__(parent=parent)
 
-    def get(self, id: str, pos: Position, check_parent: bool) -> Result[TCEntry]:
+    def get(self, id: str, pos: Position, check_parent: bool) -> Result[TCCtxEntry]:
         result = super().get(id, pos, check_parent)
         return result.error().convert_to(ErrorType.TYPECHECKING_UNKNOWN_ID) if result.is_error(ErrorType.CONTEXT_UNKNOWN_ID) else result 
     
-    def add(self, id: str, entry: TCEntry, check_parent: bool) -> Optional[Error]:
+    def add(self, id: str, entry: TCCtxEntry, check_parent: bool) -> Optional[Error]:
         result = super().add(id, entry, check_parent)
         return result.convert_to(ErrorType.TYPECHECKING_ID_CONFLICT) if result is not None and result.is_error(ErrorType.CONTEXT_ID_CONFLICT) else result 
 
@@ -170,6 +170,10 @@ class TypeCheckError:
     @staticmethod
     def Reinitialization(id: str, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_REINIT, pos, f"'{id}' is already initialized")
+
+    @staticmethod
+    def Redefinition(id: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_REDEF, pos, f"'{id}' is already defined")
 
     @staticmethod
     def UnexpectedInitialization(name: str, pos: Position) -> Error:

@@ -1,15 +1,17 @@
 from typing import Any, Callable, Dict, Tuple, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_binop import BINOP_EXEC_FUNCS, BinopExpr, BinopType
+from ede_ast.ede_context import CtxEntryType
+from ede_ast.ede_definition import ObjDef
 from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, ObjInitExpr, TupleExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeType, Environment
+from ede_ast.ede_typesystem import EdeObject, EdeType, TCContext
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 from ede_utils import Result, Success
-from interpreter import ArrayValue, ExecContext, ExecValue, ObjectValue, TupleValue
+from interpreter import ArrayValue, ExecContext, ExecEntry, ExecValue, ObjectValue, TupleValue
 
 class ExecutionVisitor:
     '''
@@ -23,19 +25,13 @@ class ExecutionVisitor:
         return VISITORS[type(node)](node, ctx)
 
     @staticmethod
-    def visit_in(node: Node, env: Environment, ctx: ExecContext) -> Result[ExecValue]:
+    def visit_in(node: Node, env: TCContext, ctx: ExecContext) -> Result[ExecValue]:
         if env is not None:
             tc_res = TypecheckVisitor.visit(node, env)
             if tc_res.is_error():
                 return tc_res.error()
         
         return Success(ExecutionVisitor.visit(node, ctx))
-
-def visit_IdentifierExpr(expr: IdentifierExpr, ctx: ExecContext) -> ExecValue:
-    get_res = ctx.get(expr.id)
-
-    assert get_res is not None, 'Type checking should have ensured that the id was assigned'
-    return get_res
 
 def visit_BinopExpr(expr: BinopExpr, ctx: ExecContext) -> ExecValue:
     if expr.op == BinopType.ASSIGN:
@@ -47,7 +43,8 @@ def visit_BinopExpr(expr: BinopExpr, ctx: ExecContext) -> ExecValue:
             return right_res
 
         # set the value of the id to the value of the expression
-        ctx.set(id, right_res, expr.position)
+        # ** because we want the position of the variables entry to always be it's declaration position, this set function will be slow
+        ctx.set(id, ExecEntry(CtxEntryType.VARIABLE, expr.get_ede_type(), right_res, ctx.get(id, expr.position, True).get().pos))
         return right_res
     else:
         # execute LHS; return if exception
@@ -71,7 +68,8 @@ def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: ExecContext) -> ExecValue:
     if expr_res is not None and expr_res.is_exception():
         return expr_res
 
-    ctx.set(stmt.id, expr_res, stmt.position)
+    ede_type = stmt.expr.get_ede_type() if stmt.expr is not None else cast(TypeSymbol, stmt.type_symbol).get_ede_type()
+    ctx.add(stmt.id, ExecEntry(CtxEntryType.VARIABLE, ede_type, cast(ExecValue, expr_res), stmt.position), False)
     return ExecValue.UNIT()
 
 def visit_IfElseStmt(stmt: IfElseStmt, ctx: ExecContext) -> ExecValue:
@@ -124,27 +122,35 @@ def visit_TupleExpr(t: TupleExpr, ctx: ExecContext) -> ExecValue:
     return ExecValue(value)
 
 def visit_ObjInitExpr(oi: ObjInitExpr, ctx: ExecContext) -> ExecValue:
-    obj_type = cast(EdeObject, name_tc_res.get())
-    expected_members = obj_type.get_members()
-    inited_members = []
+    members : Dict[str, ExecValue] = {}
 
     for id, value in oi.items.items():
-        if id.value in inited_members:
-            return TypeCheckError.Reinitialization(id.value, id.position)
-        elif id.value not in expected_members:
-            return TypeCheckError.UnexpectedInitialization(id.value, id.position)
-
-        expected_type = expected_members[id.value]
-        value_type_res = TypecheckVisitor.visit(value, env)
-        if value_type_res.is_error():
+        value_type_res = ExecutionVisitor.visit(value, ctx)
+        if value_type_res.is_exception():
             return value_type_res
-        elif value_type_res.get() != expected_type:
-            return TypeCheckError.UnexpectedType(value_type_res.get(), expected_type, value.position)
+        
+        members[id.value] = value_type_res
 
-        inited_members.append(id)
+    expected_members = cast(EdeObject, oi.get_ede_type()).get_members()
+    for id, type in expected_members.items():
+        if id not in members:
+            members[id] = ExecValue.get_default_value(type)
+
+    return ExecValue(ObjectValue(oi.name, members))
+
+def visit_ObjDef(o: ObjDef, ctx: ExecContext) -> ExecValue:
+    # technically these don't execute but it'll allow for inspection during debugging
+
+    ctx.add(o.name, ExecEntry(CtxEntryType.TYPENAME, o.get_ede_type(), ExecValue.UNIT(), o.position), False)
+    return ExecValue.UNIT()
 
 def visit_Module(m: Module, ctx: ExecContext) -> ExecValue:
     sub_ctx = ExecContext(ctx)
+
+    for definition in m.defs:
+        def_res = ExecutionVisitor.visit(definition, sub_ctx)
+        if def_res.is_exception():
+            return def_res
 
     for stmt in m.stmts:
         exec_res = ExecutionVisitor.visit(stmt, sub_ctx)
@@ -160,11 +166,12 @@ def visit_ExprStmt(e: ExprStmt, ctx: ExecContext) -> ExecValue:
 
 VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
     ExprStmt: visit_ExprStmt,
-    IdentifierExpr: visit_IdentifierExpr,
+    IdentifierExpr: lambda i, ctx: ctx.get(cast(IdentifierExpr, i).id, cast(IdentifierExpr, i).position, True).get().value,
     Module: visit_Module,
     ArrayExpr: visit_ArrayExpr,
     TupleExpr: visit_TupleExpr,
     ObjInitExpr: visit_ObjInitExpr,
+    ObjDef: visit_ObjDef,
     BinopExpr: visit_BinopExpr,
     IfElseStmt: visit_IfElseStmt,
     IntLiteral: visit_Literal,
