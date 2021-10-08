@@ -200,6 +200,66 @@
                 "expr_type": "OBJ_INIT",
                 "node_type": "STMT",
                 "stmt_type": "EXPR"
+            },
+            {
+                "id": "my_array",
+                "type_symbol": "[[int]]",
+                "expr": {
+                    "elements": [
+                        {
+                            "elements": [
+                                {
+                                    "type": "INTEGER",
+                                    "value": 1,
+                                    "expr_type": "LITERAL",
+                                    "node_type": "EXPR"
+                                },
+                                {
+                                    "type": "INTEGER",
+                                    "value": 2,
+                                    "expr_type": "LITERAL",
+                                    "node_type": "EXPR"
+                                },
+                                {
+                                    "type": "INTEGER",
+                                    "value": 3,
+                                    "expr_type": "LITERAL",
+                                    "node_type": "EXPR"
+                                }
+                            ],
+                            "expr_type": "ARRAY",
+                            "node_type": "EXPR"
+                        },
+                        {
+                            "elements": [
+                                {
+                                    "type": "INTEGER",
+                                    "value": 4,
+                                    "expr_type": "LITERAL",
+                                    "node_type": "EXPR"
+                                },
+                                {
+                                    "type": "INTEGER",
+                                    "value": 5,
+                                    "expr_type": "LITERAL",
+                                    "node_type": "EXPR"
+                                },
+                                {
+                                    "type": "INTEGER",
+                                    "value": 6,
+                                    "expr_type": "LITERAL",
+                                    "node_type": "EXPR"
+                                }
+                            ],
+                            "expr_type": "ARRAY",
+                            "node_type": "EXPR"
+                        }
+                    ],
+                    "expr_type": "ARRAY",
+                    "node_type": "EXPR"
+                },
+                "stmt_type": "VAR_DECL",
+                "node_type": "STMT"
             }
         ],
         "node_type": "MODULE"

@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
@@ -13,7 +13,7 @@ from ede_utils import ErrorType, Position, Result, Success, char
 def get_token_reader(text: str) -> TokenReader:
     return TokenReader(tokenize(Reader(text)).get())
 
-def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> bool:
+def check(value: str | Result[Node], expected: Node | ErrorType) -> bool:
     res = parse_stmt(get_token_reader(value)) if isinstance(value, str) else cast(Result[Node], value)
     print(res)
     if res.is_success():
@@ -26,7 +26,7 @@ def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> 
     return res.is_error(expected)
 
 def test_expr():
-    def check_expr(text: str, expected: Union[Node, ErrorType]) -> bool:
+    def check_expr(text: str, expected: Node | ErrorType) -> bool:
         res = parse_expr(get_token_reader(text))
         return check(Success(res.get()), expected) if res.is_success() else check(res.error(), expected)
 
@@ -70,7 +70,7 @@ def test_if_else():
     assert check('if true else', ErrorType.PARSING_UNEXPECTED_TOKEN)
 
 def test_type_symbols():
-    def check_ts(text: str, expected: Union[Node, ErrorType]) -> bool:
+    def check_ts(text: str, expected: Node | ErrorType) -> bool:
         res = parse_type_symbol(get_token_reader(text))
         return check(Success(res.get()), expected) if res.is_success() else check(res.error(), expected)
 

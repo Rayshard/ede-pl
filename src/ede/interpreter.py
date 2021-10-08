@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Dict, List, NamedTuple, Optional, Type, Union, cast, get_args
+from typing import Dict, List, NamedTuple, Optional, Type, cast, get_args
 from ede_ast.ede_context import Context, CtxEntryType
 from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
 from ede_utils import Position, char, unit
@@ -46,7 +46,7 @@ class ObjectValue(NamedTuple):
     def __str__(self) -> str:
         return self.name + ' { ' + f"{', '.join([name + ' = ' + str(value) for name, value in self.members.items()])}" + ' }'
 
-ExecValueTypes = Union[int, str, bool, char, unit, ArrayValue, TupleValue, ObjectValue, ExecException]
+ExecValueTypes = int | str | bool | char | unit | ArrayValue | TupleValue | ObjectValue | ExecException
 class ExecValue:
     '''Representation of the possible values return on execution of an AST node'''
 

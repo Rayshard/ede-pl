@@ -1,4 +1,4 @@
-from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar, Union
+from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar
 from enum import IntEnum, auto
 
 # TODO: Comment File
@@ -99,4 +99,4 @@ class Error(NamedTuple):
     def convert_to(self, type: ErrorType) -> 'Error':
         return Error(type, self.position, self.msg)
 
-Result = Union[Success[T], Error]
+Result = Success[T] | Error

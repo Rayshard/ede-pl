@@ -4,7 +4,7 @@ Todo:
   ✔ make to_json have the __type__ be the str reprentatoin of the node/expr/stmt type @done(21-10-03 12:54)
   ✘ make Result a base class and add error as a func @cancelled(21-10-03 22:49)
   ✔ make all statements return unit but expr stmt can still print value @done(21-10-04 20:56)
-  ☐ turn Unions to |
+  ✔ turn Unions to | @done(21-10-08 17:56)
   ☐ review testing
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string

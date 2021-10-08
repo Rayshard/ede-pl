@@ -1,14 +1,14 @@
 from typing import Any, Callable, Dict, Type, cast
 from ede_ast.ede_ast import Node
-from ede_ast.ede_context import Context, CtxEntry, CtxEntryType
+from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_definition import ObjDef
 from ede_ast.ede_expr import ArrayExpr, Expression, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, TCContext, TCCtxEntry
-from interpreter import ExecContext, ExecEntry
+from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple
+from interpreter import ExecContext
 
 class JsonVisitor:
     @staticmethod
@@ -73,41 +73,19 @@ def visit_ObjDef(o: ObjDef) -> Any:
         "members": {id.value: JsonVisitor.visit(type_symbol) for id, type_symbol in o.members.items()}
     }
 
-def visit_Context(c: Context[CtxEntry]) -> Any:
+def visit_ExecContext(ec: ExecContext) -> Any:
     return {
-        "parent": None if c.parent is None else visit_Context(c.parent),
-        "variables": {id: visit_CtxEntry(entry) for id, entry in c.get_entries(CtxEntryType.VARIABLE).items()},
-        "typenames": [visit_CtxEntry(entry) for _, entry in c.get_entries(CtxEntryType.TYPENAME).items()],
-        "functions": {id: visit_CtxEntry(entry) for id, entry in c.get_entries(CtxEntryType.FUNCTION).items()},
+        "parent": None if ec.parent is None else visit_ExecContext(cast(ExecContext, ec.parent)),
+        "variables": [f"{id} : {JsonVisitor.visit(entry.ede_type)} = {entry.value} " for id, entry in ec.get_entries(CtxEntryType.VARIABLE).items()],
+        "typenames": [JsonVisitor.visit(entry.ede_type) for _, entry in ec.get_entries(CtxEntryType.TYPENAME).items()],
+        "functions": []
     }
-
-def visit_CtxEntry(ee: CtxEntry) -> Any:
-    if isinstance(ee, ExecEntry):
-        match ee.type:
-            case CtxEntryType.VARIABLE:
-                pass
-            case CtxEntryType.TYPENAME:
-                return JsonVisitor.visit(ee.ede_type)
-            case CtxEntryType.FUNCTION:
-                pass
-    elif isinstance(ee, TCCtxEntry):
-        match ee.type:
-            case CtxEntryType.VARIABLE:
-                pass
-            case CtxEntryType.TYPENAME:
-                pass
-            case CtxEntryType.FUNCTION:
-                pass
-
-    raise Exception("Case not handled")
 
 VISITORS : Dict[Type[Any], Callable[[Any], Any]]= {
     ExprStmt: lambda node: JsonVisitor.visit(cast(ExprStmt, node).expr),
     IdentifierExpr: lambda i: {"id": cast(IdentifierExpr, i).id},
     Module: visit_Module,
-    Context: visit_Context,
-    ExecContext: visit_Context,
-    TCContext: visit_Context,
+    ExecContext: visit_ExecContext,
     ArrayExpr: lambda a: {"elements": [JsonVisitor.visit(expr) for expr in cast(ArrayExpr, a).exprs]},
     TupleExpr: lambda t: {"elements": [JsonVisitor.visit(expr) for expr in cast(TupleExpr, t).exprs]},
     ObjInitExpr: visit_ObjInitExpr,
@@ -124,9 +102,6 @@ VISITORS : Dict[Type[Any], Callable[[Any], Any]]= {
     ArrayTypeSymbol: visit_TypeSymbol,
     TupleTypeSymbol: visit_TypeSymbol,
     NameTypeSymbol: visit_TypeSymbol,
-    CtxEntry: visit_CtxEntry,
-    ExecEntry: visit_CtxEntry,
-    TCCtxEntry: visit_CtxEntry,
     Block: lambda b: {'statements': [JsonVisitor.visit(stmt) for stmt in cast(Block, b).stmts]},
     EdePrimitive: lambda p: str(p),
     EdeArray: lambda a: str(a),
