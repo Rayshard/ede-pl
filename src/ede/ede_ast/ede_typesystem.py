@@ -7,21 +7,26 @@ from ede_utils import Error, ErrorType, Position, Result
 class TSType(Enum):
     '''Enumeration for type system base types'''
 
+    PRIMITIVE = auto()
+    TUPLE = auto()
+    ARRAY = auto()
+    OBJECT = auto()
+
+class TSPrimitiveType(Enum):
+    '''Enumeration for type system primitive types'''
+
     UNIT = auto()
     INT = auto()
     STR = auto()
     CHAR = auto()
     BOOL = auto()
-    TUPLE = auto()
-    ARRAY = auto()
-    OBJECT = auto()
 
 class EdeType:
     '''Type system type'''
 
     def __init__(self) -> None:
         '''Create a type system type'''
-        super().__init__()
+        pass
 
     def is_type(self, type: Type['EdeType']):
         return isinstance(self, type)
@@ -34,57 +39,49 @@ class EdeType:
 class EdePrimitive(EdeType):
     '''Ede primitive type'''
     
+    def __init__(self, prim_type: TSPrimitiveType) -> None:
+        self.prim_type = prim_type
+
     def __eq__(self, o: object) -> bool:
-        return isinstance(o, EdePrimitive) and o.get_ts_type() == self.get_ts_type()
-
-    @abstractmethod
-    def get_ts_type(self) -> TSType:
-        pass
-
-class EdeUnit(EdePrimitive):
-    '''Ede unit type'''
-
-    def get_ts_type(self) -> TSType:
-        return TSType.UNIT
+        return isinstance(o, EdePrimitive) and o.prim_type == self.prim_type
 
     def __str__(self) -> str:
-        return "unit"
-
-class EdeInt(EdePrimitive):
-    '''Ede int type'''
-
-    def get_ts_type(self) -> TSType:
-        return TSType.INT
-
-    def __str__(self) -> str:
-        return "int"
-
-class EdeString(EdePrimitive):
-    '''Ede string type'''
-
-    def get_ts_type(self) -> TSType:
-        return TSType.STR
-
-    def __str__(self) -> str:
-        return "string"
-
-class EdeChar(EdePrimitive):
-    '''Ede char type'''
+        match self.prim_type:
+            case TSPrimitiveType.UNIT:
+                return "unit"
+            case TSPrimitiveType.INT:
+                return "int"
+            case TSPrimitiveType.STR:
+                return "string"
+            case TSPrimitiveType.BOOL:
+                return "bool"
+            case TSPrimitiveType.CHAR:
+                return "char"
+            case _:
+                raise Exception('Case not handled')
 
     def get_ts_type(self) -> TSType:
-        return TSType.CHAR
+        return TSType.PRIMITIVE
 
-    def __str__(self) -> str:
-        return "char"
+    @staticmethod
+    def UNIT() -> 'EdePrimitive':
+        return EdePrimitive(TSPrimitiveType.UNIT)
 
-class EdeBool(EdePrimitive):
-    '''Ede bool type'''
+    @staticmethod
+    def INT() -> 'EdePrimitive':
+        return EdePrimitive(TSPrimitiveType.INT)
 
-    def get_ts_type(self) -> TSType:
-        return TSType.BOOL
+    @staticmethod
+    def STRING() -> 'EdePrimitive':
+        return EdePrimitive(TSPrimitiveType.STR)
 
-    def __str__(self) -> str:
-        return "bool"
+    @staticmethod
+    def CHAR() -> 'EdePrimitive':
+        return EdePrimitive(TSPrimitiveType.CHAR)
+
+    @staticmethod
+    def BOOL() -> 'EdePrimitive':
+        return EdePrimitive(TSPrimitiveType.BOOL)
 
 class EdeArray(EdeType):
     '''Ede array type'''

@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Dict, List, NamedTuple, Optional, Type, Union, cast, get_args
 from ede_ast.ede_context import Context, CtxEntryType
-from ede_ast.ede_typesystem import EdeObject, EdeTuple, EdeType, TCCtxEntry, TSType
+from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
 from ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
@@ -112,27 +112,25 @@ class ExecValue:
 
     @staticmethod
     def get_default_value(type: EdeType) -> 'ExecValue':
-        # TODO: convert to match
-        if type.get_ts_type() == TSType.UNIT:
-            return ExecValue(unit())
-        elif type.get_ts_type() == TSType.INT:
-            return ExecValue(0)
-        elif type.get_ts_type() == TSType.STR:
-            return ExecValue("")
-        elif type.get_ts_type() == TSType.CHAR:
-            return ExecValue('\0')
-        elif type.get_ts_type() == TSType.BOOL:
-            return ExecValue(False)
-        elif type.get_ts_type() == TSType.TUPLE:
-            t = cast(EdeTuple, type)
-            return ExecValue(TupleValue(list(map(ExecValue.get_default_value, t.get_inner_types()))))
-        elif type.get_ts_type() == TSType.ARRAY:
-            return ExecValue(ArrayValue([]))
-        elif type.get_ts_type() == TSType.OBJECT:
-            o = cast(EdeObject, type)
-            return ExecValue(ObjectValue(o.get_name(), {id: ExecValue.get_default_value(mem_type) for id, mem_type in o.get_members().items()}))
-
-        raise Exception('EdeType not handled')
+        match type:
+            case EdePrimitive(prim_type=TSPrimitiveType.UNIT):
+                return ExecValue(unit())
+            case EdePrimitive(prim_type=TSPrimitiveType.INT):
+                return ExecValue(0)
+            case EdePrimitive(prim_type=TSPrimitiveType.STR):
+                return ExecValue("")
+            case EdePrimitive(prim_type=TSPrimitiveType.CHAR):
+                return ExecValue('\0')
+            case EdePrimitive(prim_type=TSPrimitiveType.BOOL):
+                return ExecValue(False)
+            case EdeTuple():
+                return ExecValue(TupleValue(list(map(ExecValue.get_default_value, type.get_inner_types()))))
+            case EdeArray():
+                return ExecValue(ArrayValue([]))
+            case EdeObject():
+                return ExecValue(ObjectValue(type.get_name(), {id: ExecValue.get_default_value(mem_type) for id, mem_type in type.get_members().items()}))
+            case _:
+                raise Exception('Case not handled')
 
 class ExecEntry(TCCtxEntry):
     '''Execution context entry'''

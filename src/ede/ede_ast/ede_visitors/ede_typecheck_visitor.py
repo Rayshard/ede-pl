@@ -3,11 +3,11 @@ from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_definition import ObjDef
 from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr, BinopType, TypeCheckError_InvalidBinop
-from ede_ast.ede_literal import LIT_EDE_TYPE_DICT, BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
+from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, LiteralType, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeInt, EdeObject, EdeString, EdeTuple, EdeType, EdeUnit, TCContext, TCCtxEntry, TSType, TypeCheckError
+from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, EdeType, TCContext, TCCtxEntry, TSPrimitiveType, TSType, TypeCheckError
 from ede_utils import Result, Success
 
 TCResult = Result[EdeType]
@@ -57,20 +57,33 @@ def visit_BinopExpr(expr: BinopExpr, ctx: TCContext) -> TCResult:
         return left_type if left_type.get() == right_type.get() else TypeCheckError.InvalidAssignment(left_type.get(), right_type.get(), expr.position)
     
     match expr.type_pattern:
-        case (EdeInt(), EdeInt(), BinopType.ADD) | (EdeInt(), EdeInt(), BinopType.SUB) | (EdeInt(), EdeInt(), BinopType.MUL) | (EdeInt(), EdeInt(), BinopType.DIV):
-            return Success(EdeInt())
-        case (EdeString(), EdeString(), BinopType.ADD):
-            return Success(EdeString())
+        case (EdePrimitive(prim_type = TSPrimitiveType.INT), EdePrimitive(prim_type = TSPrimitiveType.INT), BinopType.ADD):
+            return Success(EdePrimitive.INT())
+        case (EdePrimitive(prim_type = TSPrimitiveType.INT), EdePrimitive(prim_type = TSPrimitiveType.INT), BinopType.SUB):
+            return Success(EdePrimitive.INT())
+        case (EdePrimitive(prim_type = TSPrimitiveType.INT), EdePrimitive(prim_type = TSPrimitiveType.INT), BinopType.MUL):
+            return Success(EdePrimitive.INT())
+        case (EdePrimitive(prim_type = TSPrimitiveType.INT), EdePrimitive(prim_type = TSPrimitiveType.INT), BinopType.DIV):
+            return Success(EdePrimitive.INT())
+        case (EdePrimitive(prim_type = TSPrimitiveType.STR), EdePrimitive(prim_type = TSPrimitiveType.STR), BinopType.ADD):
+            return Success(EdePrimitive.STRING())
         case _:
-            return TypeCheckError_InvalidBinop(expr.op, left_type.get(), right_type.get(), expr.position)
-    
-    # match type(expr.type_pattern):
-    #     case (EdeInt(), EdeInt(), BinopType.ADD):
-    #         pass
-    
+            return TypeCheckError_InvalidBinop(expr.op, left_type.get(), right_type.get(), expr.position)   
 
 def visit_Literal(expr: Literal[Any], ctx: TCContext) -> TCResult:
-    return Success(LIT_EDE_TYPE_DICT[expr.get_lit_type()])
+    match expr.get_lit_type():
+        case LiteralType.UNIT:
+            return Success(EdePrimitive.UNIT())
+        case LiteralType.INTEGER:
+            return Success(EdePrimitive.INT())
+        case LiteralType.STRING:
+            return Success(EdePrimitive.STRING())
+        case LiteralType.BOOL:
+            return Success(EdePrimitive.BOOL())
+        case LiteralType.CHAR:
+            return Success(EdePrimitive.CHAR())
+        case _:
+            raise Exception("Case not handled")
 
 def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: TCContext) -> TCResult:
     ede_type: Optional[EdeType] = None
@@ -96,7 +109,7 @@ def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: TCContext) -> TCResult:
     if decl_res is not None:
         return decl_res
 
-    return Success(EdeUnit())
+    return Success(EdePrimitive.UNIT())
 
 def visit_NameTypeSymbol(n: NameTypeSymbol, ctx: TCContext) -> TCResult:
     get_res = ctx.get(n.name, n.position, True)
@@ -135,7 +148,7 @@ def visit_Block(b: Block, ctx: TCContext) -> TCResult:
         if last_tc_res.is_error():
             return last_tc_res
 
-    return cast(TCResult, last_tc_res) if last_tc_res is not None else Success(EdeUnit())
+    return cast(TCResult, last_tc_res) if last_tc_res is not None else Success(cast(EdeType, EdePrimitive.UNIT()))
 
 def visit_Module(m: Module, ctx: TCContext) -> TCResult:
     sub_env = TCContext(ctx)
@@ -150,7 +163,7 @@ def visit_Module(m: Module, ctx: TCContext) -> TCResult:
         if last_tc_res.is_error():
             return last_tc_res
 
-    return Success(EdeUnit())
+    return Success(EdePrimitive.UNIT())
 
 def visit_IfElseStmt(stmt: IfElseStmt, ctx: TCContext) -> TCResult:
     cond_res = TypecheckVisitor.visit(stmt.condition, ctx)
@@ -263,6 +276,7 @@ VISITORS : Dict[Type[Any], Callable[[Any, TCContext], TCResult]] = {
     ObjInitExpr: visit_ObjInitExpr,
     IfElseStmt: visit_IfElseStmt,
     Module: visit_Module,
+    UnitLiteral: visit_Literal,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
     StringLiteral: visit_Literal,

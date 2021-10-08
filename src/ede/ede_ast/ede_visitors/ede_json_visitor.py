@@ -3,11 +3,11 @@ from ede_ast.ede_ast import Node
 from ede_ast.ede_context import Context, CtxEntry, CtxEntryType
 from ede_ast.ede_definition import ObjDef
 from ede_ast.ede_expr import ArrayExpr, Expression, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
+from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeBool, EdeChar, EdeInt, EdeObject, EdeString, EdeTuple, EdeUnit, TCContext, TCCtxEntry
+from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, TCContext, TCCtxEntry
 from interpreter import ExecContext, ExecEntry
 
 class JsonVisitor:
@@ -114,6 +114,7 @@ VISITORS : Dict[Type[Any], Callable[[Any], Any]]= {
     ObjDef: visit_ObjDef,
     IfElseStmt: visit_IfElseStmt,
     BinopExpr: visit_BinopExpr,
+    UnitLiteral: visit_Literal,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
     StringLiteral: visit_Literal,
@@ -127,11 +128,7 @@ VISITORS : Dict[Type[Any], Callable[[Any], Any]]= {
     ExecEntry: visit_CtxEntry,
     TCCtxEntry: visit_CtxEntry,
     Block: lambda b: {'statements': [JsonVisitor.visit(stmt) for stmt in cast(Block, b).stmts]},
-    EdeUnit: lambda u: str(u),
-    EdeInt: lambda i: str(i),
-    EdeString: lambda s: str(s),
-    EdeChar: lambda c: str(c),
-    EdeBool: lambda b: str(b),
+    EdePrimitive: lambda p: str(p),
     EdeArray: lambda a: str(a),
     EdeTuple: lambda t: str(t),
     EdeObject: lambda o: str(o),

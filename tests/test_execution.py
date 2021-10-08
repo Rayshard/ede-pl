@@ -1,6 +1,6 @@
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
-from ede_ast.ede_typesystem import EdeChar, TCContext, TCCtxEntry
+from ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
 from interpreter import ExecContext, ExecEntry, ExecException, ExecValue
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
@@ -30,9 +30,9 @@ def test_identifier():
     tc_ctx = TCContext()
     exec_ctx = ExecContext()
     
-    tc_ctx.add('name', TCCtxEntry(CtxEntryType.VARIABLE, EdeChar(), Position()), True)
-    exec_ctx.add('name', ExecEntry(CtxEntryType.VARIABLE, EdeChar(), ExecValue(char('r')), Position()), True)
-    exec_ctx.set('name', ExecEntry(CtxEntryType.VARIABLE, EdeChar(), ExecValue(char('r')), Position()))
+    tc_ctx.add('name', TCCtxEntry(CtxEntryType.VARIABLE, EdePrimitive.CHAR(), Position()), True)
+    exec_ctx.add('name', ExecEntry(CtxEntryType.VARIABLE, EdePrimitive.CHAR(), ExecValue(char('r')), Position()), True)
+    exec_ctx.set('name', ExecEntry(CtxEntryType.VARIABLE, EdePrimitive.CHAR(), ExecValue(char('r')), Position()))
     assert ExecutionVisitor.visit_in(IdentifierExpr(Position(1, 1), 'name'), tc_ctx, exec_ctx).get() == char('r')
     
 def test_declarations():

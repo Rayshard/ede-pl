@@ -13,7 +13,8 @@ Features To Implement:
   ✔ statement blocks @done(21-10-04 00:09)
   ✔ if else statements @done(21-10-04 01:37)
     ✔ to solve the dangling else problem, just attach the else to the closest if @done(21-10-04 01:37)
-  ✔ arrays @done(21-10-05 04:25)
+  ☐ arrays
+    ☐ handle empty array. this can either be through using a default keyword that take a type or creating an any type and cast func for types
   ✔ tuples @done(21-10-05 04:25)
   ✔ objects @done(21-10-05 04:25)
   ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`

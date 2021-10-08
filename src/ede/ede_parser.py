@@ -4,8 +4,8 @@ from ede_ast.ede_definition import Definition, ObjDef
 from ede_ast.ede_expr import ArrayExpr, ExprType, Expression, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr, BinopType
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
-from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeUnit
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
+from ede_ast.ede_typesystem import EdePrimitive
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Positioned, Result, Success, char
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
@@ -86,20 +86,6 @@ RIGHT_ASSOC_OPERATORS : List[OperatorType] = [OperatorType.ASSIGN]
 # Ensures each operator has a precedence
 assert len(OperatorType) == len(OPERATOR_PREC_DICT)
 
-# TODO: convert to match expression
-# Map between intrinsic type symbols and their ede types
-INTRINSIC_TYPE_SYMBOLS_DICT = {
-    "unit": EdeUnit(),
-    "int": EdeInt(),
-    "string": EdeString(),
-    "bool": EdeBool(),
-    "char": EdeChar(),
-}
-
-def is_intrinsic_type_symbol(name: str) -> bool:
-    '''Determines if the given name is an intrinsic type symbol'''
-    return name in INTRINSIC_TYPE_SYMBOLS_DICT
-
 def is_operator(type: TokenType) -> bool:
     '''Determines if the given token type is an operator'''
     return type in OPERATOR_DICT
@@ -117,10 +103,15 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
 
     position = reader.get_position()
 
-    # TODO: convert to match?
+    # TODO: convert to match
     if reader.peek_read(TokenType.IDENTIFIER) is not None:
-        value = reader.prev().value
-        return Success(PrimitiveTypeSymbol(INTRINSIC_TYPE_SYMBOLS_DICT[value], position) if is_intrinsic_type_symbol(value) else NameTypeSymbol(value, position))
+        match reader.prev().value:
+            case "unit": return Success(PrimitiveTypeSymbol(EdePrimitive.UNIT(), position))
+            case "int": return Success(PrimitiveTypeSymbol(EdePrimitive.INT(), position))
+            case "string": return Success(PrimitiveTypeSymbol(EdePrimitive.STRING(), position))
+            case "char": return Success(PrimitiveTypeSymbol(EdePrimitive.CHAR(), position))
+            case "bool": return Success(PrimitiveTypeSymbol(EdePrimitive.BOOL(), position))
+            case id: return Success(NameTypeSymbol(id, position))
     elif reader.peek_read(TokenType.SYM_LEFT_SBRACKET) is not None: # Array Type Symbol
         # Get inner type symbol
         inner_type_symbol = parse_type_symbol(reader)

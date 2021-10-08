@@ -3,11 +3,11 @@ from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_definition import ObjDef
 from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr, BinopType
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral
+from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeInt, EdeObject, EdeString, TCContext
+from ede_ast.ede_typesystem import EdeObject, EdePrimitive, TCContext, TSPrimitiveType
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 from ede_utils import Result, Success
 from interpreter import ArrayValue, ExecContext, ExecEntry, ExecException, ExecValue, ObjectValue, TupleValue
@@ -58,18 +58,18 @@ def visit_BinopExpr(expr: BinopExpr, ctx: ExecContext) -> ExecValue:
 
         # execute function associated with pattern
         match expr.type_pattern:
-            case (EdeInt(), EdeInt(), BinopType.ADD):
+            case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.ADD):
                 return ExecValue(left_res.to_int() + right_res.to_int())
-            case (EdeInt(), EdeInt(), BinopType.SUB):
+            case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.SUB):
                 return ExecValue(left_res.to_int() - right_res.to_int())
-            case (EdeInt(), EdeInt(), BinopType.MUL):
+            case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.MUL):
                 return ExecValue(left_res.to_int() * right_res.to_int())
-            case (EdeInt(), EdeInt(), BinopType.DIV):
+            case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.DIV):
                 return ExecValue(left_res.to_int() // right_res.to_int() if right_res.to_int() != 0 else ExecException.DivisionByZero(expr.position))
-            case (EdeString(), EdeString(), BinopType.ADD):
+            case (EdePrimitive(prim_type=TSPrimitiveType.STR), EdePrimitive(prim_type=TSPrimitiveType.STR), BinopType.ADD):
                 return ExecValue(left_res.to_str() + right_res.to_str())
-
-        assert False, "Pattern not handled"
+            case _:
+                raise Exception("Case not handled")
 
 def visit_Literal(expr: Literal[Any], ctx: ExecContext) -> ExecValue:
     return ExecValue(expr.value)
@@ -185,6 +185,7 @@ VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
     ObjDef: visit_ObjDef,
     BinopExpr: visit_BinopExpr,
     IfElseStmt: visit_IfElseStmt,
+    UnitLiteral: visit_Literal,
     IntLiteral: visit_Literal,
     CharLiteral: visit_Literal,
     StringLiteral: visit_Literal,
