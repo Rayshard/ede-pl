@@ -7,22 +7,14 @@ from ede_utils import Error, ErrorType, Position, Result
 class TSType(Enum):
     '''Enumeration for type system base types'''
 
-    PRIMITIVE = auto()
+    UNIT = auto()
+    INT = auto()
+    STR = auto()
+    CHAR = auto()
+    BOOL = auto()
     TUPLE = auto()
     ARRAY = auto()
     OBJECT = auto()
-
-class TSPrimitiveType(Enum):
-    '''Enumeration for type system primitive types'''
-
-    UNIT = (auto(), 'unit')
-    INT = (auto(), 'int')
-    STR = (auto(), 'string')
-    CHAR = (auto(), 'char')
-    BOOL = (auto(), 'bool')
-
-    def get_type_symbol(self):
-        return self.value[1]
 
 class EdeType:
     '''Type system type'''
@@ -41,26 +33,58 @@ class EdeType:
 
 class EdePrimitive(EdeType):
     '''Ede primitive type'''
+    
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, EdePrimitive) and o.get_ts_type() == self.get_ts_type()
 
-    def __init__(self, type: TSPrimitiveType) -> None:
-        '''Create Ede primitive type'''
+    @abstractmethod
+    def get_ts_type(self) -> TSType:
+        pass
 
-        super().__init__()
-        self.__type = type
+class EdeUnit(EdePrimitive):
+    '''Ede unit type'''
 
     def get_ts_type(self) -> TSType:
-        return TSType.PRIMITIVE
+        return TSType.UNIT
 
-    def get_type(self) -> TSPrimitiveType:
-        '''Returns the primitive type'''
-        return self.__type
+    def __str__(self) -> str:
+        return "unit"
 
-# Primitive Instances
-EdeUnit = EdePrimitive(TSPrimitiveType.UNIT)
-EdeInt = EdePrimitive(TSPrimitiveType.INT)
-EdeString = EdePrimitive(TSPrimitiveType.STR)
-EdeChar = EdePrimitive(TSPrimitiveType.CHAR)
-EdeBool = EdePrimitive(TSPrimitiveType.BOOL)
+class EdeInt(EdePrimitive):
+    '''Ede int type'''
+
+    def get_ts_type(self) -> TSType:
+        return TSType.INT
+
+    def __str__(self) -> str:
+        return "int"
+
+class EdeString(EdePrimitive):
+    '''Ede string type'''
+
+    def get_ts_type(self) -> TSType:
+        return TSType.STR
+
+    def __str__(self) -> str:
+        return "string"
+
+class EdeChar(EdePrimitive):
+    '''Ede char type'''
+
+    def get_ts_type(self) -> TSType:
+        return TSType.CHAR
+
+    def __str__(self) -> str:
+        return "char"
+
+class EdeBool(EdePrimitive):
+    '''Ede bool type'''
+
+    def get_ts_type(self) -> TSType:
+        return TSType.BOOL
+
+    def __str__(self) -> str:
+        return "bool"
 
 class EdeArray(EdeType):
     '''Ede array type'''
@@ -76,6 +100,12 @@ class EdeArray(EdeType):
     def get_inner_type(self) -> EdeType:
         '''Returns the inner ede type'''
         return self.__inner_type
+
+    def __str__(self) -> str:
+        return f"[{str(self.__inner_type)}]"
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, EdeArray) and o.__inner_type == self.__inner_type
 
 class EdeTuple(EdeType):
     '''Ede tuple type'''
@@ -98,6 +128,12 @@ class EdeTuple(EdeType):
     def get_count(self) -> int:
         return len(self.__inner_types)
 
+    def __str__(self) -> str:
+        return f"({','.join([str(inner) for inner in self.__inner_types])})"
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, EdeTuple) and o.__inner_types == self.__inner_types
+
 class EdeObject(EdeType):
     '''Ede object type'''
 
@@ -118,6 +154,12 @@ class EdeObject(EdeType):
     def get_members(self) -> Dict[str, EdeType]:
         '''Returns the members of the object'''
         return self.__members
+
+    def __str__(self) -> str:
+        return self.__name + " { " + ', '.join([f"{id}: {type}" for id, type in self.__members.items()]) + " }"
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, EdeObject) and o.__name == self.__name and o.__members == self.__members
         
 class TCCtxEntry(CtxEntry):
     '''Type checking context entry'''

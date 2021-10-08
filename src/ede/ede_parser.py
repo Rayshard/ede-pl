@@ -1,15 +1,13 @@
 from enum import Enum, auto
 from typing import Dict, List, Optional, cast
-from ede_ast.ede_binop import BinopExpr, BinopType
 from ede_ast.ede_definition import Definition, ObjDef
-from ede_ast.ede_expr import ArrayExpr, ExprType, Expression, IdentifierExpr, ObjInitExpr, TupleExpr
+from ede_ast.ede_expr import ArrayExpr, ExprType, Expression, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr, BinopType
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
-from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeUnit, TSPrimitiveType
+from ede_ast.ede_typesystem import EdeBool, EdeChar, EdeInt, EdeString, EdeUnit
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Positioned, Result, Success, char
-from ede_ast.ede_ast import Node
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
 
 class TokenReader:
@@ -91,15 +89,12 @@ assert len(OperatorType) == len(OPERATOR_PREC_DICT)
 # TODO: convert to match expression
 # Map between intrinsic type symbols and their ede types
 INTRINSIC_TYPE_SYMBOLS_DICT = {
-    TSPrimitiveType.UNIT.get_type_symbol(): EdeUnit,
-    TSPrimitiveType.INT.get_type_symbol(): EdeInt,
-    TSPrimitiveType.STR.get_type_symbol(): EdeString,
-    TSPrimitiveType.BOOL.get_type_symbol(): EdeBool,
-    TSPrimitiveType.CHAR.get_type_symbol(): EdeChar,
+    "unit": EdeUnit(),
+    "int": EdeInt(),
+    "string": EdeString(),
+    "bool": EdeBool(),
+    "char": EdeChar(),
 }
-
-# Ensure all primitive type symbols are covered
-assert len(INTRINSIC_TYPE_SYMBOLS_DICT) == len(TSPrimitiveType)
 
 def is_intrinsic_type_symbol(name: str) -> bool:
     '''Determines if the given name is an intrinsic type symbol'''
@@ -518,7 +513,7 @@ def parse_stmt(reader: TokenReader) -> Result[Statement]:
 
     return stmt
 
-def parse_module(name: str, reader: TokenReader) -> Result[Node]:
+def parse_module(name: str, reader: TokenReader) -> Result[Module]:
     '''Parses a stream of tokens and returns the AST module'''
 
     defs : List[Definition] = []

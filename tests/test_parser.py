@@ -38,9 +38,9 @@ def test_expr():
     assert check_expr('name', IdentifierExpr(Position(), 'name'))
 
 def test_decls():
-    assert check('let a : int = 10;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), IntLiteral(Position(), 10)))
+    assert check('let a : int = 10;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt(), Position()), IntLiteral(Position(), 10)))
     assert check('let a = 10;', VarDeclStmt(Position(), 'a', None, IntLiteral(Position(), 10)))
-    assert check('let a : int;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), None))
+    assert check('let a : int;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt(), Position()), None))
     assert check('let', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check('let a', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check('let a : = 10', ErrorType.PARSING_UNEXPECTED_TOKEN)
@@ -74,10 +74,10 @@ def test_type_symbols():
         res = parse_type_symbol(get_token_reader(text))
         return check(Success(res.get()), expected) if res.is_success() else check(res.error(), expected)
 
-    assert check_ts('int', PrimitiveTypeSymbol(EdeInt, Position()))
+    assert check_ts('int', PrimitiveTypeSymbol(EdeInt(), Position()))
     assert check_ts('MyType', NameTypeSymbol('MyType', Position()))
-    assert check_ts('[int]', ArrayTypeSymbol(PrimitiveTypeSymbol(EdeInt, Position()), Position()))
-    assert check_ts('(int, char)', TupleTypeSymbol([PrimitiveTypeSymbol(EdeInt, Position()), PrimitiveTypeSymbol(EdeChar, Position())], Position()))
+    assert check_ts('[int]', ArrayTypeSymbol(PrimitiveTypeSymbol(EdeInt(), Position()), Position()))
+    assert check_ts('(int, char)', TupleTypeSymbol([PrimitiveTypeSymbol(EdeInt(), Position()), PrimitiveTypeSymbol(EdeChar(), Position())], Position()))
     assert check_ts('[]', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('[int}', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('(int)', ErrorType.PARSING_UNEXPECTED_TOKEN)

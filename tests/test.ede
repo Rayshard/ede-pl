@@ -10,7 +10,9 @@ if true {
 def Person = object {
     name: string,
     age: int,
-    is_male: bool
+    is_male: bool,
+    children_names: [string],
+    bday: (string, int, int)
 }
 
-Person { age = 22 };
+Person { age = 22, children_names = ["Elijah", "Klaus"], bday = ("Dec", 13, 1998) };

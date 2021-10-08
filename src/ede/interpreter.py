@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Dict, List, NamedTuple, Optional, Type, Union, cast, get_args
 from ede_ast.ede_context import Context, CtxEntryType
-from ede_ast.ede_typesystem import EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType, TSType
+from ede_ast.ede_typesystem import EdeObject, EdeTuple, EdeType, TCCtxEntry, TSType
 from ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
@@ -113,18 +113,16 @@ class ExecValue:
     @staticmethod
     def get_default_value(type: EdeType) -> 'ExecValue':
         # TODO: convert to match
-        if type.get_ts_type() == TSType.PRIMITIVE:
-            prim = cast(EdePrimitive, type)
-            if prim.get_type() == TSPrimitiveType.UNIT:
-                return ExecValue(unit())
-            elif prim.get_type() == TSPrimitiveType.INT:
-                return ExecValue(0)
-            elif prim.get_type() == TSPrimitiveType.STR:
-                return ExecValue("")
-            elif prim.get_type() == TSPrimitiveType.CHAR:
-                return ExecValue('\0')
-            elif prim.get_type() == TSPrimitiveType.BOOL:
-                return ExecValue(False)
+        if type.get_ts_type() == TSType.UNIT:
+            return ExecValue(unit())
+        elif type.get_ts_type() == TSType.INT:
+            return ExecValue(0)
+        elif type.get_ts_type() == TSType.STR:
+            return ExecValue("")
+        elif type.get_ts_type() == TSType.CHAR:
+            return ExecValue('\0')
+        elif type.get_ts_type() == TSType.BOOL:
+            return ExecValue(False)
         elif type.get_ts_type() == TSType.TUPLE:
             t = cast(EdeTuple, type)
             return ExecValue(TupleValue(list(map(ExecValue.get_default_value, t.get_inner_types()))))
@@ -135,6 +133,7 @@ class ExecValue:
             return ExecValue(ObjectValue(o.get_name(), {id: ExecValue.get_default_value(mem_type) for id, mem_type in o.get_members().items()}))
 
         raise Exception('EdeType not handled')
+
 class ExecEntry(TCCtxEntry):
     '''Execution context entry'''
     
@@ -147,6 +146,3 @@ class ExecEntry(TCCtxEntry):
 class ExecContext(Context[ExecEntry]):
     def __init__(self, parent: Optional['Context[ExecEntry]'] = None) -> None:
         super().__init__(parent=parent)
-
-    def __str__(self) -> str:
-        return '\n'.join([f"{id}: {value}" for id, value in self.get_entries(CtxEntryType.VARIABLE).items()])

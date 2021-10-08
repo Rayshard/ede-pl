@@ -1,8 +1,10 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
+
+from ede_ast.ede_typesystem import EdeType
 from .ede_ast import Node, NodeType
-from ede_utils import Position, Positioned
+from ede_utils import Error, ErrorType, Position, Positioned
 
 class ExprType(Enum):
     '''Enumeration of AST expression types'''
@@ -42,6 +44,35 @@ class IdentifierExpr(Expression):
 
     def get_expr_type(self) -> ExprType:
         return ExprType.ID
+
+def TypeCheckError_InvalidBinop(op: 'BinopType', ltype: EdeType, rtype: EdeType, pos: Position) -> Error:
+    return Error(ErrorType.TYPECHECKING_INVALID_BINOP, pos, f"Cannot perform {op} on {ltype} and {rtype}")
+
+class BinopType(Enum):
+    '''Enumeration of AST binop types'''
+
+    ADD = auto()
+    SUB = auto()
+    MUL = auto()
+    DIV = auto()
+    ASSIGN = auto()
+
+class BinopExpr(Expression):
+    '''AST binop expression node'''
+
+    def __init__(self, pos: Position, left: Expression, right: Expression, op: BinopType) -> None:
+        '''Creates an AST binop expression node'''
+
+        assert op != BinopType.ASSIGN or isinstance(left, IdentifierExpr)  # ensure that identifiers are the LHS of assignments
+
+        super().__init__(pos)
+        self.left = left
+        self.right = right
+        self.op = op
+        self.type_pattern : Optional[Tuple[EdeType, EdeType, BinopType]] = None
+
+    def get_expr_type(self) -> ExprType:
+        return ExprType.BINOP
 
 class ArrayExpr(Expression):
     '''AST array expression node'''

@@ -14,7 +14,8 @@ setuptools.setup(
     url="https://github.com/Rayshard/ede-pl",
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    python_requires=">=3.9",
+    python_requires=">=3.10",
+    install_requires=["click"],
     extras_require={"dev": ["pytest", "mypy"]},
     scripts=["src/ede/ede.bat"]
 )

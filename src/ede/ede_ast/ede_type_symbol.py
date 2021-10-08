@@ -24,7 +24,7 @@ class PrimitiveTypeSymbol(TypeSymbol):
         self.primitive = primitive
 
     def __str__(self) -> str:
-        return self.primitive.get_type().get_type_symbol()
+        return str(self.primitive)
 
 class NameTypeSymbol(TypeSymbol):
     '''Representation of an name type symbol'''
@@ -48,7 +48,7 @@ class ArrayTypeSymbol(TypeSymbol):
         self.inner = inner
 
     def __str__(self) -> str:
-        return f"[{str(self.inner)}]"
+        return f"[{self.inner}]"
 
 class TupleTypeSymbol(TypeSymbol):
     '''Representation of a tuple type symbol'''

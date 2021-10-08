@@ -10,11 +10,11 @@ T = TypeVar('T', int, str, char, bool, unit)
 class LiteralType(Enum):
     '''Enumeration of AST literal types'''
 
-    UNIT = (auto(), EdeUnit)
-    INTEGER = (auto(), EdeInt)
-    BOOL = (auto(), EdeBool)
-    CHAR = (auto(), EdeChar)
-    STRING = (auto(), EdeString)
+    UNIT = (auto(), EdeUnit())
+    INTEGER = (auto(), EdeInt())
+    BOOL = (auto(), EdeBool())
+    CHAR = (auto(), EdeChar())
+    STRING = (auto(), EdeString())
 
     def get_ede_type(self) -> EdeType:
         '''Returns the associated ede type'''
