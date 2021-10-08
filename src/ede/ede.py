@@ -59,7 +59,7 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
                     print(exec_res.error().get_output_msg(file_path))
                 
                 print("=================== Execution Context ====================")
-                print(exec_ctx)
+                print(json.dumps(JsonVisitor.visit(exec_ctx), indent=4, sort_keys=False))
                 print("=================== ================= ====================")
     else:
         click.echo(f"Compiling files: {file_paths}") # type: ignore

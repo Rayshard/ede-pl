@@ -4,7 +4,7 @@ from ede_ast.ede_expr import IdentifierExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
-from ede_ast.ede_typesystem import EdeChar, EdeInt
+from ede_ast.ede_typesystem import EdePrimitive
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
 from ede_parser import TokenReader, parse_expr, parse_stmt, parse_type_symbol
 from ede_lexer import Reader, tokenize
@@ -15,7 +15,7 @@ def get_token_reader(text: str) -> TokenReader:
 
 def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> bool:
     res = parse_stmt(get_token_reader(value)) if isinstance(value, str) else cast(Result[Node], value)
-
+    print(res)
     if res.is_success():
         assert isinstance(expected, Node)
         print(JsonVisitor.visit(expected))
@@ -38,9 +38,9 @@ def test_expr():
     assert check_expr('name', IdentifierExpr(Position(), 'name'))
 
 def test_decls():
-    assert check('let a : int = 10;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), IntLiteral(Position(), 10)))
+    assert check('let a : int = 10;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdePrimitive.INT(), Position()), IntLiteral(Position(), 10)))
     assert check('let a = 10;', VarDeclStmt(Position(), 'a', None, IntLiteral(Position(), 10)))
-    assert check('let a : int;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdeInt, Position()), None))
+    assert check('let a : int;', VarDeclStmt(Position(), 'a', PrimitiveTypeSymbol(EdePrimitive.INT(), Position()), None))
     assert check('let', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check('let a', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check('let a : = 10', ErrorType.PARSING_UNEXPECTED_TOKEN)
@@ -74,10 +74,10 @@ def test_type_symbols():
         res = parse_type_symbol(get_token_reader(text))
         return check(Success(res.get()), expected) if res.is_success() else check(res.error(), expected)
 
-    assert check_ts('int', PrimitiveTypeSymbol(EdeInt, Position()))
+    assert check_ts('int', PrimitiveTypeSymbol(EdePrimitive.INT(), Position()))
     assert check_ts('MyType', NameTypeSymbol('MyType', Position()))
-    assert check_ts('[int]', ArrayTypeSymbol(PrimitiveTypeSymbol(EdeInt, Position()), Position()))
-    assert check_ts('(int, char)', TupleTypeSymbol([PrimitiveTypeSymbol(EdeInt, Position()), PrimitiveTypeSymbol(EdeChar, Position())], Position()))
+    assert check_ts('[int]', ArrayTypeSymbol(PrimitiveTypeSymbol(EdePrimitive.INT(), Position()), Position()))
+    assert check_ts('(int, char)', TupleTypeSymbol([PrimitiveTypeSymbol(EdePrimitive.INT(), Position()), PrimitiveTypeSymbol(EdePrimitive.CHAR(), Position())], Position()))
     assert check_ts('[]', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('[int}', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_ts('(int)', ErrorType.PARSING_UNEXPECTED_TOKEN)

@@ -17,6 +17,14 @@
                     "is_male": {
                         "repr": "bool",
                         "node_type": "TYPE_SYMBOL"
+                    },
+                    "children_names": {
+                        "repr": "[string]",
+                        "node_type": "TYPE_SYMBOL"
+                    },
+                    "bday": {
+                        "repr": "(string,int,int)",
+                        "node_type": "TYPE_SYMBOL"
                     }
                 },
                 "node_type": "DEF"
@@ -144,6 +152,48 @@
                         "type": "INTEGER",
                         "value": 22,
                         "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    },
+                    "children_names": {
+                        "elements": [
+                            {
+                                "type": "STRING",
+                                "value": "Elijah",
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            {
+                                "type": "STRING",
+                                "value": "Klaus",
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            }
+                        ],
+                        "expr_type": "ARRAY",
+                        "node_type": "EXPR"
+                    },
+                    "bday": {
+                        "elements": [
+                            {
+                                "type": "STRING",
+                                "value": "Dec",
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            {
+                                "type": "INTEGER",
+                                "value": 13,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            {
+                                "type": "INTEGER",
+                                "value": 1998,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            }
+                        ],
+                        "expr_type": "TUPLE",
                         "node_type": "EXPR"
                     }
                 },

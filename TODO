@@ -4,6 +4,7 @@ Todo:
   ✔ make to_json have the __type__ be the str reprentatoin of the node/expr/stmt type @done(21-10-03 12:54)
   ✘ make Result a base class and add error as a func @cancelled(21-10-03 22:49)
   ✔ make all statements return unit but expr stmt can still print value @done(21-10-04 20:56)
+  ☐ turn Unions to |
   ☐ review testing
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string
@@ -12,7 +13,8 @@ Features To Implement:
   ✔ statement blocks @done(21-10-04 00:09)
   ✔ if else statements @done(21-10-04 01:37)
     ✔ to solve the dangling else problem, just attach the else to the closest if @done(21-10-04 01:37)
-  ✔ arrays @done(21-10-05 04:25)
+  ☐ arrays
+    ☐ handle empty array. this can either be through using a default keyword that take a type or creating an any type and cast func for types
   ✔ tuples @done(21-10-05 04:25)
   ✔ objects @done(21-10-05 04:25)
   ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`
