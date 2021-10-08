@@ -102,56 +102,60 @@ def parse_type_symbol(reader: TokenReader) -> Result[TypeSymbol]:
     '''Parse an type symbol'''
 
     position = reader.get_position()
+    
+    match reader.peek().type:
+        case TokenType.IDENTIFIER:
+            match reader.read().value:
+                case "unit": return Success(PrimitiveTypeSymbol(EdePrimitive.UNIT(), position))
+                case "int": return Success(PrimitiveTypeSymbol(EdePrimitive.INT(), position))
+                case "string": return Success(PrimitiveTypeSymbol(EdePrimitive.STRING(), position))
+                case "char": return Success(PrimitiveTypeSymbol(EdePrimitive.CHAR(), position))
+                case "bool": return Success(PrimitiveTypeSymbol(EdePrimitive.BOOL(), position))
+                case id: return Success(NameTypeSymbol(id, position))
+        case TokenType.SYM_LEFT_SBRACKET: # Array Type Symbol
+            reader.read() # Consume left square bracket
 
-    # TODO: convert to match
-    if reader.peek_read(TokenType.IDENTIFIER) is not None:
-        match reader.prev().value:
-            case "unit": return Success(PrimitiveTypeSymbol(EdePrimitive.UNIT(), position))
-            case "int": return Success(PrimitiveTypeSymbol(EdePrimitive.INT(), position))
-            case "string": return Success(PrimitiveTypeSymbol(EdePrimitive.STRING(), position))
-            case "char": return Success(PrimitiveTypeSymbol(EdePrimitive.CHAR(), position))
-            case "bool": return Success(PrimitiveTypeSymbol(EdePrimitive.BOOL(), position))
-            case id: return Success(NameTypeSymbol(id, position))
-    elif reader.peek_read(TokenType.SYM_LEFT_SBRACKET) is not None: # Array Type Symbol
-        # Get inner type symbol
-        inner_type_symbol = parse_type_symbol(reader)
-        if inner_type_symbol.is_error():
-            return inner_type_symbol
+            # Get inner type symbol
+            inner_type_symbol = parse_type_symbol(reader)
+            if inner_type_symbol.is_error():
+                return inner_type_symbol
 
-        # Read right bracket
-        if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
-            return Success(ArrayTypeSymbol(inner_type_symbol.get(), position))
+            # Read right bracket
+            if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
+                return Success(ArrayTypeSymbol(inner_type_symbol.get(), position))
 
-        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
-    elif reader.peek_read(TokenType.SYM_LPAREN) is not None: # Tuple Type Symbol
-        # Get inner type symbols
-        type_symbols : List[TypeSymbol] = []
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
+        case TokenType.SYM_LPAREN: # Tuple Type Symbol
+            reader.read() # Consume left parenthesis
 
-        while True:
-            type_symbol = parse_type_symbol(reader)
-            if type_symbol.is_error():
-                return type_symbol
+            # Get inner type symbols
+            type_symbols : List[TypeSymbol] = []
 
-            type_symbols.append(type_symbol.get())
+            while True:
+                type_symbol = parse_type_symbol(reader)
+                if type_symbol.is_error():
+                    return type_symbol
 
-            # Try to read a comma
-            if reader.peek_read(TokenType.SYM_COMMA) is None:
-                break
+                type_symbols.append(type_symbol.get())
 
-        # Ensure there are at least two inner type symbols
-        if len(type_symbols) == 1:
-            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COMMA])
+                # Try to read a comma
+                if reader.peek_read(TokenType.SYM_COMMA) is None:
+                    break
 
-        # Read right parenthesis
-        if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-            return Success(TupleTypeSymbol(type_symbols, position))
+            # Ensure there are at least two inner type symbols
+            if len(type_symbols) == 1:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COMMA])
 
-        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
+            # Read right parenthesis
+            if reader.peek_read(TokenType.SYM_RPAREN) is not None:
+                return Success(TupleTypeSymbol(type_symbols, position))
 
-    return ParseError.UnexpectedToken(reader.peek(), [
-        TokenType.IDENTIFIER,
-        TokenType.SYM_LEFT_SBRACKET,
-        TokenType.SYM_LPAREN]) 
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])     
+        case _:
+            return ParseError.UnexpectedToken(reader.peek(), [
+                TokenType.IDENTIFIER,
+                TokenType.SYM_LEFT_SBRACKET,
+                TokenType.SYM_LPAREN]) 
 
 def parse_obj_init_expr(reader: TokenReader) -> Result[Expression]:
     '''Parse object initializer expression'''
@@ -206,87 +210,92 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
 
     position = reader.get_position()
 
-    # TODO: Convert to match expression
-    if reader.peek_read(TokenType.INTEGER) is not None:
-        return Success(IntLiteral(position, cast(int, reader.prev().value)))
-    elif reader.peek_read(TokenType.STRING) is not None:
-        return Success(StringLiteral(position, cast(str, reader.prev().value)))
-    elif reader.peek_read(TokenType.CHAR) is not None:
-        return Success(CharLiteral(position, cast(char, reader.prev().value)))
-    elif reader.peek_read(TokenType.KW_TRUE) is not None:
-        return Success(BoolLiteral(position, True))
-    elif reader.peek_read(TokenType.KW_FALSE) is not None:
-        return Success(BoolLiteral(position, False))
-    elif reader.peek_read(TokenType.IDENTIFIER) is not None:
-        if reader.peek().type == TokenType.SYM_LEFT_CBRACKET: # Object Initializer Expression
-            reader.unread()
-            return parse_obj_init_expr(reader)
+    match reader.peek().type:
+        case TokenType.INTEGER: return Success(IntLiteral(position, cast(int, reader.read().value)))
+        case TokenType.STRING: return Success(StringLiteral(position, cast(str, reader.read().value)))
+        case TokenType.CHAR: return Success(CharLiteral(position, cast(char, reader.read().value)))
+        case TokenType.KW_TRUE:
+            reader.read()
+            return Success(BoolLiteral(position, True))
+        case TokenType.KW_FALSE:
+            reader.read()
+            return Success(BoolLiteral(position, False))
+        case TokenType.IDENTIFIER:
+            id = cast(str, reader.read().value)
+            
+            if reader.peek().type == TokenType.SYM_LEFT_CBRACKET: # Object Initializer Expression
+                reader.unread()
+                return parse_obj_init_expr(reader)
 
-        return Success(IdentifierExpr(position, cast(str, reader.prev().value)))
-    elif reader.peek_read(TokenType.SYM_LEFT_SBRACKET) is not None: # Array
-        # Get inner exprs
-        exprs : List[Expression] = []
+            return Success(IdentifierExpr(position, id))
+        case TokenType.SYM_LEFT_SBRACKET: # Array
+            reader.read() # Consume left square brack
 
-        while True:
-            expr = parse_expr(reader)
-            if expr.is_error():
-                return expr
+            # Get inner exprs
+            exprs : List[Expression] = []
 
-            exprs.append(expr.get())
+            while True:
+                expr = parse_expr(reader)
+                if expr.is_error():
+                    return expr
 
-            # Try to read a comma
-            if reader.peek_read(TokenType.SYM_COMMA) is None:
-                break
+                exprs.append(expr.get())
 
-        # Read right bracket
-        if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
-            return Success(ArrayExpr(exprs, position))
+                # Try to read a comma
+                if reader.peek_read(TokenType.SYM_COMMA) is None:
+                    break
 
-        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
-    elif reader.peek_read(TokenType.SYM_LPAREN) is not None:
-        # Unit Literal
-        if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-            return Success(UnitLiteral(position))
+            # Read right bracket
+            if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
+                return Success(ArrayExpr(exprs, position))
 
-        initial_expr = parse_expr(reader)
-        if initial_expr.is_error():
-            return initial_expr
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
+        case TokenType.SYM_LPAREN:
+            reader.read() # Consume left parenthesis
 
-        # Parenthesized expression
-        if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-            return initial_expr
-        elif reader.peek_read(TokenType.SYM_COMMA) is None:
-            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COMMA])
+            # Unit Literal
+            if reader.peek_read(TokenType.SYM_RPAREN) is not None:
+                return Success(UnitLiteral(position))
 
-        # Tuple
-        exprs : List[Expression] = [initial_expr.get()]
+            initial_expr = parse_expr(reader)
+            if initial_expr.is_error():
+                return initial_expr
 
-        while True:
-            expr = parse_expr(reader)
-            if expr.is_error():
-                return expr
+            # Parenthesized expression
+            if reader.peek_read(TokenType.SYM_RPAREN) is not None:
+                return initial_expr
+            elif reader.peek_read(TokenType.SYM_COMMA) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COMMA])
 
-            exprs.append(expr.get())
+            # Tuple
+            exprs : List[Expression] = [initial_expr.get()]
 
-            # Try to read a comma
-            if reader.peek_read(TokenType.SYM_COMMA) is None:
-                break
+            while True:
+                expr = parse_expr(reader)
+                if expr.is_error():
+                    return expr
 
-        # Read right parenthesis
-        if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-            return Success(TupleExpr(exprs, position))
+                exprs.append(expr.get())
 
-        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])      
-    
-    return ParseError.UnexpectedToken(reader.peek(), [
-        TokenType.INTEGER,
-        TokenType.STRING,
-        TokenType.CHAR,
-        TokenType.IDENTIFIER,
-        TokenType.KW_TRUE,
-        TokenType.KW_FALSE,
-        TokenType.SYM_LEFT_SBRACKET,
-        TokenType.SYM_LPAREN]) 
+                # Try to read a comma
+                if reader.peek_read(TokenType.SYM_COMMA) is None:
+                    break
+
+            # Read right parenthesis
+            if reader.peek_read(TokenType.SYM_RPAREN) is not None:
+                return Success(TupleExpr(exprs, position))
+
+            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])
+        case _:
+            return ParseError.UnexpectedToken(reader.peek(), [
+                TokenType.INTEGER,
+                TokenType.STRING,
+                TokenType.CHAR,
+                TokenType.IDENTIFIER,
+                TokenType.KW_TRUE,
+                TokenType.KW_FALSE,
+                TokenType.SYM_LEFT_SBRACKET,
+                TokenType.SYM_LPAREN]) 
 
 def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expression]:
     '''Parse an expression'''
@@ -309,21 +318,19 @@ def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expressio
         if rhs.is_error():
             return rhs
 
-        # TODO: use match instead
-        if op == OperatorType.ADD:
-            expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.ADD)
-        elif op == OperatorType.SUB:
-            expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.SUB)
-        elif op == OperatorType.MUL:
-            expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.MUL)
-        elif op == OperatorType.DIV:
-            expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.DIV)
-        elif op == OperatorType.ASSIGN:
-            # Ensrue that assignments have ids as their LHS
-            if expr.get_expr_type() != ExprType.ID:
-                return ParseError.InvalidOperator(op, op_tok.position)
+        match op:
+            case OperatorType.ADD: expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.ADD)
+            case OperatorType.SUB: expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.SUB)
+            case OperatorType.MUL: expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.MUL)
+            case OperatorType.DIV: expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.DIV)
+            case OperatorType.ASSIGN:
+                # Ensrue that assignments have ids as their LHS
+                if expr.get_expr_type() != ExprType.ID:
+                    return ParseError.InvalidOperator(op, op_tok.position)
 
-            expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.ASSIGN)
+                expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.ASSIGN)
+            case _:
+                raise Exception("Case not handled")
 
     return Success(expr)
 
@@ -376,54 +383,56 @@ def parse_definition(reader: TokenReader) -> Result[Definition]:
     if reader.peek_read(TokenType.SYM_EQUALS) is None:
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_EQUALS])
 
-    # TODO: pattern match
-    if reader.peek_read(TokenType.KW_OBJECT) is not None:
-        if reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is None:
-            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_LEFT_CBRACKET])
+    match reader.peek().type:
+        case TokenType.KW_OBJECT:
+            reader.read() # Consume keyword
+            
+            if reader.peek_read(TokenType.SYM_LEFT_CBRACKET) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_LEFT_CBRACKET])
 
-        # Get members
-        members : Dict[Positioned[str], TypeSymbol] = {}
+            # Get members
+            members : Dict[Positioned[str], TypeSymbol] = {}
 
-        while True:
-            # Read member id
-            if reader.peek_read(TokenType.IDENTIFIER) is None:
-                return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+            while True:
+                # Read member id
+                if reader.peek_read(TokenType.IDENTIFIER) is None:
+                    return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
 
-            mem_name = Positioned[str](reader.prev().value, reader.prev().position)
+                mem_name = Positioned[str](reader.prev().value, reader.prev().position)
 
-            # Ensure there are no duplicate names
-            if mem_name.value in members:
-                return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
+                # Ensure there are no duplicate names
+                if mem_name.value in members:
+                    return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
 
-            # Try to read an equals
-            if reader.peek_read(TokenType.SYM_COLON) is None:
-                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
+                # Try to read an equals
+                if reader.peek_read(TokenType.SYM_COLON) is None:
+                    return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
 
-            # Try parse member expression
-            type_sym = parse_type_symbol(reader)
-            if type_sym.is_error():
-                return type_sym.error()
+                # Try parse member expression
+                type_sym = parse_type_symbol(reader)
+                if type_sym.is_error():
+                    return type_sym.error()
 
-            members[mem_name] = type_sym.get()
+                members[mem_name] = type_sym.get()
 
-            # Try to read a comma
-            if reader.peek_read(TokenType.SYM_COMMA) is None:
-                break
+                # Try to read a comma
+                if reader.peek_read(TokenType.SYM_COMMA) is None:
+                    break
 
-        # Read right curly bracket
-        if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is None:
-            return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
+            # Read right curly bracket
+            if reader.peek_read(TokenType.SYM_RIGHT_CBRACKET) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
 
-        return Success(ObjDef(def_id, members, position))
-    elif reader.peek_read(TokenType.KW_ENUM) is not None:
-        raise Exception("Not Implemented")
-    elif reader.peek_read(TokenType.KW_FUNC) is not None:
-        raise Exception("Not Implemented")
-
-    return ParseError.UnexpectedToken(reader.peek(), [
-        TokenType.KW_OBJECT,
-        TokenType.KW_FUNC,
-        TokenType.KW_ENUM])     
+            return Success(ObjDef(def_id, members, position))
+        case TokenType.KW_ENUM:
+            raise Exception("Not Implemented")
+        case TokenType.KW_FUNC:
+            raise Exception("Not Implemented")
+        case _:
+            return ParseError.UnexpectedToken(reader.peek(), [
+                TokenType.KW_OBJECT,
+                TokenType.KW_FUNC,
+                TokenType.KW_ENUM])
 
 def parse_block(reader: TokenReader) -> Result[Statement]:
     '''Parse block'''

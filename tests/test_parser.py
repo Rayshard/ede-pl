@@ -15,7 +15,7 @@ def get_token_reader(text: str) -> TokenReader:
 
 def check(value: Union[str, Result[Node]], expected: Union[Node, ErrorType]) -> bool:
     res = parse_stmt(get_token_reader(value)) if isinstance(value, str) else cast(Result[Node], value)
-
+    print(res)
     if res.is_success():
         assert isinstance(expected, Node)
         print(JsonVisitor.visit(expected))
