@@ -110,7 +110,7 @@
                         "node_type": "EXPR"
                     }
                 ],
-                "expr_type": "ARRAY",
+                "expr_type": "ARRAY_INIT",
                 "node_type": "STMT",
                 "stmt_type": "EXPR"
             },
@@ -141,7 +141,7 @@
                         "node_type": "EXPR"
                     }
                 ],
-                "expr_type": "TUPLE",
+                "expr_type": "TUPLE_INIT",
                 "node_type": "STMT",
                 "stmt_type": "EXPR"
             },
@@ -169,7 +169,7 @@
                                 "node_type": "EXPR"
                             }
                         ],
-                        "expr_type": "ARRAY",
+                        "expr_type": "ARRAY_INIT",
                         "node_type": "EXPR"
                     },
                     "bday": {
@@ -193,7 +193,7 @@
                                 "node_type": "EXPR"
                             }
                         ],
-                        "expr_type": "TUPLE",
+                        "expr_type": "TUPLE_INIT",
                         "node_type": "EXPR"
                     }
                 },
@@ -203,59 +203,25 @@
             },
             {
                 "id": "my_array",
-                "type_symbol": "[[int]]",
+                "type_symbol": null,
                 "expr": {
-                    "elements": [
-                        {
-                            "elements": [
-                                {
-                                    "type": "INTEGER",
-                                    "value": 1,
-                                    "expr_type": "LITERAL",
-                                    "node_type": "EXPR"
-                                },
-                                {
-                                    "type": "INTEGER",
-                                    "value": 2,
-                                    "expr_type": "LITERAL",
-                                    "node_type": "EXPR"
-                                },
-                                {
-                                    "type": "INTEGER",
-                                    "value": 3,
-                                    "expr_type": "LITERAL",
-                                    "node_type": "EXPR"
-                                }
-                            ],
-                            "expr_type": "ARRAY",
-                            "node_type": "EXPR"
-                        },
-                        {
-                            "elements": [
-                                {
-                                    "type": "INTEGER",
-                                    "value": 4,
-                                    "expr_type": "LITERAL",
-                                    "node_type": "EXPR"
-                                },
-                                {
-                                    "type": "INTEGER",
-                                    "value": 5,
-                                    "expr_type": "LITERAL",
-                                    "node_type": "EXPR"
-                                },
-                                {
-                                    "type": "INTEGER",
-                                    "value": 6,
-                                    "expr_type": "LITERAL",
-                                    "node_type": "EXPR"
-                                }
-                            ],
-                            "expr_type": "ARRAY",
-                            "node_type": "EXPR"
-                        }
-                    ],
-                    "expr_type": "ARRAY",
+                    "type": {
+                        "repr": "[[int]]",
+                        "node_type": "TYPE_SYMBOL"
+                    },
+                    "expr_type": "DEFAULT",
+                    "node_type": "EXPR"
+                },
+                "stmt_type": "VAR_DECL",
+                "node_type": "STMT"
+            },
+            {
+                "id": "var",
+                "type_symbol": "string",
+                "expr": {
+                    "type": "STRING",
+                    "value": "hello",
+                    "expr_type": "LITERAL",
                     "node_type": "EXPR"
                 },
                 "stmt_type": "VAR_DECL",

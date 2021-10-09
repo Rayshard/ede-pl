@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import Dict, List, Optional, cast
 from ede_ast.ede_definition import Definition, ObjDef
-from ede_ast.ede_expr import ArrayExpr, ExprType, Expression, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr, BinopType
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, ExprType, Expression, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
@@ -247,7 +247,7 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
 
             # Read right bracket
             if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
-                return Success(ArrayExpr(exprs, position))
+                return Success(ArrayInitExpr(exprs, position))
 
             return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
         case TokenType.SYM_LPAREN:
@@ -283,9 +283,26 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
 
             # Read right parenthesis
             if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-                return Success(TupleExpr(exprs, position))
+                return Success(TupleInitExpr(exprs, position))
 
             return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])
+        case TokenType.KW_DEFAULT:
+            reader.read()
+
+            # Read open parenthesis
+            if reader.peek_read(TokenType.SYM_LPAREN) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_LPAREN])
+
+            # Parse type symbol
+            type_symbol = parse_type_symbol(reader)
+            if type_symbol.is_error():
+                return type_symbol.error()
+
+            # Read closing parenthesis
+            if reader.peek_read(TokenType.SYM_RPAREN) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])
+
+            return Success(DefaultExpr(type_symbol.get()))
         case _:
             return ParseError.UnexpectedToken(reader.peek(), [
                 TokenType.INTEGER,

@@ -17,4 +17,5 @@ def Person = object {
 
 Person { age = 22, children_names = ["Elijah", "Klaus"], bday = ("Dec", 13, 1998) };
 
-let my_array : [[int]] = [[1, 2, 3], [4, 5, 6]];
+let my_array = default([[int]]);
+let var : string = "hello";

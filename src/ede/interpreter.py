@@ -47,6 +47,7 @@ class ObjectValue(NamedTuple):
         return self.name + ' { ' + f"{', '.join([name + ' = ' + str(value) for name, value in self.members.items()])}" + ' }'
 
 ExecValueTypes = int | str | bool | char | unit | ArrayValue | TupleValue | ObjectValue | ExecException
+
 class ExecValue:
     '''Representation of the possible values return on execution of an AST node'''
 
@@ -105,7 +106,7 @@ class ExecValue:
 
     def to_exception(self) -> ExecException:
         return cast(ExecException, self.__to(ExecException))
-
+ 
     @staticmethod
     def UNIT() -> 'ExecValue':
         return ExecValue(unit())

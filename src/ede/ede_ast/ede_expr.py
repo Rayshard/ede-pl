@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
+from ede_ast.ede_type_symbol import TypeSymbol
 
 from ede_ast.ede_typesystem import EdeType
 from .ede_ast import Node, NodeType
@@ -13,9 +14,10 @@ class ExprType(Enum):
     BINOP = auto()
     UNOP = auto()
     ID = auto()
-    ARRAY = auto()
-    TUPLE = auto()
+    ARRAY_INIT = auto()
+    TUPLE_INIT = auto()
     OBJ_INIT = auto()
+    DEFAULT = auto()
 
 class Expression(Node):
     '''AST expression node'''
@@ -74,29 +76,41 @@ class BinopExpr(Expression):
     def get_expr_type(self) -> ExprType:
         return ExprType.BINOP
 
-class ArrayExpr(Expression):
-    '''AST array expression node'''
+class ArrayInitExpr(Expression):
+    '''AST array initializer expression node'''
 
     def __init__(self, exprs: List[Expression], pos: Position) -> None:
-        '''Creates an AST array expression node'''
+        '''Creates an AST array initializer expression node'''
 
         super().__init__(pos)
         self.exprs = exprs
 
     def get_expr_type(self) -> ExprType:
-        return ExprType.ARRAY
+        return ExprType.ARRAY_INIT
 
-class TupleExpr(Expression):
-    '''AST tuple expression node'''
+class TupleInitExpr(Expression):
+    '''AST tuple initializer expression node'''
 
     def __init__(self, exprs: List[Expression], pos: Position) -> None:
-        '''Creates an AST tuple expression node'''
+        '''Creates an AST tuple initializer expression node'''
 
         super().__init__(pos)
         self.exprs = exprs
 
     def get_expr_type(self) -> ExprType:
-        return ExprType.TUPLE
+        return ExprType.TUPLE_INIT
+
+class DefaultExpr(Expression):
+    '''AST default expression node'''
+
+    def __init__(self, type_symbol: TypeSymbol) -> None:
+        '''Creates an AST default expression node'''
+
+        super().__init__(type_symbol.position)
+        self.type_symbol = type_symbol
+
+    def get_expr_type(self) -> ExprType:
+        return ExprType.DEFAULT
 
 class ObjInitExpr(Expression):
     '''AST object initializer expression node'''

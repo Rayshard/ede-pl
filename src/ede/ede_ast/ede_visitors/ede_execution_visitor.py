@@ -1,13 +1,13 @@
-from typing import Any, Callable, Dict, Type, cast
+from typing import Any, Callable, Dict, Optional, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_definition import ObjDef
-from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr, BinopType
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
-from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeObject, EdePrimitive, TCContext, TSPrimitiveType
+from ede_ast.ede_type_symbol import TypeSymbol
+from ede_ast.ede_typesystem import EdeObject, EdePrimitive, EdeType, TCContext, TSPrimitiveType
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 from ede_utils import Result, Success
 from interpreter import ArrayValue, ExecContext, ExecEntry, ExecException, ExecValue, ObjectValue, TupleValue
@@ -75,12 +75,19 @@ def visit_Literal(expr: Literal[Any], ctx: ExecContext) -> ExecValue:
     return ExecValue(expr.value)
 
 def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: ExecContext) -> ExecValue:
-    expr_res = ExecutionVisitor.visit(stmt.expr, ctx) if stmt.expr is not None else None
-    if expr_res is not None and expr_res.is_exception():
-        return expr_res
+    expr_res : Optional[ExecValue] = None
+    ede_type = EdeType()
+    
+    if stmt.expr is None:
+        ede_type = cast(TypeSymbol, stmt.type_symbol).get_ede_type()
+        expr_res = ExecValue.get_default_value(ede_type)
+    else:
+        ede_type = stmt.expr.get_ede_type() if stmt.type_symbol is None else stmt.type_symbol.get_ede_type()
+        expr_res = ExecutionVisitor.visit(stmt.expr, ctx)
+        if expr_res.is_exception():
+            return expr_res
 
-    ede_type = stmt.expr.get_ede_type() if stmt.expr is not None else cast(TypeSymbol, stmt.type_symbol).get_ede_type()
-    ctx.add(stmt.id, ExecEntry(CtxEntryType.VARIABLE, ede_type, cast(ExecValue, expr_res), stmt.position), False)
+    ctx.add(stmt.id, ExecEntry(CtxEntryType.VARIABLE, ede_type, expr_res, stmt.position), False)
     return ExecValue.UNIT()
 
 def visit_IfElseStmt(stmt: IfElseStmt, ctx: ExecContext) -> ExecValue:
@@ -95,8 +102,8 @@ def visit_IfElseStmt(stmt: IfElseStmt, ctx: ExecContext) -> ExecValue:
 
     return ExecValue.UNIT()
 
-def visit_TypeSymbol(t: TypeSymbol, ctx: ExecContext) -> ExecValue:
-    assert False, 'Type symbols are not executable'
+def visit_DefaultExpr(d: DefaultExpr, ctx: ExecContext) -> ExecValue:
+    return ExecValue.get_default_value(d.get_ede_type())
 
 def visit_Block(b: Block, ctx: ExecContext) -> ExecValue:
     sub_ctx = ExecContext(ctx)
@@ -108,10 +115,10 @@ def visit_Block(b: Block, ctx: ExecContext) -> ExecValue:
 
     return ExecValue.UNIT()
 
-def visit_ArrayExpr(a: ArrayExpr, ctx: ExecContext) -> ExecValue:
+def visit_ArrayInitExpr(ai: ArrayInitExpr, ctx: ExecContext) -> ExecValue:
     value = ArrayValue([])
 
-    for expr in a.exprs:
+    for expr in ai.exprs:
         expr_value = ExecutionVisitor.visit(expr, ctx)
         if expr_value.is_exception():
             return expr_value
@@ -120,10 +127,10 @@ def visit_ArrayExpr(a: ArrayExpr, ctx: ExecContext) -> ExecValue:
 
     return ExecValue(value)
 
-def visit_TupleExpr(t: TupleExpr, ctx: ExecContext) -> ExecValue:
+def visit_TupleInitExpr(ti: TupleInitExpr, ctx: ExecContext) -> ExecValue:
     value = TupleValue([])
 
-    for expr in t.exprs:
+    for expr in ti.exprs:
         expr_value = ExecutionVisitor.visit(expr, ctx)
         if expr_value.is_exception():
             return expr_value
@@ -179,8 +186,8 @@ VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
     ExprStmt: visit_ExprStmt,
     IdentifierExpr: lambda i, ctx: ctx.get(cast(IdentifierExpr, i).id, cast(IdentifierExpr, i).position, True).get().value,
     Module: visit_Module,
-    ArrayExpr: visit_ArrayExpr,
-    TupleExpr: visit_TupleExpr,
+    ArrayInitExpr: visit_ArrayInitExpr,
+    TupleInitExpr: visit_TupleInitExpr,
     ObjInitExpr: visit_ObjInitExpr,
     ObjDef: visit_ObjDef,
     BinopExpr: visit_BinopExpr,
@@ -191,9 +198,6 @@ VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
     StringLiteral: visit_Literal,
     BoolLiteral: visit_Literal,
     VarDeclStmt: visit_VarDeclStmt,
-    PrimitiveTypeSymbol: visit_TypeSymbol,
-    ArrayTypeSymbol: visit_TypeSymbol,
-    TupleTypeSymbol: visit_TypeSymbol,
-    NameTypeSymbol: visit_TypeSymbol,
-    Block: visit_Block
+    Block: visit_Block,
+    DefaultExpr: visit_DefaultExpr,
 }

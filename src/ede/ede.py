@@ -57,6 +57,7 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
                 exec_res = ExecutionVisitor.visit_in(parse_result.get(), tc_ctx, exec_ctx)
                 if exec_res.is_error():
                     print(exec_res.error().get_output_msg(file_path))
+                    exit(1)
                 
                 print("=================== Execution Context ====================")
                 print(json.dumps(JsonVisitor.visit(exec_ctx), indent=4, sort_keys=False))

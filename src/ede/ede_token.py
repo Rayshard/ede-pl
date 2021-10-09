@@ -35,6 +35,7 @@ class TokenType(IntEnum):
     KW_ENUM = auto()
     KW_FUNC = auto()
     KW_DEF = auto()
+    KW_DEFAULT = auto()
 
 SYMBOL_DICT = {
     '+': TokenType.SYM_PLUS,
@@ -64,6 +65,7 @@ KEYWORD_DICT = {
     "enum": TokenType.KW_ENUM,
     "func": TokenType.KW_FUNC,
     "def": TokenType.KW_DEF,
+    "default": TokenType.KW_DEFAULT,
 }
 
 OPERATOR_DICT = {

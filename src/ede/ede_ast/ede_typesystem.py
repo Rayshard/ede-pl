@@ -1,12 +1,12 @@
-from abc import abstractmethod
 from enum import Enum, auto
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, cast
 from .ede_context import Context, CtxEntry, CtxEntryType
 from ede_utils import Error, ErrorType, Position, Result
 
 class TSType(Enum):
     '''Enumeration for type system base types'''
 
+    ANY = auto()
     PRIMITIVE = auto()
     TUPLE = auto()
     ARRAY = auto()
@@ -31,10 +31,24 @@ class EdeType:
     def is_type(self, type: Type['EdeType']):
         return isinstance(self, type)
 
-    @abstractmethod
+    def castable_to(self, type: 'EdeType') -> bool:
+        '''Determines if the caller is castable to the specified type'''
+        return True
+
     def get_ts_type(self) -> TSType:
         '''Returns the type system type'''
-        pass
+        return TSType.ANY
+
+    def is_concrete(self) -> bool:
+        '''Determines if the caller has an any type as part of its declaration,
+        i.e. the empty array [] is of type [any] so this would return False.'''
+        match self.get_ts_type():
+            case TSType.ANY: return False
+            case TSType.ARRAY: return cast(EdeArray, self).get_inner_type().is_concrete()
+            case _: return True
+            
+    def __str__(self) -> str:
+        return "any"
 
 class EdePrimitive(EdeType):
     '''Ede primitive type'''
@@ -62,6 +76,9 @@ class EdePrimitive(EdeType):
 
     def get_ts_type(self) -> TSType:
         return TSType.PRIMITIVE
+
+    def castable_to(self, type: EdeType) -> bool:
+        return self == type
 
     @staticmethod
     def UNIT() -> 'EdePrimitive':
@@ -98,6 +115,9 @@ class EdeArray(EdeType):
         '''Returns the inner ede type'''
         return self.__inner_type
 
+    def castable_to(self, type: EdeType) -> bool:
+        return type.get_ts_type() == TSType.ARRAY and self.__inner_type.castable_to(cast(EdeArray, type).__inner_type)
+
     def __str__(self) -> str:
         return f"[{str(self.__inner_type)}]"
 
@@ -125,8 +145,22 @@ class EdeTuple(EdeType):
     def get_count(self) -> int:
         return len(self.__inner_types)
 
+    def castable_to(self, type: EdeType) -> bool:
+        if type.get_ts_type() != TSType.TUPLE:
+            return False
+        
+        other = cast(EdeTuple, type)
+        if other.get_count() != self.get_count():
+            return False
+
+        for i, it in enumerate(other.__inner_types):
+            if not self.__inner_types[i].castable_to(it):
+                return False
+
+        return True
+
     def __str__(self) -> str:
-        return f"({','.join([str(inner) for inner in self.__inner_types])})"
+        return f"({', '.join([str(inner) for inner in self.__inner_types])})"
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, EdeTuple) and o.__inner_types == self.__inner_types
@@ -151,6 +185,9 @@ class EdeObject(EdeType):
     def get_members(self) -> Dict[str, EdeType]:
         '''Returns the members of the object'''
         return self.__members
+
+    def castable_to(self, type: EdeType) -> bool:
+        return type == self
 
     def __str__(self) -> str:
         return self.__name + " { " + ', '.join([f"{id}: {type}" for id, type in self.__members.items()]) + " }"
@@ -181,6 +218,10 @@ class TCContext(Context[TCCtxEntry]):
 
 class TypeCheckError:
     '''Wrapper for type checking errors'''
+
+    @staticmethod
+    def CannotDeduceExprType(pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_CANNOT_DEDUCE_EXPR_TYPE, pos, f"Cannot deduce expression type")
 
     @staticmethod
     def InvalidAssignment(ltype: EdeType, rtype: EdeType, pos: Position) -> Error:

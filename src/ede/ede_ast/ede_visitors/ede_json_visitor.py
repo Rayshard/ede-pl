@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_definition import ObjDef
-from ede_ast.ede_expr import ArrayExpr, Expression, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, Expression, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
@@ -76,7 +76,7 @@ def visit_ObjDef(o: ObjDef) -> Any:
 def visit_ExecContext(ec: ExecContext) -> Any:
     return {
         "parent": None if ec.parent is None else visit_ExecContext(cast(ExecContext, ec.parent)),
-        "variables": [f"{id} : {JsonVisitor.visit(entry.ede_type)} = {entry.value} " for id, entry in ec.get_entries(CtxEntryType.VARIABLE).items()],
+        "variables": [f"{id} : {JsonVisitor.visit(entry.ede_type)} = {entry.value}" for id, entry in ec.get_entries(CtxEntryType.VARIABLE).items()],
         "typenames": [JsonVisitor.visit(entry.ede_type) for _, entry in ec.get_entries(CtxEntryType.TYPENAME).items()],
         "functions": []
     }
@@ -86,8 +86,9 @@ VISITORS : Dict[Type[Any], Callable[[Any], Any]]= {
     IdentifierExpr: lambda i: {"id": cast(IdentifierExpr, i).id},
     Module: visit_Module,
     ExecContext: visit_ExecContext,
-    ArrayExpr: lambda a: {"elements": [JsonVisitor.visit(expr) for expr in cast(ArrayExpr, a).exprs]},
-    TupleExpr: lambda t: {"elements": [JsonVisitor.visit(expr) for expr in cast(TupleExpr, t).exprs]},
+    ArrayInitExpr: lambda a: {"elements": [JsonVisitor.visit(expr) for expr in cast(ArrayInitExpr, a).exprs]},
+    TupleInitExpr: lambda t: {"elements": [JsonVisitor.visit(expr) for expr in cast(TupleInitExpr, t).exprs]},
+    DefaultExpr: lambda d: {"type": JsonVisitor.visit(cast(DefaultExpr, d).type_symbol)},
     ObjInitExpr: visit_ObjInitExpr,
     ObjDef: visit_ObjDef,
     IfElseStmt: visit_IfElseStmt,

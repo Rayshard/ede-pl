@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, List, Optional, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_definition import ObjDef
-from ede_ast.ede_expr import ArrayExpr, IdentifierExpr, ObjInitExpr, TupleExpr, BinopExpr, BinopType, TypeCheckError_InvalidBinop
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr, BinopType, TypeCheckError_InvalidBinop
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, LiteralType, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
@@ -139,6 +139,9 @@ def visit_TupleTypeSymbol(t: TupleTypeSymbol, ctx: TCContext) -> TCResult:
         
     return Success(EdeTuple(inners))
 
+def visit_DefaultExpr(d: DefaultExpr, ctx: TCContext) -> TCResult:
+    return TypecheckVisitor.visit(d.type_symbol, ctx)
+
 def visit_Block(b: Block, ctx: TCContext) -> TCResult:
     sub_env = TCContext(ctx)
     last_tc_res: Optional[TCResult] = None
@@ -183,14 +186,11 @@ def visit_IfElseStmt(stmt: IfElseStmt, ctx: TCContext) -> TCResult:
 
     return then_res
 
-def visit_ArrayExpr(a: ArrayExpr, ctx: TCContext) -> TCResult:
-    if len(a.exprs) == 0:
-        # TODO
-        raise Exception('Not handled')
-    else:
+def visit_ArrayInitExpr(ai: ArrayInitExpr, ctx: TCContext) -> TCResult:
+    if len(ai.exprs) != 0:
         last_type: Optional[EdeType] = None
 
-        for expr in a.exprs:
+        for expr in ai.exprs:
             type_res = TypecheckVisitor.visit(expr, ctx)
             if type_res.is_error():
                 return type_res
@@ -202,10 +202,12 @@ def visit_ArrayExpr(a: ArrayExpr, ctx: TCContext) -> TCResult:
 
         return Success(EdeArray(cast(EdeType, last_type)))
 
-def visit_TupleExpr(t: TupleExpr, ctx: TCContext) -> TCResult:
+    return TypeCheckError.CannotDeduceExprType(ai.position)
+
+def visit_TupleInitExpr(ti: TupleInitExpr, ctx: TCContext) -> TCResult:
     inner_types: List[EdeType] = []
 
-    for expr in t.exprs:
+    for expr in ti.exprs:
         inner_type_res = TypecheckVisitor.visit(expr, ctx)
         if inner_type_res.is_error():
             return inner_type_res
@@ -271,8 +273,9 @@ VISITORS : Dict[Type[Any], Callable[[Any, TCContext], TCResult]] = {
     IdentifierExpr: visit_IdentifierExpr,
     ObjDef: visit_ObjDef,
     BinopExpr: visit_BinopExpr,
-    ArrayExpr: visit_ArrayExpr,
-    TupleExpr: visit_TupleExpr,
+    ArrayInitExpr: visit_ArrayInitExpr,
+    TupleInitExpr: visit_TupleInitExpr,
+    DefaultExpr: visit_DefaultExpr,
     ObjInitExpr: visit_ObjInitExpr,
     IfElseStmt: visit_IfElseStmt,
     Module: visit_Module,
