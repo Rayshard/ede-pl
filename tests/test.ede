@@ -19,3 +19,7 @@ Person { age = 22, children_names = ["Elijah", "Klaus"], bday = ("Dec", 13, 1998
 
 let my_array = default([[int]]);
 let var : string = "hello";
+
+def my_func = function (a:int, b:int) -> bool {
+
+}

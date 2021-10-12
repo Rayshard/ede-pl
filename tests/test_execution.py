@@ -3,13 +3,14 @@ from ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
 from ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
 from interpreter import ExecContext, ExecEntry, ExecException, ExecValue
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_utils import Position, char
+from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
+from ede_utils import Position, char, unit
 
 def test_literals():
     tc_ctx = TCContext()
     exec_ctx = ExecContext()
     
+    assert ExecutionVisitor.visit_in(UnitLiteral(Position(1, 1)), tc_ctx, exec_ctx).get() == unit()
     assert ExecutionVisitor.visit_in(IntLiteral(Position(1, 1), 10), tc_ctx, exec_ctx).get() == 10
     assert ExecutionVisitor.visit_in(BoolLiteral(Position(1, 1), True), tc_ctx, exec_ctx).get() == True
     assert ExecutionVisitor.visit_in(CharLiteral(Position(1, 1), char('c')), tc_ctx, exec_ctx).get() == char('c')
@@ -35,6 +36,30 @@ def test_identifier():
     exec_ctx.set('name', ExecEntry(CtxEntryType.VARIABLE, EdePrimitive.CHAR(), ExecValue(char('r')), Position()))
     assert ExecutionVisitor.visit_in(IdentifierExpr(Position(1, 1), 'name'), tc_ctx, exec_ctx).get() == char('r')
     
-def test_declarations():
+def test_var_decl():
     # TODO
+    pass
+
+def test_block():
+    # TODO
+    pass
+
+def test_default_expr():
+    # TODO
+    pass
+
+def test_if_else():
+    # TODO
+    pass
+
+def test_definitions():
+    # TODO: object
+    # TODO: enum
+    # TODO: function
+    pass
+
+def test_init_exprs():
+    # TODO: object init
+    # TODO: array init
+    # TODO: tuple init
     pass

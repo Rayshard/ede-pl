@@ -162,6 +162,7 @@ def parse_obj_init_expr(reader: TokenReader) -> Result[Expression]:
 
     position = reader.get_position()
     
+    # Read object name
     if reader.peek_read(TokenType.IDENTIFIER) is None:
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
 
@@ -181,8 +182,9 @@ def parse_obj_init_expr(reader: TokenReader) -> Result[Expression]:
         mem_name = Positioned[str](reader.prev().value, reader.prev().position)
 
         # Ensure there are no duplicate names
-        if mem_name.value in members:
-            return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
+        for posed_mem_name in members:
+            if posed_mem_name.value == mem_name.value:
+                return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
 
         # Try to read an equals
         if reader.peek_read(TokenType.SYM_EQUALS) is None:
@@ -351,8 +353,8 @@ def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expressio
 
     return Success(expr)
 
-def parse_declaration(reader: TokenReader) -> Result[Statement]:
-    '''Parse a declaration'''
+def parse_var_decl(reader: TokenReader) -> Result[Statement]:
+    '''Parse a variable declaration'''
 
     position = reader.get_position()
 
@@ -510,7 +512,7 @@ def parse_stmt(reader: TokenReader) -> Result[Statement]:
     stmt : Optional[Result[Statement]] = None
 
     if reader.peek().type == TokenType.KW_LET: # Declaration
-        stmt = parse_declaration(reader)
+        stmt = parse_var_decl(reader)
         if stmt.is_error():
             return stmt
     elif reader.peek().type == TokenType.KW_IF: # Declaration

@@ -18,6 +18,9 @@ class unit:
     def __str__(self) -> str:
         return "()"
 
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, unit)
+
 class Position(NamedTuple):
     line: int = 1
     column: int = 1

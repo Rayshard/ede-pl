@@ -1,3 +1,5 @@
+from abc import abstractmethod
+from collections import OrderedDict
 from enum import Enum, auto
 from typing import Dict, List, Optional, Type, cast
 from .ede_context import Context, CtxEntry, CtxEntryType
@@ -11,6 +13,7 @@ class TSType(Enum):
     TUPLE = auto()
     ARRAY = auto()
     OBJECT = auto()
+    FUNCTION = auto()
 
 class TSPrimitiveType(Enum):
     '''Enumeration for type system primitive types'''
@@ -24,31 +27,18 @@ class TSPrimitiveType(Enum):
 class EdeType:
     '''Type system type'''
 
-    def __init__(self) -> None:
-        '''Create a type system type'''
-        pass
-
     def is_type(self, type: Type['EdeType']):
         return isinstance(self, type)
 
+    @abstractmethod
     def castable_to(self, type: 'EdeType') -> bool:
         '''Determines if the caller is castable to the specified type'''
-        return True
+        pass
 
+    @abstractmethod
     def get_ts_type(self) -> TSType:
         '''Returns the type system type'''
-        return TSType.ANY
-
-    def is_concrete(self) -> bool:
-        '''Determines if the caller has an any type as part of its declaration,
-        i.e. the empty array [] is of type [any] so this would return False.'''
-        match self.get_ts_type():
-            case TSType.ANY: return False
-            case TSType.ARRAY: return cast(EdeArray, self).get_inner_type().is_concrete()
-            case _: return True
-            
-    def __str__(self) -> str:
-        return "any"
+        pass
 
 class EdePrimitive(EdeType):
     '''Ede primitive type'''
@@ -195,6 +185,36 @@ class EdeObject(EdeType):
     def __eq__(self, o: object) -> bool:
         return isinstance(o, EdeObject) and o.__name == self.__name and o.__members == self.__members
         
+class EdeFunc(EdeType):
+    '''Ede function type'''
+
+    def __init__(self, args: OrderedDict[str, EdeType], ret: EdeType) -> None:
+        '''Create Ede function type'''
+        
+        super().__init__()
+        self.__args = args
+        self.__ret = ret
+
+    def get_ts_type(self) -> TSType:
+        return TSType.FUNCTION
+
+    def get_args(self) -> OrderedDict[str, EdeType]:
+        '''Returns the arguments of the function'''
+        return self.__args
+
+    def get_ret(self) -> EdeType:
+        '''Returns the return type of the funtion'''
+        return self.__ret
+        
+    def castable_to(self, type: EdeType) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return "(" + ', '.join([f"{id}: {type}" for id, type in self.__args.items()]) + ") -> " + str(self.__ret)
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, EdeFunc) and o.__args == self.__args and o.__ret == self.__ret
+
 class TCCtxEntry(CtxEntry):
     '''Type checking context entry'''
     
