@@ -21,6 +21,7 @@ class Node:
 
         self.position = pos
         self.__ede_type : Optional[EdeType] = None
+        self.__cfg_id = -1
 
     def get_ede_type(self) -> EdeType:
         '''Returns the ede type; node must have already been type checked.'''
@@ -29,7 +30,20 @@ class Node:
         return self.__ede_type
 
     def set_ede_type(self, ede_type: Optional[EdeType]) -> None:
+        '''Sets the ede type'''
         self.__ede_type = ede_type
+
+    def get_cfg_id(self) -> int:
+        '''Returns the CFG id; node must have already had the CFG id set.'''
+
+        assert self.__cfg_id != -1, "Node has not had cfg id set!"
+        return self.__cfg_id
+
+    def set_cfg_id(self, id: int) -> None:
+        "Sets the CFG id for the node; node must not already have one set."
+
+        assert self.__cfg_id == -1, "Node already has a cfg id set!"
+        self.__cfg_id = id
 
     @abstractmethod
     def get_node_type(self) -> NodeType:

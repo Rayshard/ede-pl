@@ -22,3 +22,9 @@ Features To Implement:
     ☐ `loop {}` will be syntax sugar for `while True { }`
   ☐ for loop
   ☐ match stmts and exprs
+
+Programs to Test:
+  ☐ Factorial
+  ☐ Rule 110
+  ☐ Game of Life
+  ☐ Hash Table

@@ -2,6 +2,7 @@
 import os
 from typing import List
 import click, json
+from ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
 import ede_lexer, ede_parser
 from ede_ast.ede_typesystem import TCContext
@@ -13,8 +14,9 @@ from interpreter import ExecContext
 @click.command()
 @click.option('-s', '--simulate', is_flag=True, help="Simulates execution of the input files.")
 @click.option('--ast', is_flag=True, help="Outputs the AST and saves to a file.")
+@click.option('--cfg', is_flag=True, help="Outputs the CFG and saves to a file.")
 @click.argument('file_paths', type=click.Path(exists=True, resolve_path=True), required=True, nargs=-1)
-def cli(simulate: bool, ast: bool, file_paths: List[str]):
+def cli(simulate: bool, ast: bool, cfg: bool, file_paths: List[str]):
     max_file_path_len = max([len(path) for path in file_paths]) + 1
     if simulate:
         click.echo("=" * max_file_path_len) # type: ignore
@@ -50,6 +52,13 @@ def cli(simulate: bool, ast: bool, file_paths: List[str]):
                             #"ast": parse_result.get().to_json()
                             "ast": JsonVisitor.visit(parse_result.get())
                         }, f_ast, indent=4, sort_keys=False)
+
+                if cfg:
+                    with open(file_path + '.dot', 'w+') as f_cfg:
+                        output_cfg = CFG()
+                        CFGVisitor.visit(parse_result.get(), output_cfg, None)
+
+                        f_cfg.write(output_cfg.to_dot())
                         
                 tc_ctx = TCContext()
                 exec_ctx = ExecContext()
