@@ -1,0 +1,46 @@
+{
+    "source": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\rule110.ede",
+    "ast": {
+        "name": "C:\\Users\\raysh\\OneDrive\\Desktop\\ede-pl\\tests\\rule110",
+        "definitions": [],
+        "statments": [
+            {
+                "id": "a",
+                "type_symbol": null,
+                "expr": {
+                    "type": "INTEGER",
+                    "value": 5,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "stmt_type": "VAR_DECL",
+                "node_type": "STMT"
+            },
+            {
+                "id": "b",
+                "type_symbol": null,
+                "expr": {
+                    "type": "INTEGER",
+                    "value": 10,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "stmt_type": "VAR_DECL",
+                "node_type": "STMT"
+            },
+            {
+                "id": "c",
+                "type_symbol": null,
+                "expr": {
+                    "type": "INTEGER",
+                    "value": 3,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "stmt_type": "VAR_DECL",
+                "node_type": "STMT"
+            }
+        ],
+        "node_type": "MODULE"
+    }
+}
