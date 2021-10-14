@@ -2,7 +2,8 @@
 
 requires = [
     "setuptools>=42",
-    "click"
+    "click",
+    "pydot"
 ]
 
 build-backend = "setuptools.build_meta"

@@ -1,3 +1,15 @@
 let a = 5;
 let b = 10;
 let c = 3;
+
+if true {
+    let p = 9;
+} else {
+    let p = 4;
+}
+
+if true {
+    5;
+}
+
+9+3;

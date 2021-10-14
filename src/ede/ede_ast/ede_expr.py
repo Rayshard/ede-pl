@@ -30,6 +30,9 @@ class Expression(Node):
     def get_node_type(self) -> NodeType:
         return NodeType.EXPR
 
+    def __str__(self) -> str:
+        return f"{super().__str__()}|{self.get_expr_type().name}"
+
     @abstractmethod
     def get_expr_type(self) -> ExprType:
         '''Returns the ExpressionType'''

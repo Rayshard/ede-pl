@@ -24,6 +24,9 @@ class Statement(Node):
     def get_node_type(self) -> NodeType:
         return NodeType.STMT
 
+    def __str__(self) -> str:
+        return f"{super().__str__()}|{self.get_stmt_type().name}"
+
     @abstractmethod
     def get_stmt_type(self) -> StmtType:
         '''Returns the StmtType'''
@@ -52,6 +55,9 @@ class ExprStmt(Statement):
 
     def get_stmt_type(self) -> StmtType:
         return StmtType.EXPR
+
+    def __str__(self) -> str:
+        return f"{super().__str__()}|{self.expr.get_expr_type().name}"
 
 class VarDeclStmt(Statement):
     '''AST variable declartion statement node'''

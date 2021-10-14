@@ -39,6 +39,94 @@
                 },
                 "stmt_type": "VAR_DECL",
                 "node_type": "STMT"
+            },
+            {
+                "condition": {
+                    "type": "BOOL",
+                    "value": true,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "then": {
+                    "statements": [
+                        {
+                            "id": "p",
+                            "type_symbol": null,
+                            "expr": {
+                                "type": "INTEGER",
+                                "value": 9,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            "stmt_type": "VAR_DECL",
+                            "node_type": "STMT"
+                        }
+                    ],
+                    "stmt_type": "BLOCK",
+                    "node_type": "STMT"
+                },
+                "else": {
+                    "statements": [
+                        {
+                            "id": "p",
+                            "type_symbol": null,
+                            "expr": {
+                                "type": "INTEGER",
+                                "value": 4,
+                                "expr_type": "LITERAL",
+                                "node_type": "EXPR"
+                            },
+                            "stmt_type": "VAR_DECL",
+                            "node_type": "STMT"
+                        }
+                    ],
+                    "stmt_type": "BLOCK",
+                    "node_type": "STMT"
+                },
+                "stmt_type": "IF_ELSE",
+                "node_type": "STMT"
+            },
+            {
+                "condition": {
+                    "type": "BOOL",
+                    "value": true,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "then": {
+                    "statements": [
+                        {
+                            "type": "INTEGER",
+                            "value": 5,
+                            "expr_type": "LITERAL",
+                            "node_type": "STMT",
+                            "stmt_type": "EXPR"
+                        }
+                    ],
+                    "stmt_type": "BLOCK",
+                    "node_type": "STMT"
+                },
+                "else": null,
+                "stmt_type": "IF_ELSE",
+                "node_type": "STMT"
+            },
+            {
+                "left": {
+                    "type": "INTEGER",
+                    "value": 9,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "right": {
+                    "type": "INTEGER",
+                    "value": 3,
+                    "expr_type": "LITERAL",
+                    "node_type": "EXPR"
+                },
+                "op": "ADD",
+                "expr_type": "BINOP",
+                "node_type": "STMT",
+                "stmt_type": "EXPR"
             }
         ],
         "node_type": "MODULE"

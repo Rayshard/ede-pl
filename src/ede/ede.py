@@ -45,20 +45,22 @@ def cli(simulate: bool, ast: bool, cfg: bool, file_paths: List[str]):
                     print(parse_result.error().get_output_msg(file_path))
                     exit(1)
                 
+                module = parse_result.get()
+
                 if ast:
                     with open(file_path + '.json', 'w+') as f_ast:
                         json.dump({
                             "source": file_path,
                             #"ast": parse_result.get().to_json()
-                            "ast": JsonVisitor.visit(parse_result.get())
+                            "ast": JsonVisitor.visit(module)
                         }, f_ast, indent=4, sort_keys=False)
 
                 if cfg:
                     with open(file_path + '.dot', 'w+') as f_cfg:
                         output_cfg = CFG()
-                        CFGVisitor.visit(parse_result.get(), output_cfg, None)
+                        CFGVisitor.visit(module, output_cfg, None)
 
-                        f_cfg.write(output_cfg.to_dot())
+                        f_cfg.write(output_cfg.to_dot().to_string())
                         
                 tc_ctx = TCContext()
                 exec_ctx = ExecContext()

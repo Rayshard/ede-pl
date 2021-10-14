@@ -35,8 +35,6 @@ class Node:
 
     def get_cfg_id(self) -> int:
         '''Returns the CFG id; node must have already had the CFG id set.'''
-
-        assert self.__cfg_id != -1, "Node has not had cfg id set!"
         return self.__cfg_id
 
     def set_cfg_id(self, id: int) -> None:
@@ -44,6 +42,9 @@ class Node:
 
         assert self.__cfg_id == -1, "Node already has a cfg id set!"
         self.__cfg_id = id
+
+    def __str__(self) -> str:
+        return self.get_node_type().name
 
     @abstractmethod
     def get_node_type(self) -> NodeType:
