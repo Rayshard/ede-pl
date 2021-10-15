@@ -20,6 +20,10 @@ Person { age = 22, children_names = ["Elijah", "Klaus"], bday = ("Dec", 13, 1998
 let my_array = default([[int]]);
 let var : string = "hello";
 
-def my_func = function (a:int, b:int) -> bool {
-
+def are_eq = function (a:int, b:int) -> bool {
+    return true;
 }
+
+def are_eq2 = function (a:int, b:int) -> bool => false;
+
+are_eq(1, 1);

@@ -1,13 +1,14 @@
-from typing import Any, Callable, Dict, List, Optional, Type, cast
+from typing import Any, Callable, Dict, List, Optional, OrderedDict, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_definition import ObjDef
-from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr, BinopType, TypeCheckError_InvalidBinop
+from ede_ast.ede_definition import FuncDef, ObjDef
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, FuncCallExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr, BinopType, TypeCheckError_InvalidBinop
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, LiteralType, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, EdeType, TCContext, TCCtxEntry, TSPrimitiveType, TSType, TypeCheckError
+from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCContext, TCCtxEntry, TSPrimitiveType, TSType, TypeCheckError
+from ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
 from ede_utils import Result, Success
 
 TCResult = Result[EdeType]
@@ -245,6 +246,33 @@ def visit_ObjInitExpr(oi: ObjInitExpr, ctx: TCContext) -> TCResult:
 
     return name_tc_res
 
+def visit_FuncCallExpr(f: FuncCallExpr, ctx: TCContext) -> TCResult:
+    # Check that the func is defined
+    name_tc_res = ctx.get(f.name, f.position, True)
+    if name_tc_res.is_error():
+        print(f.name, ctx.namespace, f.name in ctx.namespace)
+        return name_tc_res.error()
+    elif name_tc_res.get().ede_type.get_ts_type() != TSType.FUNCTION:
+        return TypeCheckError.UndefinedFunction(f.name, f.position)
+
+    func_type = cast(EdeFunc, name_tc_res.get().ede_type)
+    
+    if len(f.args) != func_type.get_arity():
+        return TypeCheckError.InvalidArity(len(f.args), func_type.get_arity(), f.position)
+
+    expected_arg_types = [arg_type for _, arg_type in func_type.get_args().items()]
+
+    for i, expected_arg_type in enumerate(expected_arg_types):
+        given_arg = f.args[i]
+        given_arg_type = TypecheckVisitor.visit(given_arg, ctx)
+        
+        if given_arg_type.is_error():
+            return given_arg_type
+        elif given_arg_type.get() != expected_arg_type:
+            return TypeCheckError.UnexpectedType(given_arg_type.get(), expected_arg_type, given_arg.position)
+
+    return Success(func_type.get_ret())
+
 def visit_ObjDef(o: ObjDef, ctx: TCContext) -> TCResult:
     # Check that the object is not already defined
     name_get_res = ctx.get(o.name, o.position, True)
@@ -268,10 +296,71 @@ def visit_ObjDef(o: ObjDef, ctx: TCContext) -> TCResult:
     ctx.add(o.name, TCCtxEntry(CtxEntryType.TYPENAME, obj_type, o.position), False)
     return Success(obj_type)
 
+def visit_FuncDef(f: FuncDef, ctx: TCContext) -> TCResult:
+    # Check that the funxtion is not already defined
+    name_get_res = ctx.get(f.name, f.position, True)
+    if name_get_res.is_success():
+        return TypeCheckError.IDConflict(f.name, name_get_res.get().pos, f.position)
+         
+    sub_ctx = TCContext(ctx)
+
+    # Typecheck arguments
+    args : OrderedDict[str, EdeType] = OrderedDict()
+
+    for id, type_symbol in f.args.items():
+        if id.value in args:
+            return TypeCheckError.Redefinition(id.value, id.position)
+        
+        id_type_res = TypecheckVisitor.visit(type_symbol, ctx)
+        if id_type_res.is_error():
+            return id_type_res
+        
+        args[id.value] = id_type_res.get()
+        sub_ctx.add(id.value, TCCtxEntry(CtxEntryType.VARIABLE, args[id.value], id.position), False) # Add argument to sub-context
+
+    # Typecheck return type symbol
+    ret_type_res = TypecheckVisitor.visit(f.ret, ctx)
+    if ret_type_res.is_error():
+        return ret_type_res
+
+    func_type = EdeFunc(args, ret_type_res.get())
+
+    # Add definition to sub-context so that recursion is possible
+    sub_ctx.ret_type = func_type.get_ret()
+    sub_ctx.add(f.name, TCCtxEntry(CtxEntryType.FUNCTION, func_type, f.position), False)
+
+    # Typecheck body and check code paths against return type    
+    body_type_res = TypecheckVisitor.visit(f.body, sub_ctx)
+    if body_type_res.is_error():
+        return body_type_res
+
+    body_cfg = CFG()
+    CFGVisitor.visit(f.body, body_cfg, None)
+
+    for terminal in body_cfg.get_terminals():
+        if not isinstance(terminal, ReturnStmt) and func_type.get_ret() != EdePrimitive.UNIT():
+            return TypeCheckError.MissingReturn(terminal.position)
+
+    # Add definition to context
+    ctx.add(f.name, TCCtxEntry(CtxEntryType.FUNCTION, func_type, f.position), False)
+    return Success(func_type)
+
+def visit_Return(r: ReturnStmt, ctx: TCContext) -> TCResult:
+    expr_res = TypecheckVisitor.visit(r.expr, ctx)
+    if expr_res.is_error():
+        return expr_res
+    elif expr_res.get() != ctx.ret_type:
+        return TypeCheckError.UnexpectedType(expr_res.get(), ctx.ret_type, r.expr.position)
+
+    return Success(EdePrimitive.UNIT())
+
 VISITORS : Dict[Type[Any], Callable[[Any, TCContext], TCResult]] = {
     ExprStmt: lambda node, ctx: TypecheckVisitor.visit(cast(ExprStmt, node).expr, ctx),
     IdentifierExpr: visit_IdentifierExpr,
     ObjDef: visit_ObjDef,
+    FuncDef: visit_FuncDef,
+    ReturnStmt: visit_Return,
+    FuncCallExpr: visit_FuncCallExpr,
     BinopExpr: visit_BinopExpr,
     ArrayInitExpr: visit_ArrayInitExpr,
     TupleInitExpr: visit_TupleInitExpr,

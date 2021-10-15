@@ -1,13 +1,14 @@
 from typing import Any, Callable, Dict, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_definition import ObjDef
-from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, Expression, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr
+from ede_ast.ede_definition import FuncDef, ObjDef
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, Expression, FuncCallExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, Statement, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple
+from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple
+from ede_ast.ede_visitors.ede_typecheck_visitor import visit_FuncDef
 from interpreter import ExecContext
 
 class JsonVisitor:
@@ -73,24 +74,41 @@ def visit_ObjDef(o: ObjDef) -> Any:
         "members": {id.value: JsonVisitor.visit(type_symbol) for id, type_symbol in o.members.items()}
     }
 
+def visit_FuncDef(f: FuncDef) -> Any:
+    return {
+        "name": f.name,
+        "args": {id.value: JsonVisitor.visit(type_symbol) for id, type_symbol in f.args.items()},
+        "return": JsonVisitor.visit(f.ret),
+        "body": JsonVisitor.visit(f.body),
+    }
+
+def visit_FuncCallExpr(f: FuncCallExpr) -> Any:
+    return {
+        "name": f.name,
+        "args": {f"arg{i}": JsonVisitor.visit(expr) for i, expr in enumerate(f.args)},
+    }
+
 def visit_ExecContext(ec: ExecContext) -> Any:
     return {
         "parent": None if ec.parent is None else visit_ExecContext(cast(ExecContext, ec.parent)),
         "variables": [f"{id} : {JsonVisitor.visit(entry.ede_type)} = {entry.value}" for id, entry in ec.get_entries(CtxEntryType.VARIABLE).items()],
         "typenames": [JsonVisitor.visit(entry.ede_type) for _, entry in ec.get_entries(CtxEntryType.TYPENAME).items()],
-        "functions": []
+        "functions": {name: JsonVisitor.visit(entry.ede_type) for name, entry in ec.get_entries(CtxEntryType.FUNCTION).items()},
     }
 
 VISITORS : Dict[Type[Any], Callable[[Any], Any]]= {
-    ExprStmt: lambda node: JsonVisitor.visit(cast(ExprStmt, node).expr),
+    ExprStmt: lambda e: JsonVisitor.visit(cast(ExprStmt, e).expr),
+    ReturnStmt: lambda r: JsonVisitor.visit(cast(ReturnStmt, r).expr),
     IdentifierExpr: lambda i: {"id": cast(IdentifierExpr, i).id},
     Module: visit_Module,
     ExecContext: visit_ExecContext,
     ArrayInitExpr: lambda a: {"elements": [JsonVisitor.visit(expr) for expr in cast(ArrayInitExpr, a).exprs]},
     TupleInitExpr: lambda t: {"elements": [JsonVisitor.visit(expr) for expr in cast(TupleInitExpr, t).exprs]},
     DefaultExpr: lambda d: {"type": JsonVisitor.visit(cast(DefaultExpr, d).type_symbol)},
+    FuncCallExpr: visit_FuncCallExpr,
     ObjInitExpr: visit_ObjInitExpr,
     ObjDef: visit_ObjDef,
+    FuncDef: visit_FuncDef,
     IfElseStmt: visit_IfElseStmt,
     BinopExpr: visit_BinopExpr,
     UnitLiteral: visit_Literal,
@@ -108,4 +126,5 @@ VISITORS : Dict[Type[Any], Callable[[Any], Any]]= {
     EdeArray: lambda a: str(a),
     EdeTuple: lambda t: str(t),
     EdeObject: lambda o: str(o),
+    EdeFunc: lambda f: str(f),
 }

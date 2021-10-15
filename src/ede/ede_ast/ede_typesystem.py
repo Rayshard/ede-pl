@@ -205,7 +205,11 @@ class EdeFunc(EdeType):
     def get_ret(self) -> EdeType:
         '''Returns the return type of the funtion'''
         return self.__ret
-        
+    
+    def get_arity(self) -> int:
+        '''Returns the arity of the funtion'''
+        return len(self.__args)
+
     def castable_to(self, type: EdeType) -> bool:
         return False
 
@@ -225,8 +229,10 @@ class TCCtxEntry(CtxEntry):
         self.ede_type = ede_type
 
 class TCContext(Context[TCCtxEntry]):
-    def __init__(self, parent: Optional['Context[TCCtxEntry]'] = None) -> None:
+    def __init__(self, parent: Optional['TCContext'] = None) -> None:
         super().__init__(parent=parent)
+
+        self.ret_type : EdeType = parent.ret_type if parent is not None else EdePrimitive.UNIT()
 
     def get(self, id: str, pos: Position, check_parent: bool) -> Result[TCCtxEntry]:
         result = super().get(id, pos, check_parent)
@@ -272,6 +278,10 @@ class TypeCheckError:
         return Error(ErrorType.TYPECHECKING_REINIT, pos, f"'{id}' is already initialized")
 
     @staticmethod
+    def MissingReturn(pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_MISSING_RET, pos, f"Not all code paths return a value")
+
+    @staticmethod
     def Redefinition(id: str, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_REDEF, pos, f"'{id}' is already defined")
 
@@ -284,5 +294,13 @@ class TypeCheckError:
         return Error(ErrorType.TYPECHECKING_UNEXPECTED_TYPE, pos, f"Found '{found}' but expected {expected}")
 
     @staticmethod
+    def InvalidArity(found: int, expected: int, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_INVALID_ARITY, pos, f"Found '{found}' args but expected {expected}")
+
+    @staticmethod
     def UndefinedObject(found: str, pos: Position) -> Error:
         return Error(ErrorType.TYPECHECKING_UNDEF_OBJ, pos, f"'{found}' is not a defined object")
+
+    @staticmethod
+    def UndefinedFunction(found: str, pos: Position) -> Error:
+        return Error(ErrorType.TYPECHECKING_UNDEF_FUNC, pos, f"'{found}' is not a defined function")

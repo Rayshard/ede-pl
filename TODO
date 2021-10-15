@@ -5,6 +5,7 @@ Todo:
   ✘ make Result a base class and add error as a func @cancelled(21-10-03 22:49)
   ✔ make all statements return unit but expr stmt can still print value @done(21-10-04 20:56)
   ✔ turn Unions to | @done(21-10-08 17:56)
+  ✔ allow certain parsing to be restricted @done(21-10-15 09:50)
   ☐ review testing
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string
@@ -17,7 +18,9 @@ Features To Implement:
     ✔ handle empty array. this can either be through using a default keyword that take a type or creating an any type and cast func for types @done(21-10-08 22:40)
   ✔ tuples @done(21-10-05 04:25)
   ✔ objects @done(21-10-05 04:25)
-  ☐ functions: `let myfunc : (arg1:int, arg2:int) -> bool = { ... }`
+  ☐ comments
+  ☐ access operator
+  ☐ functions: `def myfunc = function (arg1:int, arg2:int) -> bool { ... }`
   ☐ while statement
     ☐ `loop {}` will be syntax sugar for `while True { }`
   ☐ for loop

@@ -13,6 +13,7 @@ class StmtType(Enum):
     VAR_DECL = auto()
     BLOCK = auto()
     IF_ELSE = auto()
+    RETURN = auto()
     
 class Statement(Node):
     '''AST statement node'''
@@ -88,3 +89,15 @@ class IfElseStmt(Statement):
 
     def get_stmt_type(self) -> StmtType:
         return StmtType.IF_ELSE
+
+class ReturnStmt(Statement):
+    '''AST return statement node'''
+
+    def __init__(self, expr: Expression, pos: Position) -> None:
+        '''Creates an AST return statement node'''
+
+        super().__init__(pos)
+        self.expr = expr
+
+    def get_stmt_type(self) -> StmtType:
+        return StmtType.RETURN

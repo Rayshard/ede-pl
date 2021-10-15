@@ -18,6 +18,7 @@ class ExprType(Enum):
     TUPLE_INIT = auto()
     OBJ_INIT = auto()
     DEFAULT = auto()
+    FUNC_CALL = auto()
 
 class Expression(Node):
     '''AST expression node'''
@@ -114,6 +115,19 @@ class DefaultExpr(Expression):
 
     def get_expr_type(self) -> ExprType:
         return ExprType.DEFAULT
+
+class FuncCallExpr(Expression):
+    '''AST function call expression node'''
+
+    def __init__(self, name: str, args: List[Expression], pos: Position) -> None:
+        '''Creates an AST function call expression node'''
+
+        super().__init__(pos)
+        self.name = name
+        self.args = args
+
+    def get_expr_type(self) -> ExprType:
+        return ExprType.FUNC_CALL
 
 class ObjInitExpr(Expression):
     '''AST object initializer expression node'''

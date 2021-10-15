@@ -25,6 +25,8 @@ class TokenType(IntEnum):
     SYM_RPAREN = auto()
     SYM_COMMA = auto()
     SYM_COLON = auto()
+    SYM_ARROW = auto()
+    SYM_LAMBDA = auto()
     KW_LET = auto()
     KW_IF = auto()
     KW_ELSE = auto()
@@ -36,6 +38,7 @@ class TokenType(IntEnum):
     KW_FUNC = auto()
     KW_DEF = auto()
     KW_DEFAULT = auto()
+    KW_RETURN = auto()
 
 SYMBOL_DICT = {
     '+': TokenType.SYM_PLUS,
@@ -52,6 +55,8 @@ SYMBOL_DICT = {
     ')': TokenType.SYM_RPAREN,
     ',': TokenType.SYM_COMMA,
     ':': TokenType.SYM_COLON,
+    '->': TokenType.SYM_ARROW,
+    '=>': TokenType.SYM_LAMBDA,
 }
 
 KEYWORD_DICT = {
@@ -63,9 +68,10 @@ KEYWORD_DICT = {
     "false": TokenType.KW_FALSE,
     "object": TokenType.KW_OBJECT,
     "enum": TokenType.KW_ENUM,
-    "func": TokenType.KW_FUNC,
+    "function": TokenType.KW_FUNC,
     "def": TokenType.KW_DEF,
     "default": TokenType.KW_DEFAULT,
+    "return": TokenType.KW_RETURN,
 }
 
 OPERATOR_DICT = {

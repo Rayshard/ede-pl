@@ -1,6 +1,7 @@
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
 from ede_ast.ede_literal import UnitLiteral, BoolLiteral, CharLiteral, IntLiteral, StringLiteral
+from ede_ast.ede_stmt import ReturnStmt
 from ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 from ede_utils import Position, char
@@ -27,8 +28,14 @@ def test_identifier():
     ctx = TCContext()
     
     ctx.add('name', TCCtxEntry(CtxEntryType.VARIABLE, EdePrimitive.CHAR(), Position()), True)
-    assert TypecheckVisitor.visit(IdentifierExpr(Position(1, 1), 'name'), ctx).get() == EdePrimitive.CHAR()
+    assert TypecheckVisitor.visit(IdentifierExpr(Position(), 'name'), ctx).get() == EdePrimitive.CHAR()
 
 def test_if_else():
     # TODO
     pass
+
+def test_return():
+    ctx = TCContext()
+    ctx.ret_type = EdePrimitive.INT()
+    
+    assert TypecheckVisitor.visit(ReturnStmt(IntLiteral(Position(), 5), Position()), ctx).get() == EdePrimitive.UNIT()

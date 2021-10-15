@@ -28,6 +28,62 @@
                     }
                 },
                 "node_type": "DEF"
+            },
+            {
+                "name": "are_eq",
+                "args": {
+                    "a": {
+                        "repr": "int",
+                        "node_type": "TYPE_SYMBOL"
+                    },
+                    "b": {
+                        "repr": "int",
+                        "node_type": "TYPE_SYMBOL"
+                    }
+                },
+                "return": {
+                    "repr": "bool",
+                    "node_type": "TYPE_SYMBOL"
+                },
+                "body": {
+                    "statements": [
+                        {
+                            "type": "BOOL",
+                            "value": true,
+                            "expr_type": "LITERAL",
+                            "node_type": "STMT",
+                            "stmt_type": "RETURN"
+                        }
+                    ],
+                    "stmt_type": "BLOCK",
+                    "node_type": "STMT"
+                },
+                "node_type": "DEF"
+            },
+            {
+                "name": "are_eq2",
+                "args": {
+                    "a": {
+                        "repr": "int",
+                        "node_type": "TYPE_SYMBOL"
+                    },
+                    "b": {
+                        "repr": "int",
+                        "node_type": "TYPE_SYMBOL"
+                    }
+                },
+                "return": {
+                    "repr": "bool",
+                    "node_type": "TYPE_SYMBOL"
+                },
+                "body": {
+                    "type": "BOOL",
+                    "value": false,
+                    "expr_type": "LITERAL",
+                    "node_type": "STMT",
+                    "stmt_type": "RETURN"
+                },
+                "node_type": "DEF"
             }
         ],
         "statments": [
@@ -226,6 +282,26 @@
                 },
                 "stmt_type": "VAR_DECL",
                 "node_type": "STMT"
+            },
+            {
+                "name": "are_eq",
+                "args": {
+                    "arg0": {
+                        "type": "INTEGER",
+                        "value": 1,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    },
+                    "arg1": {
+                        "type": "INTEGER",
+                        "value": 1,
+                        "expr_type": "LITERAL",
+                        "node_type": "EXPR"
+                    }
+                },
+                "expr_type": "FUNC_CALL",
+                "node_type": "STMT",
+                "stmt_type": "EXPR"
             }
         ],
         "node_type": "MODULE"

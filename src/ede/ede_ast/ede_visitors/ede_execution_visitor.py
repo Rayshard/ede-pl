@@ -1,7 +1,8 @@
-from typing import Any, Callable, Dict, Optional, Type, cast
+import sys
+from typing import Any, Callable, Dict, Optional, TextIO, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_definition import ObjDef
+from ede_ast.ede_definition import FuncDef, ObjDef
 from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
@@ -18,9 +19,10 @@ class ExecutionVisitor:
     of the node in the given execution context.
     '''
 
+    Output_Stream : TextIO = sys.stdout
+
     @staticmethod
     def visit(node: Node, ctx: ExecContext) -> ExecValue:
-        assert node.get_node_type() is not None # technically this is redunant since get_node_type asserts already
         return VISITORS[type(node)](node, ctx)
 
     @staticmethod
@@ -31,6 +33,10 @@ class ExecutionVisitor:
                 return tc_res.error()
         
         return Success(ExecutionVisitor.visit(node, ctx))
+
+    @staticmethod
+    def output(stuff: Any, new_line: bool = True) -> None:
+        ExecutionVisitor.Output_Stream.write(str(stuff) + '\n' if new_line else '')
 
 def visit_BinopExpr(expr: BinopExpr, ctx: ExecContext) -> ExecValue:
     if expr.op == BinopType.ASSIGN:
@@ -157,9 +163,15 @@ def visit_ObjInitExpr(oi: ObjInitExpr, ctx: ExecContext) -> ExecValue:
     return ExecValue(ObjectValue(oi.name, members))
 
 def visit_ObjDef(o: ObjDef, ctx: ExecContext) -> ExecValue:
-    # technically these don't execute but it'll allow for inspection during debugging
+    # technically these don't execute but it'll allow us to add info to the context
 
     ctx.add(o.name, ExecEntry(CtxEntryType.TYPENAME, o.get_ede_type(), ExecValue.UNIT(), o.position), False)
+    return ExecValue.UNIT()
+
+def visit_FuncDef(f: FuncDef, ctx: ExecContext) -> ExecValue:
+    # technically these don't execute but it'll allow us to add info to the context
+
+    ctx.add(f.name, ExecEntry(CtxEntryType.FUNCTION, f.get_ede_type(), ExecValue(f.body), f.position), False)
     return ExecValue.UNIT()
 
 def visit_Module(m: Module, ctx: ExecContext) -> ExecValue:
@@ -179,7 +191,7 @@ def visit_Module(m: Module, ctx: ExecContext) -> ExecValue:
 
 def visit_ExprStmt(e: ExprStmt, ctx: ExecContext) -> ExecValue:
     value = ExecutionVisitor.visit(e.expr, ctx)
-    print(value)
+    ExecutionVisitor.output(value)
     return ExecValue.UNIT()
 
 VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
@@ -190,6 +202,7 @@ VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
     TupleInitExpr: visit_TupleInitExpr,
     ObjInitExpr: visit_ObjInitExpr,
     ObjDef: visit_ObjDef,
+    FuncDef: visit_FuncDef,
     BinopExpr: visit_BinopExpr,
     IfElseStmt: visit_IfElseStmt,
     UnitLiteral: visit_Literal,

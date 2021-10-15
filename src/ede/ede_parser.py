@@ -1,11 +1,13 @@
 from enum import Enum, auto
-from typing import Dict, List, Optional, cast
-from ede_ast.ede_definition import Definition, ObjDef
-from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, ExprType, Expression, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
+import os
+from typing import Dict, List, NamedTuple, Optional, OrderedDict, Set, cast
+from ede_ast.ede_definition import Definition, FuncDef, ObjDef
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, ExprType, Expression, FuncCallExpr, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
 from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, Statement, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, Statement, StmtType, VarDeclStmt
 from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
 from ede_ast.ede_typesystem import EdePrimitive
+import ede_lexer
 from ede_token import Token, TokenType
 from ede_utils import Error, ErrorType, Position, Positioned, Result, Success, char
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
@@ -52,6 +54,24 @@ class TokenReader:
 
     def is_eof(self) -> bool:
         return self.peek().type == TokenType.EOF
+
+class ParsingMeta(NamedTuple):
+    '''
+    Metadata that is passed around while parsing to
+    change how nodes are parsed.
+    '''
+
+    StmtBlacklist : Set[StmtType] = set()
+    ExprBlacklist : Set[StmtType] = set()
+
+    def is_blacklisted(self, item: StmtType | ExprType) -> bool:
+        match item:
+            case StmtType(): return item in self.StmtBlacklist
+            case ExprType(): return item in self.ExprBlacklist
+            case _: return False
+
+    def is_whitelisted(self, item: StmtType | ExprType) -> bool:
+        return not self.is_blacklisted(item)
 
 class OperatorType(Enum):
     '''Enumeration of operators'''
@@ -184,7 +204,7 @@ def parse_obj_init_expr(reader: TokenReader) -> Result[Expression]:
         # Ensure there are no duplicate names
         for posed_mem_name in members:
             if posed_mem_name.value == mem_name.value:
-                return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
+                return ParseError.DuplicateName(mem_name.value, reader.prev().position)
 
         # Try to read an equals
         if reader.peek_read(TokenType.SYM_EQUALS) is None:
@@ -207,6 +227,25 @@ def parse_obj_init_expr(reader: TokenReader) -> Result[Expression]:
 
     return Success(ObjInitExpr(obj_name, members, position))
 
+def parse_csv_exprs(reader: TokenReader, delim: TokenType = TokenType.SYM_COMMA) -> Result[List[Expression]]:
+    '''Parse Comma Separated Expressions'''
+
+    # Get inner exprs
+    exprs : List[Expression] = []
+
+    while True:
+        expr = parse_expr(reader)
+        if expr.is_error():
+            return expr.error()
+
+        exprs.append(expr.get())
+
+        # Try to read a comma
+        if reader.peek_read(delim) is None:
+            break
+
+    return Success(exprs)
+
 def parse_atom(reader: TokenReader) -> Result[Expression]:
     '''Parse an atom node'''
 
@@ -225,67 +264,55 @@ def parse_atom(reader: TokenReader) -> Result[Expression]:
         case TokenType.IDENTIFIER:
             id = cast(str, reader.read().value)
             
-            if reader.peek().type == TokenType.SYM_LEFT_CBRACKET: # Object Initializer Expression
-                reader.unread()
-                return parse_obj_init_expr(reader)
+            match reader.peek().type:
+                case TokenType.SYM_LEFT_CBRACKET:       # Object Initializer Expression
+                    reader.unread()
+                    return parse_obj_init_expr(reader)
+                case TokenType.SYM_LPAREN:              # Function Call Expression
+                    reader.read() # Read left parenthesis
+                    
+                    # Parse args
+                    exprs_res = parse_csv_exprs(reader)
+                    if exprs_res.is_error():
+                        return exprs_res.error()
 
-            return Success(IdentifierExpr(position, id))
+                    # Read right parenthesis
+                    if reader.peek_read(TokenType.SYM_RPAREN) is None:
+                        ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])
+                        
+                    return Success(FuncCallExpr(id, exprs_res.get(), position))
+                case _:
+                    return Success(IdentifierExpr(position, id))
         case TokenType.SYM_LEFT_SBRACKET: # Array
             reader.read() # Consume left square brack
 
             # Get inner exprs
-            exprs : List[Expression] = []
-
-            while True:
-                expr = parse_expr(reader)
-                if expr.is_error():
-                    return expr
-
-                exprs.append(expr.get())
-
-                # Try to read a comma
-                if reader.peek_read(TokenType.SYM_COMMA) is None:
-                    break
+            exprs = parse_csv_exprs(reader)
+            if exprs.is_error():
+                return exprs.error()
 
             # Read right bracket
             if reader.peek_read(TokenType.SYM_RIGHT_SBRACKET) is not None:
-                return Success(ArrayInitExpr(exprs, position))
+                return Success(ArrayInitExpr(exprs.get(), position))
 
             return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_SBRACKET])
         case TokenType.SYM_LPAREN:
             reader.read() # Consume left parenthesis
 
-            # Unit Literal
-            if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-                return Success(UnitLiteral(position))
-
-            initial_expr = parse_expr(reader)
-            if initial_expr.is_error():
-                return initial_expr
-
-            # Parenthesized expression
-            if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-                return initial_expr
-            elif reader.peek_read(TokenType.SYM_COMMA) is None:
-                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COMMA])
-
-            # Tuple
-            exprs : List[Expression] = [initial_expr.get()]
-
-            while True:
-                expr = parse_expr(reader)
-                if expr.is_error():
-                    return expr
-
-                exprs.append(expr.get())
-
-                # Try to read a comma
-                if reader.peek_read(TokenType.SYM_COMMA) is None:
-                    break
+            final_expr = UnitLiteral(position) # Assume a unit expression will be parsed
+            
+            exprs_res = parse_csv_exprs(reader)
+            if exprs_res.is_error():
+                return exprs_res.error()
+            
+            match exprs_res.get():
+                case []: pass                                               # Unit Literal
+                case [expr]: final_expr = expr                              # Parenthesized Expression
+                case exprs: final_expr = TupleInitExpr(exprs, position)     # Tuple
 
             # Read right parenthesis
             if reader.peek_read(TokenType.SYM_RPAREN) is not None:
-                return Success(TupleInitExpr(exprs, position))
+                return Success(final_expr)
 
             return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])
         case TokenType.KW_DEFAULT:
@@ -386,7 +413,7 @@ def parse_var_decl(reader: TokenReader) -> Result[Statement]:
 
     return Success(VarDeclStmt(position, id, type_symbol, expr))     
 
-def parse_definition(reader: TokenReader) -> Result[Definition]:
+def parse_definition(reader: TokenReader, meta: ParsingMeta) -> Result[Definition]:
     '''Parse a definition'''
 
     position = reader.get_position()
@@ -420,14 +447,14 @@ def parse_definition(reader: TokenReader) -> Result[Definition]:
                 mem_name = Positioned[str](reader.prev().value, reader.prev().position)
 
                 # Ensure there are no duplicate names
-                if mem_name.value in members:
-                    return ParseError.DuplicateMemberName(mem_name.value, reader.prev().position)
+                if mem_name.value in [mem.value for mem in members]:
+                    return ParseError.DuplicateName(mem_name.value, reader.prev().position)
 
-                # Try to read an equals
+                # Try to read an colon
                 if reader.peek_read(TokenType.SYM_COLON) is None:
                     return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
 
-                # Try parse member expression
+                # Try parse member type symbol
                 type_sym = parse_type_symbol(reader)
                 if type_sym.is_error():
                     return type_sym.error()
@@ -446,14 +473,75 @@ def parse_definition(reader: TokenReader) -> Result[Definition]:
         case TokenType.KW_ENUM:
             raise Exception("Not Implemented")
         case TokenType.KW_FUNC:
-            raise Exception("Not Implemented")
+            reader.read() # Consume keyword
+            
+            if reader.peek_read(TokenType.SYM_LPAREN) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_LPAREN])
+
+            # Get args
+            args : OrderedDict[Positioned[str], TypeSymbol] = OrderedDict()
+
+            while True:
+                # Read arg id
+                if reader.peek_read(TokenType.IDENTIFIER) is None:
+                    return ParseError.UnexpectedToken(reader.peek(), [TokenType.IDENTIFIER])
+
+                arg_name = Positioned[str](reader.prev().value, reader.prev().position)
+
+                # Ensure there are no duplicate names
+                if arg_name.value in [arg.value for arg in args]:
+                    return ParseError.DuplicateName(arg_name.value, reader.prev().position)
+
+                # Try to read an colon
+                if reader.peek_read(TokenType.SYM_COLON) is None:
+                    return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_COLON])
+
+                # Try parse arg type symbol
+                type_sym = parse_type_symbol(reader)
+                if type_sym.is_error():
+                    return type_sym.error()
+
+                args[arg_name] = type_sym.get()
+
+                # Try to read a comma
+                if reader.peek_read(TokenType.SYM_COMMA) is None:
+                    break
+
+            # Read right parenthesis
+            if reader.peek_read(TokenType.SYM_RPAREN) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RPAREN])
+
+            # Read arrow
+            if reader.peek_read(TokenType.SYM_ARROW) is None:
+                return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_ARROW])
+
+            # Try parse return type symbol
+            ret_type_sym = parse_type_symbol(reader)
+            if ret_type_sym.is_error():
+                return ret_type_sym.error()
+
+            # Parse body
+            body = parse_block(reader, meta)
+            if body.is_error():
+                if reader.peek_read(TokenType.SYM_LAMBDA) is not None:
+                    expr = parse_expr(reader)
+                    if expr.is_error():
+                        return expr.error()
+                    elif reader.peek_read(TokenType.SYM_SEMICOLON) is None: # Try to read a semicolon
+                        return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_SEMICOLON])
+
+                    body = Success(ReturnStmt(expr.get(), expr.get().position))
+                else:
+                    return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_LEFT_CBRACKET, TokenType.SYM_LAMBDA])
+
+            return Success(FuncDef(def_id, args, ret_type_sym.get(), body.get(), position))
         case _:
             return ParseError.UnexpectedToken(reader.peek(), [
                 TokenType.KW_OBJECT,
                 TokenType.KW_FUNC,
                 TokenType.KW_ENUM])
 
-def parse_block(reader: TokenReader) -> Result[Statement]:
+def parse_block(reader: TokenReader, meta: ParsingMeta) -> Result[Statement]:
     '''Parse block'''
 
     position = reader.get_position()
@@ -470,7 +558,7 @@ def parse_block(reader: TokenReader) -> Result[Statement]:
         elif reader.is_eof():
             return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_RIGHT_CBRACKET])
 
-        block_stmt = parse_stmt(reader)
+        block_stmt = parse_stmt(reader, meta)
         if block_stmt.is_error():
             return block_stmt
 
@@ -478,7 +566,7 @@ def parse_block(reader: TokenReader) -> Result[Statement]:
 
     return Success(Block(stmts, position))
 
-def parse_if_else_stmt(reader: TokenReader) -> Result[Statement]:
+def parse_if_else_stmt(reader: TokenReader, meta: ParsingMeta) -> Result[Statement]:
     '''Parse if else statement'''
 
     position = reader.get_position()
@@ -492,7 +580,7 @@ def parse_if_else_stmt(reader: TokenReader) -> Result[Statement]:
         return condExpr.error()
 
     # Parse the then clause
-    thenClause = parse_block(reader)
+    thenClause = parse_block(reader, meta)
     if thenClause.is_error():
         return thenClause
 
@@ -501,33 +589,49 @@ def parse_if_else_stmt(reader: TokenReader) -> Result[Statement]:
         return Success(IfElseStmt(condExpr.get(), thenClause.get(), None, position))
 
     # Parse the else clause
-    elseClause = parse_block(reader)
+    elseClause = parse_block(reader, meta)
     if elseClause.is_error():
         return elseClause
 
     return Success(IfElseStmt(condExpr.get(), thenClause.get(), elseClause.get(), position))
 
-def parse_stmt(reader: TokenReader) -> Result[Statement]:
+def parse_stmt(reader: TokenReader, meta: ParsingMeta) -> Result[Statement]:
     '''Parse a statement'''
+
     stmt : Optional[Result[Statement]] = None
 
-    if reader.peek().type == TokenType.KW_LET: # Declaration
-        stmt = parse_var_decl(reader)
-        if stmt.is_error():
-            return stmt
-    elif reader.peek().type == TokenType.KW_IF: # Declaration
-        return parse_if_else_stmt(reader)
-    elif reader.peek().type == TokenType.SYM_LEFT_CBRACKET: # Parse Block
-        return parse_block(reader)
-    else: # Expression
-        expr = parse_expr(reader)
-        if expr.is_error():
-            return expr.error()
+    # Parse Statement
+    match reader.peek().type:
+        case TokenType.KW_LET if meta.is_whitelisted(StmtType.VAR_DECL):            # Var Declaration
+            stmt = parse_var_decl(reader)
+            if stmt.is_error():
+                return stmt
+        case TokenType.KW_IF if meta.is_whitelisted(StmtType.IF_ELSE):              # If Else
+            return parse_if_else_stmt(reader, meta)
+        case TokenType.SYM_LEFT_CBRACKET if meta.is_whitelisted(StmtType.BLOCK):    # Block
+            return parse_block(reader, meta)
+        case TokenType.KW_RETURN if meta.is_whitelisted(StmtType.RETURN):           # Return Statement
+            position = reader.get_position()
+            reader.read() # Read keyword
 
-        stmt = Success(ExprStmt(expr.get()))
+            if reader.peek().type == TokenType.SYM_SEMICOLON:
+                stmt = Success(ReturnStmt(UnitLiteral(reader.get_position()), position))
+            else:
+                expr = parse_expr(reader)
+                if expr.is_error():
+                    return expr.error()
 
-    # Try to read a semicolon
-    if reader.peek_read(TokenType.SYM_SEMICOLON) is None:
+                stmt = Success(ReturnStmt(expr.get(), position))
+        case _ if meta.is_whitelisted(StmtType.EXPR):                               # Expression Statement
+            expr = parse_expr(reader)
+            if expr.is_error():
+                return expr.error()
+
+            stmt = Success(ExprStmt(expr.get()))
+
+    if stmt is None: # Could not parse statement
+        return ParseError.UnexpectedToken(reader.peek(), [])
+    elif reader.peek_read(TokenType.SYM_SEMICOLON) is None: # Try to read a semicolon
         return ParseError.UnexpectedToken(reader.peek(), [TokenType.SYM_SEMICOLON])
 
     return stmt
@@ -537,17 +641,18 @@ def parse_module(name: str, reader: TokenReader) -> Result[Module]:
 
     defs : List[Definition] = []
     stmts : List[Statement] = []
+    meta = ParsingMeta()
 
     while not reader.is_eof():
         if reader.peek().type == TokenType.KW_DEF:
-            definition = parse_definition(reader)
+            definition = parse_definition(reader, meta)
             if definition.is_error():
                 return definition.error()
 
             defs.append(definition.get())
             continue
 
-        stmt = parse_stmt(reader)
+        stmt = parse_stmt(reader, meta)
         if stmt.is_error():
             return stmt.error()
 
@@ -555,12 +660,26 @@ def parse_module(name: str, reader: TokenReader) -> Result[Module]:
 
     return Success(Module(name, defs, stmts))
 
+def parse_file(file_path: str) -> Result[Module]:
+    file_name = os.path.splitext(file_path)[0]
+    
+    with open(file_path) as f:
+        lex_result = ede_lexer.tokenize(ede_lexer.Reader(f.read()))
+        if lex_result.is_error():
+            return lex_result.error()
+        
+        reader = TokenReader(lex_result.get())
+        if reader.is_eof():
+            return Success(Module(file_name, [], []))
+        
+        return parse_module(file_name, reader)
+
 class ParseError:
     '''Wrapper for parsing errors'''
 
     @staticmethod
-    def DuplicateMemberName(name: str, pos: Position) -> Error:
-        return Error(ErrorType.PARSING_DUP_MEMBER_NAME, pos, f"Duplicate member name '{name}' found")
+    def DuplicateName(name: str, pos: Position) -> Error:
+        return Error(ErrorType.PARSING_DUP_NAME, pos, f"Duplicate name '{name}' found")
 
     @staticmethod
     def UnexpectedToken(found: Token, expected: List[TokenType]) -> Error:

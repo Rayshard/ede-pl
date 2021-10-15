@@ -169,7 +169,12 @@ def lex(reader: Reader) -> Result[Token]:
     elif char == '\'':
         return lex_char(reader)
     elif is_symbol(char):
-        return Success(Token.Symbol(reader.get_position(), reader.read()))
+        symbol = reader.read()
+
+        while is_symbol(symbol + reader.peek()):
+            symbol += reader.read()
+
+        return Success(Token.Symbol(reader.get_position(), symbol))
     elif char == EOF:
         return Success(Token.EOF(reader.get_position()))
     else:

@@ -1,7 +1,9 @@
 from enum import Enum, auto
 from typing import Dict, List, NamedTuple, Optional, Type, cast, get_args
 from ede_ast.ede_context import Context, CtxEntryType
-from ede_ast.ede_typesystem import EdeArray, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
+from ede_ast.ede_literal import UnitLiteral
+from ede_ast.ede_stmt import ExprStmt, Statement
+from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
 from ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
@@ -46,7 +48,8 @@ class ObjectValue(NamedTuple):
     def __str__(self) -> str:
         return self.name + ' { ' + f"{', '.join([name + ' = ' + str(value) for name, value in self.members.items()])}" + ' }'
 
-ExecValueTypes = int | str | bool | char | unit | ArrayValue | TupleValue | ObjectValue | ExecException
+FuncPtrValue = Statement
+ExecValueTypes = int | str | bool | char | unit | ArrayValue | TupleValue | ObjectValue | FuncPtrValue | ExecException
 
 class ExecValue:
     '''Representation of the possible values return on execution of an AST node'''
@@ -104,6 +107,9 @@ class ExecValue:
     def to_object(self) -> ObjectValue:
         return cast(ObjectValue, self.__to(ObjectValue))
 
+    def to_func_ptr(self) -> FuncPtrValue:
+        return cast(FuncPtrValue, self.__to(FuncPtrValue))
+
     def to_exception(self) -> ExecException:
         return cast(ExecException, self.__to(ExecException))
  
@@ -130,6 +136,8 @@ class ExecValue:
                 return ExecValue(ArrayValue([]))
             case EdeObject():
                 return ExecValue(ObjectValue(type.get_name(), {id: ExecValue.get_default_value(mem_type) for id, mem_type in type.get_members().items()}))
+            case EdeFunc():
+                return ExecValue(ExprStmt(UnitLiteral(Position())))
             case _:
                 raise Exception('Case not handled')
 

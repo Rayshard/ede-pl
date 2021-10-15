@@ -1,7 +1,12 @@
+from io import StringIO
+import os
+import sys
+
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
 from ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
+import ede_parser
 from interpreter import ExecContext, ExecEntry, ExecException, ExecValue
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
 from ede_utils import Position, char, unit
@@ -63,3 +68,38 @@ def test_init_exprs():
     # TODO: array init
     # TODO: tuple init
     pass
+
+def test_return():
+    # TODO:
+    pass
+
+def test_cases():
+    cases_dir = os.getcwd() + '\\tests\\cases'
+
+    for folder in os.scandir(cases_dir):
+        if not folder.is_dir():
+            continue
+
+        input_file_path = os.path.join(folder.path, 'input.ede')
+        expected_file_path = os.path.join(folder.path, 'expected.txt')
+        assert os.path.isfile(input_file_path) and os.path.isfile(expected_file_path)
+        
+        parse_result = ede_parser.parse_file(input_file_path)
+        if parse_result.is_error():
+            print(parse_result.error().get_output_msg(input_file_path))
+            assert False
+
+        tc_ctx = TCContext()
+        exec_ctx = ExecContext()
+
+        output_io = StringIO()
+        ExecutionVisitor.Output_Stream = output_io
+        exec_res = ExecutionVisitor.visit_in(parse_result.get(), tc_ctx, exec_ctx)
+        ExecutionVisitor.Output_Stream = sys.stdout
+        if exec_res.is_error():
+            print(exec_res.error().get_output_msg(input_file_path))
+            assert False
+
+        with open(expected_file_path) as f_expected:
+            assert output_io.getvalue().strip() == f_expected.read().strip()
+        

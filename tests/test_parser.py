@@ -1,12 +1,12 @@
 from typing import cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_expr import DefaultExpr, IdentifierExpr, ObjInitExpr
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
+from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
 from ede_ast.ede_typesystem import EdePrimitive
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
-from ede_parser import TokenReader, parse_expr, parse_stmt, parse_type_symbol
+from ede_parser import ParsingMeta, TokenReader, parse_expr, parse_stmt, parse_type_symbol
 from ede_lexer import Reader, tokenize
 from ede_utils import ErrorType, Position, Positioned, Result, Success, char
 
@@ -14,12 +14,12 @@ def get_token_reader(text: str) -> TokenReader:
     return TokenReader(tokenize(Reader(text)).get())
 
 def check(value: str | Result[Node], expected: Node | ErrorType) -> bool:
-    res = parse_stmt(get_token_reader(value)) if isinstance(value, str) else cast(Result[Node], value)
-    print(res)
+    res = parse_stmt(get_token_reader(value), ParsingMeta()) if isinstance(value, str) else cast(Result[Node], value)
+    
     if res.is_success():
         assert isinstance(expected, Node)
-        print(JsonVisitor.visit(expected))
-        print(JsonVisitor.visit(res.get()))
+        # print(JsonVisitor.visit(expected))
+        # print(JsonVisitor.visit(res.get()))
         return JsonVisitor.visit(res.get()) == JsonVisitor.visit(expected)
 
     assert isinstance(expected, ErrorType)
@@ -36,6 +36,7 @@ def test_expr():
     assert check_expr('true', BoolLiteral(Position(), True))
     assert check_expr('false', BoolLiteral(Position(), False))
     assert check_expr('name', IdentifierExpr(Position(), 'name'))
+    assert check_expr('()', UnitLiteral(Position()))
     assert check_expr('default(int)', DefaultExpr(PrimitiveTypeSymbol(EdePrimitive.INT(), Position())))
     assert check_expr('Person { name = "Ray", age = 22 }', ObjInitExpr("Person", {
         Positioned[str]('name', Position()): StringLiteral(Position(), "Ray"),
@@ -46,7 +47,7 @@ def test_expr():
     assert check_expr('Person { name = "Ray", "age" = 22 }', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_expr('Person { name = "Ray", age = 22 ', ErrorType.PARSING_UNEXPECTED_TOKEN)
     assert check_expr('Person { name: "Ray", age = 22 }', ErrorType.PARSING_UNEXPECTED_TOKEN)
-    assert check_expr('Person { name = "Ray", name = 22 }', ErrorType.PARSING_DUP_MEMBER_NAME)
+    assert check_expr('Person { name = "Ray", name = 22 }', ErrorType.PARSING_DUP_NAME)
 
     # TODO: Tuple
     # TODO: Array
@@ -110,3 +111,8 @@ def test_definition():
     # TODO: enum
     # TODO: function
     pass
+
+def test_return():
+    assert check('return;', ReturnStmt(UnitLiteral(Position()), Position()))
+    assert check('return ();', ReturnStmt(UnitLiteral(Position()), Position()))
+    assert check('return 5;', ReturnStmt(IntLiteral(Position(), 5), Position()))

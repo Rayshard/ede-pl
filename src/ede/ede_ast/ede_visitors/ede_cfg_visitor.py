@@ -1,7 +1,7 @@
 import pydot # type: ignore
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Type
 from ede_ast.ede_ast import Node
-from ede_ast.ede_stmt import Block, IfElseStmt
+from ede_ast.ede_stmt import Block, IfElseStmt, ReturnStmt
 from ede_ast.ede_module import Module
 
 class CFGNode(NamedTuple):
@@ -59,6 +59,9 @@ class CFG:
         graph.add_edge(pydot.Edge(str(len(self.__nodes) - 1), str(len(self.__nodes)), color="black")) # type: ignore
         return graph
 
+    def get_terminals(self) -> List[Node]:
+        return [node.ast_node for node in self.__nodes if len(node.nexts) == 0]
+
     def __getitem__(self, id: int) -> CFGNode:
         return self.__nodes[id]
 
@@ -78,6 +81,10 @@ class CFGVisitor:
 def visit_fall_through_node(node: Node, cfg: CFG, next: Optional[Node]) -> None:
     if next is not None:
         cfg[node.get_cfg_id()].nexts.append(next)
+
+def visit_Return(r: ReturnStmt, cfg: CFG, next: Optional[Node]) -> None:
+    if next is not None:
+        raise Exception("Cannot have node following a return statement!")
 
 def visit_Block(b: Block, cfg: CFG, next: Optional[Node]) -> None:
     cfg_node = cfg[b.get_cfg_id()]
@@ -118,9 +125,9 @@ def visit_IfElseStmt(ie: IfElseStmt, cfg: CFG, next: Optional[Node]) -> None:
     else:
         CFGVisitor.visit(ie.condition, cfg, next)
 
-
 VISITORS : Dict[Type[Any], Callable[[Any, CFG, Optional[Node]], None]] = {
     Module: visit_Module,
     Block: visit_Block,
     IfElseStmt: visit_IfElseStmt,
+    ReturnStmt: visit_Return,
 }
