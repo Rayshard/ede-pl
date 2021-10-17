@@ -636,7 +636,7 @@ def parse_stmt(reader: TokenReader, meta: ParsingMeta) -> Result[Statement]:
 
     return stmt
 
-def parse_module(name: str, reader: TokenReader) -> Result[Module]:
+def parse_module(file_path:str, name: str, reader: TokenReader) -> Result[Module]:
     '''Parses a stream of tokens and returns the AST module'''
 
     defs : List[Definition] = []
@@ -658,7 +658,7 @@ def parse_module(name: str, reader: TokenReader) -> Result[Module]:
 
         stmts.append(stmt.get())
 
-    return Success(Module(name, defs, stmts))
+    return Success(Module(file_path, name, defs, stmts))
 
 def parse_file(file_path: str) -> Result[Module]:
     file_name = os.path.splitext(file_path)[0]
@@ -670,9 +670,9 @@ def parse_file(file_path: str) -> Result[Module]:
         
         reader = TokenReader(lex_result.get())
         if reader.is_eof():
-            return Success(Module(file_name, [], []))
+            return Success(Module(file_path, file_name, [], []))
         
-        return parse_module(file_name, reader)
+        return parse_module(file_path, file_name, reader)
 
 class ParseError:
     '''Wrapper for parsing errors'''

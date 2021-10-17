@@ -3,12 +3,12 @@ from typing import Any, Callable, Dict, Optional, TextIO, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_context import CtxEntryType
 from ede_ast.ede_definition import FuncDef, ObjDef
-from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
+from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, FuncCallExpr, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
 from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, VarDeclStmt
+from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
 from ede_ast.ede_type_symbol import TypeSymbol
-from ede_ast.ede_typesystem import EdeObject, EdePrimitive, EdeType, TCContext, TSPrimitiveType
+from ede_ast.ede_typesystem import EdeFunc, EdeObject, EdePrimitive, TCContext, TSPrimitiveType
 from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 from ede_utils import Result, Success
 from interpreter import ArrayValue, ExecContext, ExecEntry, ExecException, ExecValue, ObjectValue, TupleValue
@@ -82,7 +82,7 @@ def visit_Literal(expr: Literal[Any], ctx: ExecContext) -> ExecValue:
 
 def visit_VarDeclStmt(stmt: VarDeclStmt, ctx: ExecContext) -> ExecValue:
     expr_res : Optional[ExecValue] = None
-    ede_type = EdeType()
+    ede_type = EdePrimitive.UNIT()
     
     if stmt.expr is None:
         ede_type = cast(TypeSymbol, stmt.type_symbol).get_ede_type()
@@ -194,9 +194,31 @@ def visit_ExprStmt(e: ExprStmt, ctx: ExecContext) -> ExecValue:
     ExecutionVisitor.output(value)
     return ExecValue.UNIT()
 
+def visit_ReturnStmt(r: ReturnStmt, ctx: ExecContext) -> ExecValue:
+    value = ExecutionVisitor.visit(r.expr, ctx)
+    ctx.ret_stack.append(value)
+    return value
+
+def visit_FuncCallExpr(fc: FuncCallExpr, ctx: ExecContext) -> ExecValue:
+    func_def = ctx.get(fc.name, fc.position, True).get()
+    
+    # Evaluate arguments and add them to the sub-context
+    params = list(cast(EdeFunc, func_def.ede_type).get_args().keys())
+    sub_ctx = ExecContext(ctx)
+
+    for key, expr in dict(zip(params, fc.args)).items():
+        value = ExecutionVisitor.visit(expr, sub_ctx)
+        sub_ctx.add(key, ExecEntry(CtxEntryType.VARIABLE, expr.get_ede_type(), value, expr.position), False)
+
+    # Evaluate the function body (this pushes the return value onto the return stack)
+    ExecutionVisitor.visit(func_def.value.to_func_ptr(), sub_ctx)
+
+    return ctx.ret_stack.pop()
+
 VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
     ExprStmt: visit_ExprStmt,
     IdentifierExpr: lambda i, ctx: ctx.get(cast(IdentifierExpr, i).id, cast(IdentifierExpr, i).position, True).get().value,
+    ReturnStmt: visit_ReturnStmt,
     Module: visit_Module,
     ArrayInitExpr: visit_ArrayInitExpr,
     TupleInitExpr: visit_TupleInitExpr,
@@ -213,4 +235,5 @@ VISITORS : Dict[Type[Any], Callable[[Any, ExecContext], ExecValue]] = {
     VarDeclStmt: visit_VarDeclStmt,
     Block: visit_Block,
     DefaultExpr: visit_DefaultExpr,
+    FuncCallExpr: visit_FuncCallExpr,
 }

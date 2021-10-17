@@ -2,12 +2,13 @@
 import os
 from typing import List
 import click, json
+from ede_ast.ede_module import Module
 from ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
 import ede_parser
 from ede_ast.ede_typesystem import TCContext
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
-from interpreter import ExecContext
+from interpreter import ExecContext, Interpreter
 
 # TODO: Comment File
 
@@ -22,44 +23,52 @@ def print_exit(msg: str, code: int):
 @click.option('--ec', is_flag=True, help="Prints the final execution context to the standard output.")
 @click.argument('file_paths', type=click.Path(exists=True, resolve_path=True), required=True, nargs=-1)
 def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
-    if simulate:
-        if not all([os.path.splitext(file_path)[1] == '.ede' for file_path in file_paths]):
+    if not all([os.path.splitext(file_path)[1] == '.ede' for file_path in file_paths]):
             print_exit('Only EDE files are allowed!', 1)
 
-        for file_path in file_paths:
-            parse_result = ede_parser.parse_file(file_path)
-            if parse_result.is_error():
-                print_exit(parse_result.error().get_output_msg(file_path), 1)
+    modules : List[Module] = []
 
-            module = parse_result.get()
+    for file_path in file_paths:
+        parse_result = ede_parser.parse_file(file_path)
+        if parse_result.is_error():
+            print_exit(parse_result.error().get_output_msg(file_path), 1)
 
-            if ast:
-                with open(file_path + '.json', 'w+') as f_ast:
-                    json.dump({
-                        "source": file_path,
-                        "ast": JsonVisitor.visit(module)
-                    }, f_ast, indent=4, sort_keys=False)
+        module = parse_result.get()
 
-            if cfg:
-                with open(file_path + '.dot', 'w+') as f_cfg:
-                    output_cfg = CFG()
-                    CFGVisitor.visit(module, output_cfg, None)
+        if ast:
+            with open(file_path + '.json', 'w+') as f_ast:
+                json.dump({
+                    "source": file_path,
+                    "ast": JsonVisitor.visit(module)
+                }, f_ast, indent=4, sort_keys=False)
 
-                    f_cfg.write(output_cfg.to_dot().to_string())
-                    
-            tc_ctx = TCContext()
-            exec_ctx = ExecContext()
+        if cfg:
+            with open(file_path + '.dot', 'w+') as f_cfg:
+                output_cfg = CFG()
+                CFGVisitor.visit(module, output_cfg, None)
 
-            exec_res = ExecutionVisitor.visit_in(parse_result.get(), tc_ctx, exec_ctx)
-            if exec_res.is_error():
-                print_exit(exec_res.error().get_output_msg(file_path), 1)
-            
-            if ec:
-                click.echo("=================== Execution Context ====================") # type: ignore
-                click.echo(json.dumps(JsonVisitor.visit(exec_ctx), indent=4, sort_keys=False)) # type: ignore
-                click.echo("=================== ================= ====================") # type: ignore
+                f_cfg.write(output_cfg.to_dot().to_string())
+
+        modules.append(module)
+    
+    if simulate:                   
+        tc_ctx = TCContext()
+        exec_ctx = ExecContext()
+
+        exec_res = ExecutionVisitor.visit_in(modules[0], tc_ctx, exec_ctx)
+        if exec_res.is_error():
+            print_exit(exec_res.error().get_output_msg(modules[0].file_path), 1)
+        
+        if ec:
+            click.echo("=================== Execution Context ====================") # type: ignore
+            click.echo(json.dumps(JsonVisitor.visit(exec_ctx), indent=4, sort_keys=False)) # type: ignore
+            click.echo("=================== ================= ====================") # type: ignore
     else:
-        click.echo("Compilation is not implemented!") # type: ignore
+        with open(modules[0].file_path + '.ir.json', 'r') as f:
+            comp_unit = json.load(f) 
+            
+            interpreter = Interpreter()
+            interpreter.run(comp_unit["code"])        
 
 if __name__ == '__main__':
     cli()

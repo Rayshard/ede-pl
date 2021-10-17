@@ -8,10 +8,11 @@ from .ede_stmt import Statement
 class Module(Node):
     '''AST module node'''
 
-    def __init__(self, name: str, defs: List[Definition], stmts: List[Statement]) -> None:
+    def __init__(self, file_path: str, name: str, defs: List[Definition], stmts: List[Statement]) -> None:
         '''Creates an AST module node'''
         super().__init__(Position())
 
+        self.file_path = file_path
         self.name = name
         self.defs = defs
         self.stmts = stmts

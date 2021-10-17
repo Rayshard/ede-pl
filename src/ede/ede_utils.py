@@ -1,3 +1,4 @@
+import struct
 from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar
 from enum import IntEnum, auto
 
@@ -107,3 +108,15 @@ class Error(NamedTuple):
         return Error(type, self.position, self.msg)
 
 Result = Success[T] | Error
+
+def int_to_bytes(value: int) -> bytes:
+    return value.to_bytes(8, 'big')
+
+def float_to_bytes(value: float) -> bytes:
+    return struct.pack("d", value)
+
+def int_from_bytes(bytes: bytes) -> int:
+    return int.from_bytes(bytes, 'big')
+
+def float_from_bytes(bytes: bytes) -> float:
+    return struct.unpack('d', bytes)[0]

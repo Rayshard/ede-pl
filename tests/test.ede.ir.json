@@ -1,0 +1,22 @@
+{
+    "name": "module1",
+    "constants": {
+        "my_str": "This is my string!!",
+        "CONST0": 15
+    },
+    "code": [
+        "MyLabel",
+        { "type": "PUSHI", "operands": { "constant": 123465789 } },
+        { "type": "JUMP", "operands": { "label": "END"} },
+        "__start",
+        { "type": "PUSHI", "operands": { "constant": 15 } },
+        { "type": "PUSHI", "operands": { "constant": 2 } },
+        { "type": "ADDI", "operands": null },
+        { "type": "PUSHD", "operands": { "constant": 3.14159 } },
+        { "type": "PUSHD", "operands": { "constant": 3.14159 } },
+        { "type": "ADDD", "operands": null },
+        { "type": "JUMP", "operands": { "label": "MyLabel"} },
+        { "type": "ADDD", "operands": null },
+        "END"
+    ]
+}

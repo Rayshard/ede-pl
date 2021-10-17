@@ -1,10 +1,11 @@
 from enum import Enum, auto
-from typing import Dict, List, NamedTuple, Optional, Type, cast, get_args
+from typing import Dict, List, NamedTuple, Optional, cast, get_args
 from ede_ast.ede_context import Context, CtxEntryType
+from ede_ast.ede_ir import InstructionType, OperandTypes
 from ede_ast.ede_literal import UnitLiteral
 from ede_ast.ede_stmt import ExprStmt, Statement
 from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
-from ede_utils import Position, char, unit
+from ede_utils import Position, char, float_from_bytes, float_to_bytes, int_from_bytes, int_to_bytes, unit
 
 class ExecExceptionType(Enum):
     '''Enumeration of execution exception types'''
@@ -78,40 +79,45 @@ class ExecValue:
     def is_exception(self) -> bool:
         return isinstance(self.value, ExecException)
 
-    def __to(self, t: Type[ExecValueTypes]) -> ExecValueTypes:
-        '''Returns value casted as t'''
-        assert type(self.value) == t
-        return cast(t, self.value)
-
     def to_int(self) -> int:
-        return cast(int, self.__to(int))
+        assert type(self.value) == int
+        return cast(int, self.value)
 
     def to_str(self) -> str:
-        return cast(str, self.__to(str))
+        assert type(self.value) == str
+        return cast(str, self.value)
 
     def to_bool(self) -> bool:
-        return cast(bool, self.__to(bool))
+        assert type(self.value) == bool
+        return cast(bool, self.value)
 
     def to_char(self) -> char:
-        return cast(char, self.__to(char))
+        assert type(self.value) == char
+        return cast(char, self.value)
 
     def to_unit(self) -> unit:
-        return cast(unit, self.__to(unit))
+        assert type(self.value) == unit
+        return cast(unit, self.value)
 
     def to_array(self) -> ArrayValue:
-        return cast(ArrayValue, self.__to(ArrayValue))
+        assert type(self.value) == ArrayValue
+        return cast(ArrayValue, self.value)
 
     def to_tuple(self) -> TupleValue:
-        return cast(TupleValue, self.__to(TupleValue))
+        assert type(self.value) == TupleValue
+        return cast(TupleValue, self.value)
 
     def to_object(self) -> ObjectValue:
-        return cast(ObjectValue, self.__to(ObjectValue))
+        assert type(self.value) == ObjectValue
+        return cast(ObjectValue, self.value)
 
     def to_func_ptr(self) -> FuncPtrValue:
-        return cast(FuncPtrValue, self.__to(FuncPtrValue))
+        assert isinstance(self.value, FuncPtrValue)
+        return self.value
 
     def to_exception(self) -> ExecException:
-        return cast(ExecException, self.__to(ExecException))
+        assert type(self.value) == ExecException
+        return cast(ExecException, self.value)
  
     @staticmethod
     def UNIT() -> 'ExecValue':
@@ -153,3 +159,61 @@ class ExecEntry(TCCtxEntry):
 class ExecContext(Context[ExecEntry]):
     def __init__(self, parent: Optional['Context[ExecEntry]'] = None) -> None:
         super().__init__(parent=parent)
+
+        self.ret_stack : List[ExecValue] = [] if parent is None else parent.ret_stack # type: ignore
+
+Instruction = Dict[str, InstructionType | Dict[str, OperandTypes]]
+Code = List[str | Instruction]
+
+class Interpreter:
+    def __init__(self) -> None:
+        self.stack : List[bytes] = []
+        self.ip : int = 0
+
+    def run(self, code: Code) -> int | ExecException:
+        # Get labels
+        labels = {elem: i for i, elem in enumerate(code) if isinstance(elem, str)}
+
+        self.ip = labels['__start']
+
+        # Execute instructions
+        while 0 <= self.ip < len(code):
+            elem = code[self.ip]
+
+            if not isinstance(elem, str):
+                print(elem)
+
+                exec_result = self.execute_instr(elem, labels)
+                if exec_result is not None:
+                    return exec_result
+
+                self.print_stack()
+
+            self.ip += 1    
+
+        return 0
+
+    def execute_instr(self, instr: Instruction, labels: Dict[str, int]) -> None | int | ExecException:
+        match instr:
+            case {"type": InstructionType.PUSHI.name, "operands": {"constant": c}}: 
+                self.stack.append(int_to_bytes(cast(int, c)))
+            case {"type": InstructionType.PUSHD.name, "operands": {"constant": c}}: 
+                self.stack.append(float_to_bytes(cast(float, c)))
+            case {"type": InstructionType.POP.name, "operands": None}: 
+                self.stack.pop()
+            case {"type": InstructionType.ADDI.name, "operands": None}: 
+                self.stack.append(int_to_bytes(int_from_bytes(self.stack.pop()) + int_from_bytes(self.stack.pop())))
+            case {"type": InstructionType.ADDD.name, "operands": None}: 
+                self.stack.append(float_to_bytes(float_from_bytes(self.stack.pop()) + float_from_bytes(self.stack.pop())))
+            case {"type": InstructionType.JUMP.name, "operands": {"label": l}}: 
+                self.ip = labels[cast(str, l)] - 1
+            case _: raise Exception(f"Unknown Instruction: {instr}")
+
+    def print_stack(self):
+        print('=' * 90)
+        
+        for i, word in enumerate(self.stack):
+            print("0x{:016x}".format(i * 8) + f":\t0x{word.hex()}, int({int_from_bytes(word)}), double({float_from_bytes(word)})")
+        
+        print('=' * 90)
+        
