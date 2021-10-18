@@ -1,10 +1,13 @@
 
 import os
-from typing import List
+from typing import Dict, List
 import click, json
+from ede_ast.ede_ir import Instruction, InstructionType
 from ede_ast.ede_module import Module
 from ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
+from ede_ast.ede_visitors.ede_ir_visitor import IRVisitor, ModuleIRBuilder
+from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 import ede_parser
 from ede_ast.ede_typesystem import TCContext
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
@@ -49,26 +52,65 @@ def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
 
                 f_cfg.write(output_cfg.to_dot().to_string())
 
-        modules.append(module)
-    
-    if simulate:                   
-        tc_ctx = TCContext()
-        exec_ctx = ExecContext()
+        tc_res = TypecheckVisitor.visit(module, TCContext())
+        if tc_res.is_error():
+            print_exit(tc_res.error().get_output_msg(modules[0].file_path), 1)
 
-        exec_res = ExecutionVisitor.visit_in(modules[0], tc_ctx, exec_ctx)
-        if exec_res.is_error():
-            print_exit(exec_res.error().get_output_msg(modules[0].file_path), 1)
+        modules.append(module)
+
+    if simulate:                   
+        exec_ctx = ExecContext()
+        exec_res = ExecutionVisitor.visit(modules[0], exec_ctx)
         
         if ec:
             click.echo("=================== Execution Context ====================") # type: ignore
             click.echo(json.dumps(JsonVisitor.visit(exec_ctx), indent=4, sort_keys=False)) # type: ignore
             click.echo("=================== ================= ====================") # type: ignore
+        
+        print_exit(str(exec_res), exec_res.is_exception())
     else:
+        ir_json = {}
+
+        for module in modules:
+            if module.name in ir_json:
+                print_exit(f"Module with name '{module.name}' already exists!", 1)
+
+            ir_builder = ModuleIRBuilder()
+            IRVisitor.visit(module, ir_builder)
+
+            ir_json[module.name] = ir_builder.get_ir()
+
+        with open(modules[0].file_path + '.ir.json', 'w+') as f_ir:
+            json.dump(ir_json, f_ir, indent=4, sort_keys=False)
+
+        instrs: List[Instruction] = []
+        labels: Dict[str, int] = {}
+
         with open(modules[0].file_path + '.ir.json', 'r') as f:
-            comp_unit = json.load(f) 
+            comp_unit = json.load(f)[modules[0].name]
             
-            interpreter = Interpreter()
-            interpreter.run(comp_unit["code"])        
+            for i, elem in enumerate(comp_unit["code"]):
+                match elem:
+                    case label if isinstance(label, str):
+                        if label in labels:
+                            print_exit("Duplicate label '{label}' encountered!", 1)
+                            
+                        labels[label] = i - len(labels)
+                    case [op_code] if isinstance(op_code, str):
+                        if op_code not in InstructionType._member_names_:
+                            raise Exception(f"Unknown Instruction: {elem}")
+                        
+                        instrs.append(Instruction(InstructionType[op_code], []))
+                    case [op_code, *operands] if isinstance(op_code, str):
+                        if op_code not in InstructionType._member_names_:
+                            raise Exception(f"Unknown Instruction: {elem}")
+                        
+                        instrs.append(Instruction(InstructionType[op_code], list(operands)))
+                    case _:
+                        print_exit("Unknown Instruction: {elem}", 1)
+
+        interpreter = Interpreter()
+        interpreter.run(instrs, labels)       
 
 if __name__ == '__main__':
     cli()
