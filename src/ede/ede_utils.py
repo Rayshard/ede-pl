@@ -110,13 +110,13 @@ class Error(NamedTuple):
 Result = Success[T] | Error
 
 def int_to_bytes(value: int) -> bytes:
-    return value.to_bytes(8, 'big')
+    return value.to_bytes(8, 'big', signed=True)
 
 def float_to_bytes(value: float) -> bytes:
     return struct.pack("d", value)
 
 def int_from_bytes(bytes: bytes) -> int:
-    return int.from_bytes(bytes, 'big')
+    return int.from_bytes(bytes, 'big', signed=True)
 
 def float_from_bytes(bytes: bytes) -> float:
     return struct.unpack('d', bytes)[0]

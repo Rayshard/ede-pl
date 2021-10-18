@@ -17,5 +17,6 @@ setuptools.setup(
     python_requires=">=3.10",
     install_requires=["click", "pydot"],
     extras_require={"dev": ["pytest", "mypy"]},
-    scripts=["src/ede/ede.bat"]
+    scripts=["src/ede/ede.py"],
+    package_data={"": ['bin/evm.exe']},
 )

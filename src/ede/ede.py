@@ -1,5 +1,5 @@
 
-import os
+import os, subprocess
 from typing import Dict, List
 import click, json
 from ede_ast.ede_ir import Instruction, InstructionType
@@ -11,7 +11,7 @@ from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
 import ede_parser
 from ede_ast.ede_typesystem import TCContext
 from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
-from interpreter import ExecContext, Interpreter
+from interpreter import ExecContext
 
 # TODO: Comment File
 
@@ -26,6 +26,10 @@ def print_exit(msg: str, code: int):
 @click.option('--ec', is_flag=True, help="Prints the final execution context to the standard output.")
 @click.argument('file_paths', type=click.Path(exists=True, resolve_path=True), required=True, nargs=-1)
 def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
+    subprocess.run(["bin\\evm.exe", "tests\\test.edec"])
+    return
+        
+    
     if not all([os.path.splitext(file_path)[1] == '.ede' for file_path in file_paths]):
             print_exit('Only EDE files are allowed!', 1)
 
@@ -109,8 +113,8 @@ def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
                     case _:
                         print_exit("Unknown Instruction: {elem}", 1)
 
-        interpreter = Interpreter()
-        interpreter.run(instrs, labels)       
+        # interpreter = Interpreter()
+        # interpreter.run(instrs, labels)   
 
 if __name__ == '__main__':
     cli()
