@@ -11,6 +11,7 @@ class TokenType(IntEnum):
     STRING = auto()
     CHAR = auto()
     IDENTIFIER = auto()
+    COMMENT = auto()
     SYM_PLUS = auto()
     SYM_DASH = auto()
     SYM_ASTERISK = auto()
@@ -27,6 +28,9 @@ class TokenType(IntEnum):
     SYM_COLON = auto()
     SYM_ARROW = auto()
     SYM_LAMBDA = auto()
+    SYM_LINE_COMMENT = auto()
+    SYM_COMMENT_OPEN = auto()
+    SYM_COMMENT_CLOSE = auto()
     KW_LET = auto()
     KW_IF = auto()
     KW_ELSE = auto()
@@ -57,7 +61,12 @@ SYMBOL_DICT = {
     ':': TokenType.SYM_COLON,
     '->': TokenType.SYM_ARROW,
     '=>': TokenType.SYM_LAMBDA,
+    '//': TokenType.SYM_LINE_COMMENT,
+    '/*': TokenType.SYM_COMMENT_OPEN,
+    '*/': TokenType.SYM_COMMENT_CLOSE,
 }
+
+SYMBOL_DICT_INV = {tok_type: sym for sym, tok_type in SYMBOL_DICT.items()}
 
 KEYWORD_DICT = {
     "let": TokenType.KW_LET,
@@ -112,8 +121,8 @@ class Token(NamedTuple):
         return Token(TokenType.CHAR, pos, value)
 
     @staticmethod
-    def Symbol(pos: Position, sym: str):
-        return Token(SYMBOL_DICT[sym], pos)
+    def Symbol(pos: Position, sym: str, value: str = ""):
+        return Token(SYMBOL_DICT[sym], pos, value)
 
     @staticmethod
     def Keyword(pos: Position, id: str):
@@ -122,6 +131,10 @@ class Token(NamedTuple):
     @staticmethod
     def Identifier(pos: Position, id: str):
         return Token(TokenType.IDENTIFIER, pos, id)
+
+    @staticmethod
+    def Comment(pos: Position, value: str):
+        return Token(TokenType.COMMENT, pos, value)
 
     def __str__(self):
         string = f"{self.position.line, self.position.column}: {self.type.name}"

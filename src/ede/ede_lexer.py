@@ -1,6 +1,6 @@
 from ede.ede_utils import Error, ErrorType, Result, Success, char
 from typing import List
-from ede.ede_token import Position, Token, TokenType, is_keyword, is_symbol
+from ede.ede_token import SYMBOL_DICT_INV, Position, Token, TokenType, is_keyword, is_symbol
 
 # TODO: Comment File
 
@@ -160,6 +160,7 @@ def lex(reader: Reader) -> Result[Token]:
     while reader.peek().isspace():
         reader.read()
 
+    position = reader.get_position()
     char = reader.peek()
 
     if char.isdigit():
@@ -170,11 +171,32 @@ def lex(reader: Reader) -> Result[Token]:
         return lex_char(reader)
     elif is_symbol(char):
         symbol = reader.read()
-
+        
         while is_symbol(symbol + reader.peek()):
             symbol += reader.read()
 
-        return Success(Token.Symbol(reader.get_position(), symbol))
+        if symbol == SYMBOL_DICT_INV[TokenType.SYM_LINE_COMMENT]:
+            value = ""
+
+            while reader.peek() != '\n':
+                value += reader.read()
+
+            return Success(Token.Comment(position, value))
+        elif symbol == SYMBOL_DICT_INV[TokenType.SYM_COMMENT_OPEN]:
+            value = ""
+
+            while True:
+                next_char = reader.read()
+
+                if next_char == EOF:
+                    return Error(ErrorType.INVALID_COMMENT, position, "Expected */ to close comment.")
+                elif next_char + reader.peek() == SYMBOL_DICT_INV[TokenType.SYM_COMMENT_CLOSE]:
+                    reader.read()
+                    return Success(Token.Comment(position, value))
+
+                value += next_char
+
+        return Success(Token.Symbol(position, symbol))
     elif char == EOF:
         return Success(Token.EOF(reader.get_position()))
     else:
@@ -185,7 +207,7 @@ def lex(reader: Reader) -> Result[Token]:
         else:
             return Success(Token.Invalid(reader.get_position(), reader.read()))
 
-def tokenize(reader: Reader) -> Result[List[Token]]:
+def tokenize(reader: Reader, keep_comments: bool = False) -> Result[List[Token]]:
     tokens : List[Token] = []
     
     while True:
@@ -194,8 +216,13 @@ def tokenize(reader: Reader) -> Result[List[Token]]:
         if result.is_error():
             return result.error()
 
-        tokens.append(result.get())
-        if tokens[-1].type == TokenType.EOF:
+        token = result.get()
+
+        if not keep_comments and token.type == TokenType.COMMENT:
+            continue
+
+        tokens.append(token)
+        if token.type == TokenType.EOF:
             break
 
     return Success(tokens)

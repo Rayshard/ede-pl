@@ -40,6 +40,7 @@ class ErrorType(IntEnum):
     INVALID_INT_LIT = auto()
     INVALID_STR_LIT = auto()
     INVALID_CHAR_LIT = auto()
+    INVALID_COMMENT = auto()
     UNEXPECTED_EOF = auto()
     INVALID_ID = auto()
 

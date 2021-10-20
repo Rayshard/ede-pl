@@ -42,6 +42,8 @@ def test_symbols():
     for sym, type in SYMBOL_DICT.items():
         assert lex(Reader(sym)).get().type == type
 
+    #TODO: Comments
+
 def test_keywords():
     for kw, type in KEYWORD_DICT.items():
         assert lex_id_or_keyword(Reader(kw)).get().type == type
