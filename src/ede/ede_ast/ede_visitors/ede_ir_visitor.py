@@ -1,12 +1,12 @@
 from typing import Any, Callable, Dict, List, Type, cast
-from ede_ast.ede_ast import Node
-from ede_ast.ede_definition import DefType
-from ede_ast.ede_expr import BinopExpr, BinopType
-from ede_ast.ede_ir import Instruction, double
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, UnitLiteral
-from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import ExprStmt
-from ede_ast.ede_typesystem import EdePrimitive, TSPrimitiveType
+from ..ede_ast import Node
+from ..ede_definition import DefType
+from ..ede_expr import BinopExpr, BinopType
+from ..ede_ir import Instruction, double
+from ..ede_literal import BoolLiteral, CharLiteral, IntLiteral, UnitLiteral
+from ..ede_module import Module
+from ..ede_stmt import ExprStmt
+from ..ede_typesystem import EdePrimitive, TSPrimitiveType
 
 ModuleConstant = str | int | double
 

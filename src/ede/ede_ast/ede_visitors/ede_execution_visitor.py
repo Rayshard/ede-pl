@@ -1,17 +1,17 @@
 import sys
 from typing import Any, Callable, Dict, Optional, TextIO, Type, cast
-from ede_ast.ede_ast import Node
-from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_definition import FuncDef, ObjDef
-from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, FuncCallExpr, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
-from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
-from ede_ast.ede_type_symbol import TypeSymbol
-from ede_ast.ede_typesystem import EdeFunc, EdeObject, EdePrimitive, TCContext, TSPrimitiveType
-from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
-from ede_utils import Result, Success
-from interpreter import ArrayValue, ExecContext, ExecEntry, ExecException, ExecValue, ObjectValue, TupleValue
+from ..ede_ast import Node
+from ..ede_context import CtxEntryType
+from ..ede_definition import FuncDef, ObjDef
+from ..ede_expr import ArrayInitExpr, DefaultExpr, FuncCallExpr, IdentifierExpr, ObjInitExpr, BinopExpr, BinopType, TupleInitExpr
+from ..ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
+from ..ede_module import Module
+from ..ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
+from ..ede_type_symbol import TypeSymbol
+from ..ede_typesystem import EdeFunc, EdeObject, EdePrimitive, TCContext, TSPrimitiveType
+from ..ede_visitors.ede_typecheck_visitor import TypecheckVisitor
+from ...ede_utils import Result, Success
+from ...interpreter import ArrayValue, ExecContext, ExecEntry, ExecException, ExecValue, ObjectValue, TupleValue
 
 class ExecutionVisitor:
     '''

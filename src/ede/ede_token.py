@@ -1,4 +1,4 @@
-from ede_utils import Position, char
+from ede.ede_utils import Position, char
 from typing import Any, NamedTuple
 from enum import IntEnum, auto
 

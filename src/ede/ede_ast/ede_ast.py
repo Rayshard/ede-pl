@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from enum import Enum, auto
 from typing import Optional
-from ede_utils import Position
+from ..ede_utils import Position
 from .ede_typesystem import EdeType
 
 class NodeType(Enum):

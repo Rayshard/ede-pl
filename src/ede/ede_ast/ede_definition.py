@@ -1,10 +1,10 @@
 from abc import abstractmethod
 from enum import Enum, auto
 from typing import Dict, OrderedDict
-from ede_ast.ede_stmt import Statement
-from ede_ast.ede_type_symbol import TypeSymbol
+from .ede_stmt import Statement
+from .ede_type_symbol import TypeSymbol
 from .ede_ast import Node, NodeType
-from ede_utils import Position, Positioned
+from ..ede_utils import Position, Positioned
 
 class DefType(Enum):
     '''Enumeration of AST definition types'''

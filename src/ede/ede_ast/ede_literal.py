@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from enum import Enum, auto
-from ede_utils import Position, char, unit
+from ..ede_utils import Position, char, unit
 from .ede_expr import Expression, ExprType
 from typing import Generic, TypeVar
 

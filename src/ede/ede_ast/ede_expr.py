@@ -1,11 +1,11 @@
 from abc import abstractmethod
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
-from ede_ast.ede_type_symbol import TypeSymbol
+from .ede_type_symbol import TypeSymbol
 
-from ede_ast.ede_typesystem import EdeType
+from .ede_typesystem import EdeType
 from .ede_ast import Node, NodeType
-from ede_utils import Error, ErrorType, Position, Positioned
+from ..ede_utils import Error, ErrorType, Position, Positioned
 
 class ExprType(Enum):
     '''Enumeration of AST expression types'''

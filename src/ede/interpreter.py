@@ -1,10 +1,10 @@
 from enum import Enum, auto
 from typing import Dict, List, NamedTuple, Optional, cast, get_args
-from ede_ast.ede_context import Context, CtxEntryType
-from ede_ast.ede_literal import UnitLiteral
-from ede_ast.ede_stmt import ExprStmt, Statement
-from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
-from ede_utils import Position, char, unit
+from .ede_ast.ede_context import Context, CtxEntryType
+from .ede_ast.ede_literal import UnitLiteral
+from .ede_ast.ede_stmt import ExprStmt, Statement
+from .ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
+from .ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
     '''Enumeration of execution exception types'''

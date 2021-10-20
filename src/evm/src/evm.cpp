@@ -2,7 +2,19 @@
 #include <fstream>
 #include <vector>
 #include <assert.h>
-#include "instructions.h"
+#include "template.h"
+
+enum class OpCode
+{
+    OP_CODES,
+    _COUNT
+};
+
+unsigned long long InstructionSizes[] = {
+    INSTRUCTION_SIZES
+};
+
+static_assert(sizeof(InstructionSizes) / sizeof(InstructionSizes[0]) == (unsigned long long)OpCode::_COUNT);
 
 union Word
 {
@@ -84,7 +96,7 @@ public:
             {
             case OpCode::PUSH:
             {
-                Word word = *(Word *)&_program[ip + OPCODE_SIZE];
+                Word word = *(Word *)&_program[ip + OP_CODE_SIZE];
                 std::cout << "PUSH " << word.as_int << "|" << word.as_double << std::endl;
 
                 VM_PERFORM(PushStack(word));

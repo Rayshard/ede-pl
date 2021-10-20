@@ -17,6 +17,11 @@ setuptools.setup(
     python_requires=">=3.10",
     install_requires=["click", "pydot"],
     extras_require={"dev": ["pytest", "mypy"]},
-    scripts=["src/ede/ede.py"],
-    package_data={"": ['bin/evm.exe']},
+    package_data={'evm': ['src/*']},
+    entry_points={
+        'console_scripts': [
+            'ede = ede.ede:cli',
+            'evm-build = evm.build:cli'
+        ]
+    }
 )

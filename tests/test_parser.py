@@ -1,14 +1,14 @@
 from typing import cast
-from ede_ast.ede_ast import Node
-from ede_ast.ede_expr import DefaultExpr, IdentifierExpr, ObjInitExpr
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
-from ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
-from ede_ast.ede_typesystem import EdePrimitive
-from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
-from ede_parser import ParsingMeta, TokenReader, parse_expr, parse_stmt, parse_type_symbol
-from ede_lexer import Reader, tokenize
-from ede_utils import ErrorType, Position, Positioned, Result, Success, char
+from ede.ede_ast.ede_ast import Node
+from ede.ede_ast.ede_expr import DefaultExpr, IdentifierExpr, ObjInitExpr
+from ede.ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
+from ede.ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
+from ede.ede_ast.ede_type_symbol import NameTypeSymbol, ArrayTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
+from ede.ede_ast.ede_typesystem import EdePrimitive
+from ede.ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
+from ede.ede_parser import ParsingMeta, TokenReader, parse_expr, parse_stmt, parse_type_symbol
+from ede.ede_lexer import Reader, tokenize
+from ede.ede_utils import ErrorType, Position, Positioned, Result, Success, char
 
 def get_token_reader(text: str) -> TokenReader:
     return TokenReader(tokenize(Reader(text)).get())

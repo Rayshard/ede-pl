@@ -6,7 +6,7 @@ Todo:
   ✔ make all statements return unit but expr stmt can still print value @done(21-10-04 20:56)
   ✔ turn Unions to | @done(21-10-08 17:56)
   ✔ allow certain parsing to be restricted @done(21-10-15 09:50)
-  ☐ FIX parsing with operator precedance!
+  ✔ FIX parsing with operator precedance! @done(21-10-20 09:30)
   ☐ review testing
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string
@@ -20,6 +20,7 @@ Features To Implement:
   ✔ tuples @done(21-10-05 04:25)
   ✔ objects @done(21-10-05 04:25)
   ☐ comments
+  ☐ exceptions
   ☐ access operator
   ☐ functions: `def myfunc = function (arg1:int, arg2:int) -> bool { ... }`
   ☐ while statement

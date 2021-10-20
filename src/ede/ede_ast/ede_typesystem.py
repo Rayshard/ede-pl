@@ -3,7 +3,7 @@ from collections import OrderedDict
 from enum import Enum, auto
 from typing import Dict, List, Optional, Type, cast
 from .ede_context import Context, CtxEntry, CtxEntryType
-from ede_utils import Error, ErrorType, Position, Result
+from ..ede_utils import Error, ErrorType, Position, Result
 
 class TSType(Enum):
     '''Enumeration for type system base types'''

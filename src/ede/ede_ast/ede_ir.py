@@ -1,6 +1,6 @@
 from enum import IntEnum, auto
 import struct
-from typing import List, Type, get_args
+from typing import List, Type
 
 OP_CODE_SIZE = 1
 WORD_SIZE = 8
@@ -99,11 +99,20 @@ class OpCode(IntEnum):
             case OpCode.MULI: return []
             case OpCode.DIVI: return []
             case OpCode.ADDD: return []
+            case OpCode.SUBD: return []
+            case OpCode.MULD: return []
+            case OpCode.DIVD: return []
             case OpCode.POP: return []
             case OpCode.EXIT: return []
             case OpCode.JUMP: return [int]
             case OpCode.JUMP_: return [str]
-            case _: raise Exception("Case not handled")
+            case _: raise Exception(f"Case not handled '{self.name}'")
+
+    def get_instr_byte_size(self) -> int:
+        if self.is_placeholder():
+            return OpCode[self.name.split('_')[0]].get_instr_byte_size()
+
+        return OP_CODE_SIZE + sum([get_operand_size(operand()) for operand in self.get_operand_types()])
 
 class Instruction:
 
@@ -123,11 +132,7 @@ class Instruction:
         return self.__op_code.is_placeholder()
 
     def get_byte_size(self) -> int:
-        if self.is_placeholder():
-            reg_op_code = OpCode[self.__op_code.name.split('_')[0]]
-            return Instruction(reg_op_code, [get_args(operand)[0]() for operand in reg_op_code.get_operand_types()]).get_byte_size()
-
-        return OP_CODE_SIZE + sum([get_operand_size(operand) for operand in self.__operands])
+        return self.__op_code.get_instr_byte_size()
 
     def get_bytes(self) -> bytes:
         return self.__op_code.get_bytes() + b''.join([get_operand_bytes(operand) for operand in self.__operands])

@@ -1,10 +1,10 @@
-from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
-from ede_ast.ede_literal import UnitLiteral, BoolLiteral, CharLiteral, IntLiteral, StringLiteral
-from ede_ast.ede_stmt import ReturnStmt
-from ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
-from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
-from ede_utils import Position, char
+from ede.ede_ast.ede_context import CtxEntryType
+from ede.ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
+from ede.ede_ast.ede_literal import UnitLiteral, BoolLiteral, CharLiteral, IntLiteral, StringLiteral
+from ede.ede_ast.ede_stmt import ReturnStmt
+from ede.ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
+from ede.ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
+from ede.ede_utils import Position, char
 
 def test_literals():
     ctx = TCContext()

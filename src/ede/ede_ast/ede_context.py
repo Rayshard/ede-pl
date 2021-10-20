@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from typing import Dict, Generic, Optional, TypeVar
-from ede_utils import Error, ErrorType, Position, Result, Success
+from ..ede_utils import Error, ErrorType, Position, Result, Success
 
 class CtxEntryType(Enum):
     '''Enumeration of context entry types'''

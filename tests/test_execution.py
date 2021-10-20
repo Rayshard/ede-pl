@@ -2,14 +2,14 @@ from io import StringIO
 import os
 import sys
 
-from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
-from ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
-from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
-import ede_parser
-from interpreter import ExecContext, ExecEntry, ExecException, ExecValue
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
-from ede_utils import Position, char, unit
+from ede.ede_ast.ede_context import CtxEntryType
+from ede.ede_ast.ede_expr import IdentifierExpr, BinopExpr, BinopType
+from ede.ede_ast.ede_typesystem import EdePrimitive, TCContext, TCCtxEntry
+from ede.ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
+from ede import ede_parser
+from ede.interpreter import ExecContext, ExecEntry, ExecException, ExecValue
+from ede.ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
+from ede.ede_utils import Position, char, unit
 
 def test_literals():
     tc_ctx = TCContext()

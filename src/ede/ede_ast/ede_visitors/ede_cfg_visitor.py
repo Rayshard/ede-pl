@@ -1,8 +1,8 @@
 import pydot # type: ignore
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Type
-from ede_ast.ede_ast import Node
-from ede_ast.ede_stmt import Block, IfElseStmt, ReturnStmt
-from ede_ast.ede_module import Module
+from ..ede_ast import Node
+from ..ede_stmt import Block, IfElseStmt, ReturnStmt
+from ..ede_module import Module
 
 class CFGNode(NamedTuple):
     '''Control flow graph node'''

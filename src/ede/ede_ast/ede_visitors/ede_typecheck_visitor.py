@@ -1,15 +1,15 @@
 from typing import Any, Callable, Dict, List, Optional, OrderedDict, Type, cast
-from ede_ast.ede_ast import Node
-from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_definition import FuncDef, ObjDef
-from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, FuncCallExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr, BinopType, TypeCheckError_InvalidBinop
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, LiteralType, StringLiteral, UnitLiteral
-from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
-from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCContext, TCCtxEntry, TSPrimitiveType, TSType, TypeCheckError
-from ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
-from ede_utils import Result, Success
+from ..ede_ast import Node
+from ..ede_context import CtxEntryType
+from ..ede_definition import FuncDef, ObjDef
+from ..ede_expr import ArrayInitExpr, DefaultExpr, FuncCallExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr, BinopType, TypeCheckError_InvalidBinop
+from ..ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, LiteralType, StringLiteral, UnitLiteral
+from ..ede_module import Module
+from ..ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, VarDeclStmt
+from ..ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol
+from ..ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCContext, TCCtxEntry, TSPrimitiveType, TSType, TypeCheckError
+from .ede_cfg_visitor import CFG, CFGVisitor
+from ...ede_utils import Result, Success
 
 TCResult = Result[EdeType]
 

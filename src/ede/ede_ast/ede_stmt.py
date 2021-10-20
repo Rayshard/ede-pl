@@ -3,7 +3,7 @@ from enum import Enum, auto
 from typing import List, Optional
 from .ede_type_symbol import TypeSymbol
 from .ede_ast import Node, NodeType
-from ede_utils import Position
+from ..ede_utils import Position
 from .ede_expr import Expression
 
 class StmtType(Enum):

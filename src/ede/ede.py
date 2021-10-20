@@ -1,16 +1,16 @@
 import os, subprocess
 from typing import Dict, List, cast
 import click, json
-from ede_ast.ede_ir import Instruction, OpCode, Word, double
-from ede_ast.ede_module import Module
-from ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
-from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
-from ede_ast.ede_visitors.ede_ir_visitor import IRVisitor, ModuleIRBuilder
-from ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
-import ede_parser
-from ede_ast.ede_typesystem import TCContext
-from ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
-from interpreter import ExecContext
+from .ede_ast.ede_ir import Instruction, OpCode, Word, double
+from .ede_ast.ede_module import Module
+from .ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
+from .ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
+from .ede_ast.ede_visitors.ede_ir_visitor import IRVisitor, ModuleIRBuilder
+from .ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
+from ede import ede_parser
+from .ede_ast.ede_typesystem import TCContext
+from .ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
+from ede.interpreter import ExecContext
 
 # TODO: Comment File
 
@@ -127,5 +127,5 @@ def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
 
         subprocess.call(["bin/evm.exe", bytecode_file_path])
 
-if __name__ == '__main__':
-    cli()
+# if __name__ == '__main__':
+#     cli()

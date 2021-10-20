@@ -1,15 +1,15 @@
 from typing import Any, Callable, Dict, Type, cast
-from ede_ast.ede_ast import Node
-from ede_ast.ede_context import CtxEntryType
-from ede_ast.ede_definition import FuncDef, ObjDef
-from ede_ast.ede_expr import ArrayInitExpr, DefaultExpr, Expression, FuncCallExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr
-from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
-from ede_ast.ede_module import Module
-from ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, Statement, VarDeclStmt
-from ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
-from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple
-from ede_ast.ede_visitors.ede_typecheck_visitor import visit_FuncDef
-from interpreter import ExecContext
+from ..ede_ast import Node
+from ..ede_context import CtxEntryType
+from ..ede_definition import FuncDef, ObjDef
+from ..ede_expr import ArrayInitExpr, DefaultExpr, Expression, FuncCallExpr, IdentifierExpr, ObjInitExpr, TupleInitExpr, BinopExpr
+from ..ede_literal import BoolLiteral, CharLiteral, IntLiteral, Literal, StringLiteral, UnitLiteral
+from ..ede_module import Module
+from ..ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, Statement, VarDeclStmt
+from ..ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
+from ..ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple
+from ..ede_visitors.ede_typecheck_visitor import visit_FuncDef
+from ...interpreter import ExecContext
 
 class JsonVisitor:
     @staticmethod

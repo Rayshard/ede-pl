@@ -1,7 +1,7 @@
 from typing import List
 from .ede_ast import Node, NodeType
 from .ede_typesystem import EdePrimitive
-from ede_utils import Position
+from ..ede_utils import Position
 
 class TypeSymbol(Node):
     '''AST type symbol node'''
