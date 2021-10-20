@@ -4,25 +4,46 @@
         "code": [
             "__start",
             [
-                "PUSHI",
-                5
+                "PUSH_I",
+                16
             ],
             [
-                "PUSHI",
+                "PUSH_I",
+                1
+            ],
+            [
+                "PUSH_I",
                 3
             ],
             [
                 "MULI"
             ],
             [
-                "PUSHI",
-                9
+                "PUSH_I",
+                1
+            ],
+            [
+                "DIVI"
             ],
             [
                 "ADDI"
             ],
             [
                 "POP"
+            ],
+            [
+                "PUSH_I",
+                9
+            ],
+            [
+                "POP"
+            ],
+            [
+                "PUSH_I",
+                0
+            ],
+            [
+                "EXIT"
             ]
         ]
     }

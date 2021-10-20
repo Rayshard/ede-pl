@@ -1,8 +1,7 @@
-
 import os, subprocess
-from typing import Dict, List
+from typing import Dict, List, cast
 import click, json
-from ede_ast.ede_ir import Instruction, InstructionType
+from ede_ast.ede_ir import Instruction, OpCode, Word, double
 from ede_ast.ede_module import Module
 from ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
 from ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
@@ -26,10 +25,6 @@ def print_exit(msg: str, code: int):
 @click.option('--ec', is_flag=True, help="Prints the final execution context to the standard output.")
 @click.argument('file_paths', type=click.Path(exists=True, resolve_path=True), required=True, nargs=-1)
 def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
-    subprocess.run(["bin\\evm.exe", "tests\\test.edec"])
-    return
-        
-    
     if not all([os.path.splitext(file_path)[1] == '.ede' for file_path in file_paths]):
             print_exit('Only EDE files are allowed!', 1)
 
@@ -89,32 +84,48 @@ def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
 
         instrs: List[Instruction] = []
         labels: Dict[str, int] = {}
+        ip: int = 0
 
         with open(modules[0].file_path + '.ir.json', 'r') as f:
             comp_unit = json.load(f)[modules[0].name]
             
-            for i, elem in enumerate(comp_unit["code"]):
+            for elem in comp_unit["code"]:
                 match elem:
                     case label if isinstance(label, str):
                         if label in labels:
                             print_exit("Duplicate label '{label}' encountered!", 1)
                             
-                        labels[label] = i - len(labels)
+                        labels[label] = ip
                     case [op_code] if isinstance(op_code, str):
-                        if op_code not in InstructionType._member_names_:
+                        if op_code not in OpCode._member_names_:
                             raise Exception(f"Unknown Instruction: {elem}")
                         
-                        instrs.append(Instruction(InstructionType[op_code], []))
+                        instrs.append(Instruction(OpCode[op_code], []))
+                        ip += instrs[-1].get_byte_size()
                     case [op_code, *operands] if isinstance(op_code, str):
-                        if op_code not in InstructionType._member_names_:
+                        if op_code not in OpCode._member_names_:
                             raise Exception(f"Unknown Instruction: {elem}")
                         
-                        instrs.append(Instruction(InstructionType[op_code], list(operands)))
+                        instrs.append(Instruction(OpCode[op_code], list(operands)))
+                        ip += instrs[-1].get_byte_size()
                     case _:
                         print_exit("Unknown Instruction: {elem}", 1)
 
-        # interpreter = Interpreter()
-        # interpreter.run(instrs, labels)   
+        bytecode = bytes()
+
+        for instr in instrs:
+            match instr.get_op_code():
+                case OpCode.JUMP_: bytecode += Instruction(OpCode.JUMP, [labels[str(instr.get_operands()[0])]]).get_bytes()
+                case OpCode.PUSH_I: bytecode += Instruction(OpCode.PUSH, [Word(cast(int, instr.get_operands()[0]))]).get_bytes()
+                case OpCode.PUSH_D: bytecode += Instruction(OpCode.PUSH, [Word(cast(double, instr.get_operands()[0]))]).get_bytes()
+                case _: bytecode += instr.get_bytes()
+
+        bytecode_file_path = modules[0].file_path + 'c'
+
+        with open(bytecode_file_path, 'wb+') as f_bc:
+            f_bc.write(bytecode)
+
+        subprocess.call(["bin/evm.exe", bytecode_file_path])
 
 if __name__ == '__main__':
     cli()

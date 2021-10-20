@@ -358,6 +358,7 @@ def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expressio
         op_prec = OPERATOR_PREC_DICT[op]
 
         if op_prec < cur_precedence:
+            reader.unread()
             break
 
         rhs = parse_expr(reader, op_prec if is_op_right_assoc(op) else (op_prec + 1))  
@@ -370,7 +371,7 @@ def parse_expr(reader: TokenReader, cur_precedence: int = 0) -> Result[Expressio
             case OperatorType.MUL: expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.MUL)
             case OperatorType.DIV: expr = BinopExpr(op_tok.position, expr, rhs.get(), BinopType.DIV)
             case OperatorType.ASSIGN:
-                # Ensrue that assignments have ids as their LHS
+                # Ensure that assignments have ids as their LHS
                 if expr.get_expr_type() != ExprType.ID:
                     return ParseError.InvalidOperator(op, op_tok.position)
 

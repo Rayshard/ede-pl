@@ -1,11 +1,10 @@
 from enum import Enum, auto
 from typing import Dict, List, NamedTuple, Optional, cast, get_args
 from ede_ast.ede_context import Context, CtxEntryType
-from ede_ast.ede_ir import Instruction, InstructionType
 from ede_ast.ede_literal import UnitLiteral
 from ede_ast.ede_stmt import ExprStmt, Statement
 from ede_ast.ede_typesystem import EdeArray, EdeFunc, EdeObject, EdePrimitive, EdeTuple, EdeType, TCCtxEntry, TSPrimitiveType
-from ede_utils import Position, char, float_from_bytes, float_to_bytes, int_from_bytes, int_to_bytes, unit
+from ede_utils import Position, char, unit
 
 class ExecExceptionType(Enum):
     '''Enumeration of execution exception types'''
@@ -161,62 +160,4 @@ class ExecContext(Context[ExecEntry]):
         super().__init__(parent=parent)
 
         self.ret_stack : List[ExecValue] = [] if parent is None else parent.ret_stack # type: ignore
-
-class Interpreter:
-    def __init__(self) -> None:
-        self.stack : List[bytes] = []
-        self.ip : int = 0
-
-    def run(self, instrs: List[Instruction], labels: Dict[str, int]) -> int | ExecException:
-        self.ip = labels['__start'] # Set entry point
-
-        # Execute instructions
-        while 0 <= self.ip < len(instrs):
-            instr = instrs[self.ip]
-
-            print(instr)
-
-            exec_result = self.execute_instr(instr, labels)
-            if exec_result is not None:
-                return exec_result
-
-            self.print_stack()
-            self.ip += 1    
-
-        return 0
-
-    def execute_instr(self, instr: Instruction, labels: Dict[str, int]) -> None | int | ExecException:
-        match instr:
-            case Instruction(instr_type = InstructionType.PUSHI, operands = [value]): # type: ignore
-                self.stack.append(int_to_bytes(cast(int, value)))
-            case Instruction(instr_type = InstructionType.PUSHD, operands = [value]): # type: ignore
-                self.stack.append(float_to_bytes(cast(float, value)))
-            case Instruction(instr_type = InstructionType.POP, operands = []): 
-                self.stack.pop()
-            case Instruction(instr_type = InstructionType.ADDI, operands = []): 
-                self.stack.append(int_to_bytes(int_from_bytes(self.stack.pop()) + int_from_bytes(self.stack.pop())))
-            case Instruction(instr_type = InstructionType.SUBI, operands = []): 
-                self.stack.append(int_to_bytes(int_from_bytes(self.stack.pop()) - int_from_bytes(self.stack.pop())))
-            case Instruction(instr_type = InstructionType.MULI, operands = []): 
-                self.stack.append(int_to_bytes(int_from_bytes(self.stack.pop()) * int_from_bytes(self.stack.pop())))
-            case Instruction(instr_type = InstructionType.DIVI, operands = []): 
-                left, right = int_from_bytes(self.stack.pop()), int_from_bytes(self.stack.pop())
-
-                if right == 0:
-                    return ExecException.DivisionByZero(Position())
-                
-                self.stack.append(int_to_bytes(left // right))
-            case Instruction(instr_type = InstructionType.ADDD, operands = []): 
-                self.stack.append(float_to_bytes(float_from_bytes(self.stack.pop()) + float_from_bytes(self.stack.pop())))
-            case Instruction(instr_type = InstructionType.JUMP, operands = [label]): # type: ignore
-                self.ip = labels[cast(str, label)] - 1
-            case _: raise Exception(f"Unknown Instruction: {instr.get_ir()}")
-
-    def print_stack(self):
-        print('=' * 90)
-        
-        for i, word in enumerate(self.stack):
-            print("0x{:016x}".format(i * 8) + f":\t0x{word.hex()}, int({int_from_bytes(word)}), double({float_from_bytes(word)})")
-        
-        print('=' * 90)
         

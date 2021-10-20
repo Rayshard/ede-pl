@@ -6,6 +6,7 @@ Todo:
   ✔ make all statements return unit but expr stmt can still print value @done(21-10-04 20:56)
   ✔ turn Unions to | @done(21-10-08 17:56)
   ✔ allow certain parsing to be restricted @done(21-10-15 09:50)
+  ☐ FIX parsing with operator precedance!
   ☐ review testing
   ☐ add binop to add to chars together to make a string
   ☐ add binop to add to char and string together to make a string

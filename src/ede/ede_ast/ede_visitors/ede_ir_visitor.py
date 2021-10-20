@@ -2,20 +2,20 @@ from typing import Any, Callable, Dict, List, Type, cast
 from ede_ast.ede_ast import Node
 from ede_ast.ede_definition import DefType
 from ede_ast.ede_expr import BinopExpr, BinopType
-from ede_ast.ede_ir import Constant, Instruction
+from ede_ast.ede_ir import Instruction, double
 from ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, UnitLiteral
 from ede_ast.ede_module import Module
 from ede_ast.ede_stmt import ExprStmt
 from ede_ast.ede_typesystem import EdePrimitive, TSPrimitiveType
 
-ModuleConstant = str | int | float
+ModuleConstant = str | int | double
 
 class ModuleIRBuilder:
     def __init__(self) -> None:
         self.__constants: Dict[str, ModuleConstant] = {}
         self.__code: List[str | Instruction] = []
 
-    def add_constant(self, id: str, const: Constant) -> None:
+    def add_constant(self, id: str, const: ModuleConstant) -> None:
         assert id not in self.__constants, "Duplicate constant ID encountered"
         self.__constants[id] = const
 
@@ -48,12 +48,15 @@ def visit_Module(m: Module, builder: ModuleIRBuilder) -> None:
     for stmt in m.stmts:
         IRVisitor.visit(stmt, builder)
 
+    builder.add_code(Instruction.PUSHI(0))
+    builder.add_code(Instruction.EXIT())
+
 def visit_BinopExpr(b: BinopExpr, builder: ModuleIRBuilder) -> None:
     if b.op == BinopType.ASSIGN:
         pass
     else:
-        IRVisitor.visit(b.right, builder)
         IRVisitor.visit(b.left, builder)
+        IRVisitor.visit(b.right, builder)
         
         match b.type_pattern:
             case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.ADD):
