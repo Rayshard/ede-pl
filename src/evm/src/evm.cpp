@@ -19,12 +19,14 @@ static_assert(sizeof(InstructionSizes) / sizeof(InstructionSizes[0]) == (unsigne
 union Word
 {
     int64_t as_int;
+    uint64_t as_uint;
     double as_double;
     void *as_ptr;
     uint8_t bytes[WORD_SIZE];
 
     Word() : as_int(0) {}
-    Word(int _i) : as_int(_i) {}
+    Word(int64_t _i) : as_int(_i) {}
+    Word(uint64_t _ui) : as_uint(_ui) {}
     Word(double _d) : as_double(_d) {}
     Word(void *_p) : as_ptr(_p) {}
 };
@@ -153,12 +155,71 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
+            case OpCode::ADDD:
+            {
+                std::cout << "ADDD" << std::endl;
+
+                Word left, right, sum;
+                VM_PERFORM(PopStack(right));
+                VM_PERFORM(PopStack(left));
+
+                sum.as_double = left.as_double + right.as_double;
+                VM_PERFORM(PushStack(sum));
+            }
+            break;
+            case OpCode::SUBD:
+            {
+                std::cout << "SUBD" << std::endl;
+
+                Word left, right, sum;
+                VM_PERFORM(PopStack(right));
+                VM_PERFORM(PopStack(left));
+
+                sum.as_double = left.as_double - right.as_double;
+                VM_PERFORM(PushStack(sum));
+            }
+            break;
+            case OpCode::MULD:
+            {
+                std::cout << "MULD" << std::endl;
+
+                Word left, right, sum;
+                VM_PERFORM(PopStack(right));
+                VM_PERFORM(PopStack(left));
+
+                sum.as_double = left.as_double * right.as_double;
+                VM_PERFORM(PushStack(sum));
+            }
+            break;
+            case OpCode::DIVD:
+            {
+                std::cout << "DIVD" << std::endl;
+
+                Word left, right, sum;
+                VM_PERFORM(PopStack(right));
+                if (right.as_double == 0)
+                    return VMResult::DIV_BY_ZERO;
+
+                VM_PERFORM(PopStack(left));
+
+                sum.as_double = left.as_double / right.as_double;
+                VM_PERFORM(PushStack(sum));
+            }
+            break;
             case OpCode::POP:
             {
                 std::cout << "POP" << std::endl;
 
                 Word trash;
                 VM_PERFORM(PopStack(trash));
+            }
+            break;
+            case OpCode::JUMP:
+            {
+                Word word = *(Word *)&_program[ip + OP_CODE_SIZE];
+                std::cout << "JUMP " << word.as_ptr << std::endl;
+
+                ip = word.as_uint - InstructionSizes[opcode];
             }
             break;
             case OpCode::EXIT:
