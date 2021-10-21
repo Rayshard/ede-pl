@@ -63,14 +63,14 @@ def get_operand_bytes(operand: Operand) -> bytes:
 
 class OpCode(IntEnum):
     PUSH = 0
-    ADDI = auto()
-    SUBI = auto()
-    MULI = auto()
-    DIVI = auto()
-    ADDD = auto()
-    SUBD = auto()
-    MULD = auto()
-    DIVD = auto()
+    IADD = auto()
+    ISUB = auto()
+    IMUL = auto()
+    IDIV = auto()
+    DADD = auto()
+    DSUB = auto()
+    DMUL = auto()
+    DDIV = auto()
     POP = auto()
     JUMP = auto()
     EXIT = auto()
@@ -94,14 +94,14 @@ class OpCode(IntEnum):
             case OpCode.PUSH: return [Word]
             case OpCode.PUSH_I: return [int]
             case OpCode.PUSH_D: return [double]
-            case OpCode.ADDI: return []
-            case OpCode.SUBI: return []
-            case OpCode.MULI: return []
-            case OpCode.DIVI: return []
-            case OpCode.ADDD: return []
-            case OpCode.SUBD: return []
-            case OpCode.MULD: return []
-            case OpCode.DIVD: return []
+            case OpCode.IADD: return []
+            case OpCode.ISUB: return []
+            case OpCode.IMUL: return []
+            case OpCode.IDIV: return []
+            case OpCode.DADD: return []
+            case OpCode.DSUB: return []
+            case OpCode.DMUL: return []
+            case OpCode.DDIV: return []
             case OpCode.POP: return []
             case OpCode.EXIT: return []
             case OpCode.JUMP: return [int]
@@ -153,28 +153,28 @@ class Instruction:
     def POP(): return Instruction(OpCode.POP, [])
 
     @staticmethod
-    def ADDI(): return Instruction(OpCode.ADDI, [])
+    def IADD(): return Instruction(OpCode.IADD, [])
 
     @staticmethod
-    def SUBI(): return Instruction(OpCode.SUBI, [])
+    def ISUB(): return Instruction(OpCode.ISUB, [])
 
     @staticmethod
-    def MULI(): return Instruction(OpCode.MULI, [])
+    def IMUL(): return Instruction(OpCode.IMUL, [])
 
     @staticmethod
-    def DIVI(): return Instruction(OpCode.DIVI, [])
+    def IDIV(): return Instruction(OpCode.IDIV, [])
 
     @staticmethod
-    def ADDD(): return Instruction(OpCode.ADDD, [])
+    def DADD(): return Instruction(OpCode.DADD, [])
 
     @staticmethod
-    def SUBD(): return Instruction(OpCode.SUBD, [])
+    def DSUB(): return Instruction(OpCode.DSUB, [])
 
     @staticmethod
-    def MULD(): return Instruction(OpCode.MULD, [])
+    def DMUL(): return Instruction(OpCode.DMUL, [])
 
     @staticmethod
-    def DIVD(): return Instruction(OpCode.DIVD, [])
+    def DDIV(): return Instruction(OpCode.DDIV, [])
 
     @staticmethod
     def EXIT(): return Instruction(OpCode.EXIT, [])

@@ -1,15 +1,15 @@
 from ede_lexer import Reader, lex, lex_char, lex_id_or_keyword, lex_integer, lex_string
 from ede_utils import ErrorType
-from ede_token import KEYWORD_DICT, SYMBOL_DICT, Token, TokenType
+from ede_token import KEYWORD_DICT, SYMBOL_DICT_INV, Token, TokenType
 
 def test_integer():
     assert lex_integer(Reader("0")).get() == Token(type=TokenType.INTEGER, value=0)
     assert lex_integer(Reader("123")).get() == Token(type=TokenType.INTEGER, value=123)
     assert lex_integer(Reader("1a")).get() == Token(type=TokenType.INTEGER, value=1)
-    assert lex_integer(Reader("a")).is_error(ErrorType.INVALID_INT_LIT)
-    assert lex_integer(Reader("a1")).is_error(ErrorType.INVALID_INT_LIT)
-    assert lex_integer(Reader(" ")).is_error(ErrorType.INVALID_INT_LIT)
-    assert lex_integer(Reader(" 12")).is_error(ErrorType.INVALID_INT_LIT)
+    assert lex_integer(Reader("a")).is_error(ErrorType.LEXING_INVALID_INT_LIT)
+    assert lex_integer(Reader("a1")).is_error(ErrorType.LEXING_INVALID_INT_LIT)
+    assert lex_integer(Reader(" ")).is_error(ErrorType.LEXING_INVALID_INT_LIT)
+    assert lex_integer(Reader(" 12")).is_error(ErrorType.LEXING_INVALID_INT_LIT)
 
 def test_string():
     assert lex_string(Reader('"a"')).get() == Token(type=TokenType.STRING, value="a")
@@ -21,25 +21,30 @@ def test_string():
     assert lex_string(Reader('"null\\0is here"')).get() == Token(type=TokenType.STRING, value="null\0is here")
     assert lex_string(Reader('"backslash\\\\is here"')).get() == Token(type=TokenType.STRING, value="backslash\\is here")
     assert lex_string(Reader('"unknown escaped\\is here"')).get() == Token(type=TokenType.STRING, value="unknown escaped\\is here")
-    assert lex_string(Reader('"improper close\\"')).is_error(ErrorType.UNEXPECTED_EOF)
-    assert lex_string(Reader('"improper close')).is_error(ErrorType.UNEXPECTED_EOF)
-    assert lex_string(Reader('"improper close\\')).is_error(ErrorType.UNEXPECTED_EOF)
-    assert lex_string(Reader('improper open\\')).is_error(ErrorType.INVALID_STR_LIT)
+    assert lex_string(Reader('"improper close\\"')).is_error(ErrorType.LEXING_UNEXPECTED_EOF)
+    assert lex_string(Reader('"improper close')).is_error(ErrorType.LEXING_UNEXPECTED_EOF)
+    assert lex_string(Reader('"improper close\\')).is_error(ErrorType.LEXING_UNEXPECTED_EOF)
+    assert lex_string(Reader('improper open\\')).is_error(ErrorType.LEXING_INVALID_STR_LIT)
 
 def test_char():
     assert lex_char(Reader("'a'")).get() == Token(type=TokenType.CHAR, value='a')
     assert lex_char(Reader("'\\n'")).get() == Token(type=TokenType.CHAR, value='\n')
     assert lex_char(Reader("'\\t'")).get() == Token(type=TokenType.CHAR, value='\t')
     assert lex_char(Reader("'\\\\'")).get() == Token(type=TokenType.CHAR, value='\\')
-    assert lex_char(Reader("'abc'")).is_error(ErrorType.INVALID_CHAR_LIT)
-    assert lex_char(Reader("'\\a'")).is_error(ErrorType.INVALID_CHAR_LIT)
-    assert lex_char(Reader("'i")).is_error(ErrorType.INVALID_CHAR_LIT)
-    assert lex_char(Reader("''")).is_error(ErrorType.INVALID_CHAR_LIT)
-    assert lex_char(Reader("'\\'")).is_error(ErrorType.INVALID_CHAR_LIT)
-    assert lex_char(Reader("a'")).is_error(ErrorType.INVALID_CHAR_LIT)
+    assert lex_char(Reader("'abc'")).is_error(ErrorType.LEXING_INVALID_CHAR_LIT)
+    assert lex_char(Reader("'\\a'")).is_error(ErrorType.LEXING_INVALID_CHAR_LIT)
+    assert lex_char(Reader("'i")).is_error(ErrorType.LEXING_INVALID_CHAR_LIT)
+    assert lex_char(Reader("''")).is_error(ErrorType.LEXING_INVALID_CHAR_LIT)
+    assert lex_char(Reader("'\\'")).is_error(ErrorType.LEXING_INVALID_CHAR_LIT)
+    assert lex_char(Reader("a'")).is_error(ErrorType.LEXING_INVALID_CHAR_LIT)
 
 def test_symbols():
-    for sym, type in SYMBOL_DICT.items():
+    symbols = SYMBOL_DICT_INV.copy()
+    del symbols[TokenType.SYM_LINE_COMMENT]
+    del symbols[TokenType.SYM_COMMENT_OPEN]
+    del symbols[TokenType.SYM_COMMENT_CLOSE]
+
+    for type, sym in symbols.items():
         assert lex(Reader(sym)).get().type == type
 
     #TODO: Comments
@@ -57,5 +62,5 @@ def test_identifiers():
     assert lex_id_or_keyword(Reader("_a_1_")).get() == Token(type=TokenType.IDENTIFIER, value="_a_1_")
     assert lex_id_or_keyword(Reader("_123")).get() == Token(type=TokenType.IDENTIFIER, value="_123")
     assert lex_id_or_keyword(Reader("a bc")).get() == Token(type=TokenType.IDENTIFIER, value="a")
-    assert lex_id_or_keyword(Reader("123")).is_error(ErrorType.INVALID_ID)
-    assert lex_id_or_keyword(Reader(" abc")).is_error(ErrorType.INVALID_ID)
+    assert lex_id_or_keyword(Reader("123")).is_error(ErrorType.LEXING_INVALID_ID)
+    assert lex_id_or_keyword(Reader(" abc")).is_error(ErrorType.LEXING_INVALID_ID)

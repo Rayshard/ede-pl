@@ -104,9 +104,9 @@ public:
                 VM_PERFORM(PushStack(word));
             }
             break;
-            case OpCode::ADDI:
+            case OpCode::IADD:
             {
-                std::cout << "ADDI" << std::endl;
+                std::cout << "IADD" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -116,9 +116,9 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
-            case OpCode::SUBI:
+            case OpCode::ISUB:
             {
-                std::cout << "SUBI" << std::endl;
+                std::cout << "ISUB" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -128,9 +128,9 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
-            case OpCode::MULI:
+            case OpCode::IMUL:
             {
-                std::cout << "MULI" << std::endl;
+                std::cout << "IMUL" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -140,9 +140,9 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
-            case OpCode::DIVI:
+            case OpCode::IDIV:
             {
-                std::cout << "DIVI" << std::endl;
+                std::cout << "IDIV" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -155,9 +155,9 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
-            case OpCode::ADDD:
+            case OpCode::DADD:
             {
-                std::cout << "ADDD" << std::endl;
+                std::cout << "DADD" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -167,9 +167,9 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
-            case OpCode::SUBD:
+            case OpCode::DSUB:
             {
-                std::cout << "SUBD" << std::endl;
+                std::cout << "DSUB" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -179,9 +179,9 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
-            case OpCode::MULD:
+            case OpCode::DMUL:
             {
-                std::cout << "MULD" << std::endl;
+                std::cout << "DMUL" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -191,9 +191,9 @@ public:
                 VM_PERFORM(PushStack(sum));
             }
             break;
-            case OpCode::DIVD:
+            case OpCode::DDIV:
             {
-                std::cout << "DIVD" << std::endl;
+                std::cout << "DDIV" << std::endl;
 
                 Word left, right, sum;
                 VM_PERFORM(PopStack(right));
@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
     // Insert(program, (int64_t)123);
     // Insert(program, OpCode::PUSH);
     // Insert(program, (int64_t)456);
-    // Insert(program, OpCode::ADDI);
+    // Insert(program, OpCode::IADD);
     // Insert(program, OpCode::PUSH);
     // Insert(program, (int64_t)15);
     // Insert(program, OpCode::EXIT);

@@ -60,13 +60,13 @@ def visit_BinopExpr(b: BinopExpr, builder: ModuleIRBuilder) -> None:
         
         match b.type_pattern:
             case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.ADD):
-                builder.add_code(Instruction.ADDI())
+                builder.add_code(Instruction.IADD())
             case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.SUB):
-                builder.add_code(Instruction.SUBI())
+                builder.add_code(Instruction.ISUB())
             case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.MUL):
-                builder.add_code(Instruction.MULI())
+                builder.add_code(Instruction.IMUL())
             case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.DIV):
-                builder.add_code(Instruction.DIVI())
+                builder.add_code(Instruction.IDIV())
             case _:
                 raise Exception("Case not handled")
 

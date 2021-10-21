@@ -37,12 +37,12 @@ class Positioned(Generic[T]):
 
 class ErrorType(IntEnum):
     DEFAULT = auto()
-    INVALID_INT_LIT = auto()
-    INVALID_STR_LIT = auto()
-    INVALID_CHAR_LIT = auto()
-    INVALID_COMMENT = auto()
-    UNEXPECTED_EOF = auto()
-    INVALID_ID = auto()
+    LEXING_INVALID_INT_LIT = auto()
+    LEXING_INVALID_STR_LIT = auto()
+    LEXING_INVALID_CHAR_LIT = auto()
+    LEXING_INVALID_COMMENT = auto()
+    LEXING_UNEXPECTED_EOF = auto()
+    LEXING_INVALID_ID = auto()
 
     TYPECHECKING_INVALID_BINOP = auto()
     TYPECHECKING_UNKNOWN_ID = auto()

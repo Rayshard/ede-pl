@@ -44,7 +44,7 @@ def lex_integer(reader: Reader) -> Result[Token]:
 
         result += reader.read()
 
-    return Success(Token.Integer(position, int(result))) if result != '' else Error(ErrorType.INVALID_INT_LIT, position)
+    return Success(Token.Integer(position, int(result))) if result != '' else LexError.InvalidIntLit(position)
 
 def lex_id_or_keyword(reader: Reader) -> Result[Token]:
     result = ''
@@ -52,7 +52,7 @@ def lex_id_or_keyword(reader: Reader) -> Result[Token]:
 
     # Attempt to read the initial character
     if not reader.peek().isalpha() and reader.peek() != '_':
-        return Error(ErrorType.INVALID_ID, position, "Expected letter or _ for identifier.")
+        return LexError.InvalidID(position)
     
     result += reader.read()
 
@@ -71,7 +71,7 @@ def lex_string(reader: Reader) -> Result[Token]:
     
     # Attempt to read the initial "
     if reader.peek() != '"':
-        return Error(ErrorType.INVALID_STR_LIT, position, "Expected \" to begin string literal.")
+        return LexError.InvalidStringLit(position)
     else:
         reader.read()
 
@@ -94,7 +94,7 @@ def lex_string(reader: Reader) -> Result[Token]:
             elif escaped_char == '"':
                 result += '"'
             elif escaped_char == EOF:
-                return Error(ErrorType.UNEXPECTED_EOF, position, "String literal must be closed with a \".")
+                return LexError.UnexpectedEOF(position, "String literal must be closed with a \".")
             else:
                 result += "\\" + escaped_char
 
@@ -103,7 +103,7 @@ def lex_string(reader: Reader) -> Result[Token]:
             reader.read()
             break
         elif char == EOF:
-            return Error(ErrorType.UNEXPECTED_EOF, position, "String literal must be closed with a \".")
+            return LexError.UnexpectedEOF(position, "String literal must be closed with a \".")
 
         result += reader.read()
 
@@ -115,7 +115,7 @@ def lex_char(reader: Reader) -> Result[Token]:
     
     # Attempt to read the initial '
     if reader.peek() != '\'':
-        return Error(ErrorType.INVALID_CHAR_LIT, position, "Expected ' to begin char literal.")
+        return LexError.InvalidCharLit(position, "Char literal must start with symbol: ' ")
     else:
         reader.read()
 
@@ -137,19 +137,19 @@ def lex_char(reader: Reader) -> Result[Token]:
         elif escaped_char == '"':
             result += '"'
         elif escaped_char == EOF:
-            return Error(ErrorType.UNEXPECTED_EOF, position, "Char literal must be closed with a '.")
+            return LexError.UnexpectedEOF(position, "Char literal must be closed with a '.")
         else:
-            return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain only one character.")
+            return LexError.InvalidCharLit(position, "Char literal must contain only one character.")
     elif c == '\'':
         reader.read()
-        return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain one character.")
+        return LexError.InvalidCharLit(position, "Char literal must contain one character.")
     elif c == EOF:
-        return Error(ErrorType.UNEXPECTED_EOF, position, "Char literal must contain one character'.")
+        return LexError.UnexpectedEOF(position, "Char literal must contain one character'.")
     else:
         result += reader.read()
 
     if reader.peek() != '\'':
-        return Error(ErrorType.INVALID_CHAR_LIT, position, "Char literal must contain one character and be closed with a '.")
+        return LexError.InvalidCharLit(position, "Char literal must contain one character and be closed with a '.")
     else:
         reader.read()
 
@@ -178,7 +178,7 @@ def lex(reader: Reader) -> Result[Token]:
         if symbol == SYMBOL_DICT_INV[TokenType.SYM_LINE_COMMENT]:
             value = ""
 
-            while reader.peek() != '\n':
+            while reader.peek() not in ['\n', EOF]:
                 value += reader.read()
 
             return Success(Token.Comment(position, value))
@@ -189,7 +189,7 @@ def lex(reader: Reader) -> Result[Token]:
                 next_char = reader.read()
 
                 if next_char == EOF:
-                    return Error(ErrorType.INVALID_COMMENT, position, "Expected */ to close comment.")
+                    return LexError.InvalidComment(position)
                 elif next_char + reader.peek() == SYMBOL_DICT_INV[TokenType.SYM_COMMENT_CLOSE]:
                     reader.read()
                     return Success(Token.Comment(position, value))
@@ -226,3 +226,30 @@ def tokenize(reader: Reader, keep_comments: bool = False) -> Result[List[Token]]
             break
 
     return Success(tokens)
+
+class LexError:
+    '''Wrapper for lexing errors'''
+    
+    @staticmethod
+    def InvalidIntLit(pos: Position) -> Error:
+        return Error(ErrorType.LEXING_INVALID_INT_LIT, pos)
+
+    @staticmethod
+    def InvalidStringLit(pos: Position) -> Error:
+        return Error(ErrorType.LEXING_INVALID_STR_LIT, pos)
+
+    @staticmethod
+    def InvalidCharLit(pos: Position, why: str) -> Error:
+        return Error(ErrorType.LEXING_INVALID_CHAR_LIT, pos, why)
+
+    @staticmethod
+    def InvalidComment(pos: Position) -> Error:
+        return Error(ErrorType.LEXING_INVALID_COMMENT, pos, "Expected */ to close comment")
+
+    @staticmethod
+    def UnexpectedEOF(pos: Position, msg: str) -> Error:
+        return Error(ErrorType.LEXING_UNEXPECTED_EOF, pos, msg)
+
+    @staticmethod
+    def InvalidID(pos: Position) -> Error:
+        return Error(ErrorType.LEXING_INVALID_ID, pos, "Expected letter or _ for identifier.")

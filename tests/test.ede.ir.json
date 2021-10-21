@@ -16,17 +16,17 @@
                 3
             ],
             [
-                "MULI"
+                "IMUL"
             ],
             [
                 "PUSH_I",
                 2
             ],
             [
-                "DIVI"
+                "IDIV"
             ],
             [
-                "ADDI"
+                "IADD"
             ],
             [
                 "POP"
