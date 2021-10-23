@@ -21,4 +21,4 @@ def cli(directory: str):
         output.writelines([f"\n#define {macro} {value}" for macro, value in macros.items()])
 
     exe_output_path = os.path.join(directory, "evm.exe" if platform.system() == "Windows" else "evm") 
-    subprocess.call(["g++", "-fdiagnostics-color=always", "-g", cpp_file_path, "-o", exe_output_path])
+    subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g", cpp_file_path, "-o", exe_output_path])
