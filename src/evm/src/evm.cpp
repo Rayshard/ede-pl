@@ -373,7 +373,6 @@ int main(int argc, char *argv[])
     Insert(program, OpCode::IADD);
     Insert(program, OpCode::PUSH);
     Insert(program, (int64_t)15);
-    Insert(program, OpCode::PUSH);
     Insert(program, OpCode::EXIT);
 
     VM vm(std::move(program));

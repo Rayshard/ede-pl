@@ -3,7 +3,8 @@ from ede.ede_ast.ede_ir import OP_CODE_SIZE, WORD_SIZE, OpCode
 
 @click.command()
 @click.option('-d', '--directory', type=click.Path(exists=False, file_okay=False, resolve_path=True), default='bin/', help="Sets the output directory for the executable.")
-def cli(directory: str):
+@click.option('-t', '--tests', is_flag=True, help="Whether or not the test suite should be built.")
+def cli(directory: str, tests: bool):
     pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
 
     macros = {
@@ -13,12 +14,17 @@ def cli(directory: str):
         "OP_CODE_SIZE": OP_CODE_SIZE
     }
 
-    cpp_file_path = pkg_resources.resource_filename('evm', 'src/evm.cpp')
+    evm_file_path = pkg_resources.resource_filename('evm', 'src/evm.cpp')
     template_file_path = pkg_resources.resource_filename('evm', 'src/template.h')
 
     with open(template_file_path, "w+") as output:
         output.write("#pragma once\n")
         output.writelines([f"\n#define {macro} {value}" for macro, value in macros.items()])
 
-    exe_output_path = os.path.join(directory, "evm.exe" if platform.system() == "Windows" else "evm") 
-    subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g", cpp_file_path, "-o", exe_output_path])
+    evm_output_path = os.path.join(directory, "evm" + (".exe" if platform.system() == "Windows" else "")) 
+    subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g", evm_file_path, "-o", evm_output_path])
+
+    if tests:
+        tests_file_path = pkg_resources.resource_filename('evm', 'src/tests.cpp')
+        tests_output_path = os.path.join(directory, "evm_tests" + (".exe" if platform.system() == "Windows" else "")) 
+        subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g", tests_file_path, "-o", tests_output_path])
