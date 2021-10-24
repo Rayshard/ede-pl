@@ -21,17 +21,21 @@ public:
     {
         int numFailed = 0;
 
-        std::cout << "Running " << INSTANCES.size() << " tests...\n" << std::endl;
+        std::cout << "Running " << INSTANCES.size() << " tests..." << std::endl;
 
-        for (auto test : INSTANCES)
+        for (size_t i = 0; i < INSTANCES.size(); i++)
         {
+            auto test = INSTANCES[i];
+
             try
             {
+                std::cout << "\t(" << i + 1 << ") ";
                 test->Run();
+                std::cout << "SUCCEEDED " << test->GetName() << std::endl;
             }
             catch (const std::exception &e)
             {
-                std::cout << "\tFAILED " << test->GetName() << ": " << e.what() << std::endl;
+                std::cout << "FAILED    " << test->GetName() << "\t" << e.what() << std::endl;
                 numFailed++;
             }
         }
@@ -43,13 +47,17 @@ public:
     }
 };
 
-#define ASSERT(a, msg)                     \
-    do                                     \
-    {                                      \
-        if (!a)                            \
-        {                                  \
-            throw std::runtime_error(msg); \
-        }                                  \
+#define S1(x) #x
+#define S2(x) S1(x)
+#define LOCATION __FILE__ ":" S2(__LINE__)
+
+#define ASSERT(a)                               \
+    do                                          \
+    {                                           \
+        if (!(a))                               \
+        {                                       \
+            throw std::runtime_error(LOCATION); \
+        }                                       \
     } while (false)
 
 #define DEFINE_TEST(TEST_NAME)                                 \

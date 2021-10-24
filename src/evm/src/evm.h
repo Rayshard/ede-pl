@@ -10,17 +10,10 @@
 #include "template.h"
 
 typedef uint8_t byte;
+typedef std::vector<byte> Program;
 
-enum class OpCode : byte
-{
-    OP_CODES,
-    _COUNT
-};
-
-unsigned long long InstructionSizes[] = {
-    INSTRUCTION_SIZES};
-
-static_assert(sizeof(InstructionSizes) / sizeof(InstructionSizes[0]) == (unsigned long long)OpCode::_COUNT);
+class VM;
+class Thread;
 
 union Word
 {
@@ -37,8 +30,6 @@ union Word
     Word(void *_p) : as_ptr(_p) {}
 };
 
-typedef std::vector<byte> Program;
-
 enum class VMResult
 {
     SUCCESS,             // VM ran program with no errors
@@ -52,18 +43,7 @@ enum class VMResult
     _COUNT
 };
 
-const char *VMResultStrings[] = {
-    "",                                   //SUCCESS
-    "Instruction pointer out of bounds!", //IP_OUT_OF_BOUNDS
-    "Instruction pointer overflow!",      //IP_OVERFLOW
-    "Unknown op code encountered!",       //UNKNOWN_OP_CODE
-    "Stack overflow!",                    //STACK_OVERFLOW
-    "Stack underflow!",                   //STACK_UNDERFLOW
-    "Division by zero!",                  //DIV_BY_ZERO
-    "Cannot spawn thread!",               //CANNOT_SPAWN_THREAD
-};
-
-static_assert(sizeof(VMResultStrings) / sizeof(VMResultStrings[0]) == (size_t)VMResult::_COUNT);
+extern const char *VMResultStrings[(size_t)VMResult::_COUNT];
 
 #define VM_PERFORM(x)                         \
     (                                         \
@@ -73,7 +53,40 @@ static_assert(sizeof(VMResultStrings) / sizeof(VMResultStrings[0]) == (size_t)VM
                 return _result;               \
         })
 
-class VM;
+namespace Instructions
+{
+    enum class OpCode : byte
+    {
+        OP_CODES,
+        _COUNT
+    };
+
+    extern const size_t Sizes[(size_t)OpCode::_COUNT];
+
+    typedef VMResult (*ExecutionFunc)(Thread *);
+    extern ExecutionFunc ExecutionFuncs[(size_t)OpCode::_COUNT];
+
+    void Init();
+
+    template <class type>
+    void Insert(Program &_prog, type _value) { _prog.insert(_prog.end(), (char *)&_value, (char *)&_value + sizeof(_value)); }
+
+    template <typename Arg1, typename... Rest>
+    void Insert(Program &_prog, Arg1 _arg1, Rest const &..._rest)
+    {
+        Insert(_prog, _arg1);
+        Insert(_prog, _rest...);
+    }
+
+    template <typename Arg1, typename... Rest>
+    Program CreateProgram(Arg1 _arg1, Rest const &..._rest)
+    {
+        Program program = Program();
+        Insert(program, _arg1);
+        Insert(program, _rest...);
+        return program;
+    }
+}
 
 class Thread
 {
@@ -84,6 +97,7 @@ private:
     size_t stackPtr;
 
     std::thread thread;
+    bool isAlive;
     std::optional<VMResult> execResult;
 
 public:
@@ -94,15 +108,15 @@ public:
     void Start();
     void Join();
     VMResult Run();
-    
+
     VMResult PushStack(Word _word);
     VMResult PopStack(Word &word);
     void PrintStack();
 
-    bool IsAlive();
-
     VM *GetVM() { return vm; }
     size_t GetID() { return id; }
+    bool IsAlive() { return isAlive; }
+    Word GetStackTop() { return *(Word*)&stack[stackPtr]; }
 };
 
 class VM

@@ -14,17 +14,25 @@ def cli(directory: str, tests: bool):
         "OP_CODE_SIZE": OP_CODE_SIZE
     }
 
-    evm_file_path = pkg_resources.resource_filename('evm', 'src/evm.cpp')
-    template_file_path = pkg_resources.resource_filename('evm', 'src/template.h')
+    resources = {
+        "main.cpp": pkg_resources.resource_filename('evm', 'src/main.cpp'),
+        "template.h": pkg_resources.resource_filename('evm', 'src/template.h'),
+        "thread.cpp": pkg_resources.resource_filename('evm', 'src/thread.cpp'),
+        "instructions.cpp": pkg_resources.resource_filename('evm', 'src/instructions.cpp'),
+        "vm.cpp": pkg_resources.resource_filename('evm', 'src/vm.cpp'),
+        "tests.cpp": pkg_resources.resource_filename('evm', 'src/tests.cpp'),
+    }
 
-    with open(template_file_path, "w+") as output:
+    with open(resources["template.h"], "w+") as output:
         output.write("#pragma once\n")
         output.writelines([f"\n#define {macro} {value}" for macro, value in macros.items()])
 
+    input_files = [resources["main.cpp"], resources["thread.cpp"], resources["vm.cpp"], resources["instructions.cpp"]]
     evm_output_path = os.path.join(directory, "evm" + (".exe" if platform.system() == "Windows" else "")) 
-    subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g", evm_file_path, "-o", evm_output_path])
+    subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g"] + input_files + ["-o", evm_output_path])
 
     if tests:
-        tests_file_path = pkg_resources.resource_filename('evm', 'src/tests.cpp')
+        input_files.remove(resources["main.cpp"])
+        input_files.append(resources["tests.cpp"])
         tests_output_path = os.path.join(directory, "evm_tests" + (".exe" if platform.system() == "Windows" else "")) 
-        subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g", tests_file_path, "-o", tests_output_path])
+        subprocess.call(["g++", "-std=c++17", "-fdiagnostics-color=always", "-g"] + input_files + ["-o", tests_output_path])
