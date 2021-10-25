@@ -1,7 +1,7 @@
 import os, subprocess
-from typing import Dict, List, cast
+from typing import List
 import click, json
-from .ede_ast.ede_ir import Instruction, OpCode, Word, double
+from .ede_ast.ede_ir import Instruction, OpCode
 from .ede_ast.ede_module import Module
 from .ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
 from .ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
@@ -68,63 +68,27 @@ def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
         
         print_exit(str(exec_res), exec_res.is_exception())
     else:
-        ir_json = {}
-
+        elements: List[str | Instruction] = []
+        
         for module in modules:
-            if module.name in ir_json:
-                print_exit(f"Module with name '{module.name}' already exists!", 1)
-
             ir_builder = ModuleIRBuilder()
             IRVisitor.visit(module, ir_builder)
-
-            ir_json[module.name] = ir_builder.get_ir()
-
-        with open(modules[0].file_path + '.ir.json', 'w+') as f_ir:
-            json.dump(ir_json, f_ir, indent=4, sort_keys=False)
-
-        instrs: List[Instruction] = []
-        labels: Dict[str, int] = {}
-        ip: int = 0
-
-        with open(modules[0].file_path + '.ir.json', 'r') as f:
-            comp_unit = json.load(f)[modules[0].name]
+            module_ir = ir_builder.get_ir()
             
-            for elem in comp_unit["code"]:
+            for elem in module_ir["code"]:
                 match elem:
                     case label if isinstance(label, str):
-                        if label in labels:
-                            print_exit("Duplicate label '{label}' encountered!", 1)
-                            
-                        labels[label] = ip
+                        elements.append("@" + label + ":")
                     case [op_code] if isinstance(op_code, str):
-                        if op_code not in OpCode._member_names_:
-                            raise Exception(f"Unknown Instruction: {elem}")
-                        
-                        instrs.append(Instruction(OpCode[op_code], []))
-                        ip += instrs[-1].get_byte_size()
+                        elements.append(Instruction(OpCode[op_code], []))
                     case [op_code, *operands] if isinstance(op_code, str):
-                        if op_code not in OpCode._member_names_:
-                            raise Exception(f"Unknown Instruction: {elem}")
-                        
-                        instrs.append(Instruction(OpCode[op_code], list(operands)))
-                        ip += instrs[-1].get_byte_size()
+                        elements.append(Instruction(OpCode[op_code], list(operands)))
                     case _:
-                        print_exit("Unknown Instruction: {elem}", 1)
+                        print_exit("Unknown Bytecode Element: {elem}", 1)
 
-        bytecode = bytes()
-
-        for instr in instrs:
-            match instr.get_op_code():
-                case OpCode.JUMP_: bytecode += Instruction(OpCode.JUMP, [labels[str(instr.get_operands()[0])]]).get_bytes()
-                case OpCode.JUMPZ_: bytecode += Instruction(OpCode.JUMPZ, [labels[str(instr.get_operands()[0])]]).get_bytes()
-                case OpCode.JUMPNZ_: bytecode += Instruction(OpCode.JUMPNZ, [labels[str(instr.get_operands()[0])]]).get_bytes()
-                case OpCode.PUSH_I_: bytecode += Instruction(OpCode.PUSH, [Word(cast(int, instr.get_operands()[0]))]).get_bytes()
-                case OpCode.PUSH_D_: bytecode += Instruction(OpCode.PUSH, [Word(cast(double, instr.get_operands()[0]))]).get_bytes()
-                case _: bytecode += instr.get_bytes()
-
-        bytecode_file_path = modules[0].file_path + 'c'
-
-        with open(bytecode_file_path, 'wb+') as f_bc:
-            f_bc.write(bytecode)
+        bytecode_file_path = modules[0].file_path + 'asm'
+        with open(bytecode_file_path, 'w+') as f_bc:
+            for elem in elements:
+                f_bc.write(("" if isinstance(elem, str) else "\t") + str(elem) + '\n')
 
         subprocess.call(["bin/evm.exe", bytecode_file_path])

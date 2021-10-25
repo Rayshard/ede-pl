@@ -33,7 +33,6 @@ namespace Instructions
     {
         EXIT,
         PRINTC,
-        PRINTS,
         MALLOC,
         FREE,
         _COUNT

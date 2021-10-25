@@ -26,7 +26,7 @@ class ModuleIRBuilder:
     def get_ir(self):
         return {
             "constants": self.__constants,
-            "code": [elem if isinstance(elem, str) else elem.get_ir() for elem in self.__code]
+            "code": [elem if isinstance(elem, str) else elem.get_elements() for elem in self.__code]
         }
 
 class IRVisitor:

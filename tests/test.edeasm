@@ -1,0 +1,13 @@
+@__start:
+	PUSHI 2
+	PUSHI 3
+	PUSHI 1
+	IMUL
+	IDIV
+	PUSHI 16
+	IADD
+	POP
+	PUSHI 9
+	POP
+	PUSHI 0
+	EXIT

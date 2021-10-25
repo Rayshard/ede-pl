@@ -32,6 +32,7 @@ namespace Instructions
         _thread->PopStack<Word>();
     }
 
+#pragma region Binops
     void IADD(Thread *_thread)
     {
         DO_IF(std::cout << "IADD" << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
@@ -127,11 +128,19 @@ _thread->PushStack(_thread->PopStack<double>() - _thread->PopStack<double>());
         if (_thread->PopStack<uint64_t>() == 0ull)
             _thread->instrPtr = target.as_uint - GetSize(OpCode::JUMPZ);
     }
+#pragma endregion
 
+#pragma region Syscalls
     void SYSCALL_EXIT(Thread *_thread)
     {
         DO_IF(std::cout << "SYSCALL EXIT" << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
         _thread->GetVM()->Quit(_thread->PopStack<int64_t>());
+    }
+
+    void SYSCALL_PRINTC(Thread *_thread)
+    {
+        DO_IF(std::cout << "SYSCALL PRINTC" << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+        std::wcout << static_cast<wchar_t>(_thread->PopStack<int64_t>());
     }
 
     void SYSCALL(Thread *_thread)
@@ -142,6 +151,8 @@ _thread->PushStack(_thread->PopStack<double>() - _thread->PopStack<double>());
 
         SysCallExecutionFuncs[code](_thread);
     }
+#pragma endregion
+
 
 #pragma region Loads and Stores
     void SLOAD(Thread *_thread)
@@ -184,5 +195,6 @@ _thread->PushStack(_thread->PopStack<double>() - _thread->PopStack<double>());
         ExecutionFuncs[(size_t)OpCode::SSTORE] = &SSTORE;
 
         SysCallExecutionFuncs[(size_t)SysCallCode::EXIT] = &SYSCALL_EXIT;
+        SysCallExecutionFuncs[(size_t)SysCallCode::PRINTC] = &SYSCALL_PRINTC;
     }
 }

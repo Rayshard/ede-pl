@@ -3,6 +3,7 @@
 #include <regex>
 #include <fstream>
 #include <sstream>
+#include <iomanip>
 #include "instructions.h"
 
 using Instructions::OpCode, Instructions::SysCallCode;
@@ -31,6 +32,7 @@ struct Token
 #define LABEL_DEF_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+:")
 #define INTEGER_REGEX std::regex("-?(0|[1-9][0-9]*)")
 #define DECIMAL_REGEX std::regex("-?(0|[1-9][0-9]*)([.][0-9]+)?")
+#define HEX_REGEX std::regex("0x[0-9a-fA-F]+")
 
 namespace Error
 {
@@ -76,10 +78,10 @@ double ReadDoubleOperand(std::ifstream &_stream)
 
     try
     {
-        if (!std::regex_match(token.value, DECIMAL_REGEX))
-            throw 0;
+        if (std::regex_match(token.value, DECIMAL_REGEX))
+            return std::stod(token.value);
 
-        return std::stod(token.value);
+        throw 0;
     }
     catch (...)
     {
@@ -93,14 +95,40 @@ int64_t ReadInt64Operand(std::ifstream &_stream)
 
     try
     {
-        if (!std::regex_match(token.value, INTEGER_REGEX))
-            throw 0;
+        if (std::regex_match(token.value, INTEGER_REGEX))
+            return std::stoll(token.value);
+        else if (std::regex_match(token.value, HEX_REGEX))
+            return std::stoll(token.value, 0, 16);
 
-        return std::stoll(token.value);
+        throw 0;
     }
     catch (...)
     {
         throw Error::EXPECTATION(token.position, "a 64-bit integer", "\"" + token.value + "\"");
+    }
+}
+
+uint64_t ReadHexOperand(std::ifstream &_stream, uint64_t _max)
+{
+    Token token = GetNextToken(_stream);
+
+    try
+    {
+        if (!std::regex_match(token.value, HEX_REGEX))
+            throw 0;
+
+        auto value = std::stoull(token.value, 0, 16);
+        if (value > _max)
+            throw 0;
+
+        return value;
+    }
+    catch (...)
+    {
+        std::stringstream hexStream("0x");
+        hexStream << std::setfill('0') << std::setw(sizeof(uint64_t) * 2) << std::hex << _max;
+
+        throw Error::EXPECTATION(token.position, "a hex number no greater than " + hexStream.str(), "\"" + token.value + "\"");
     }
 }
 
@@ -118,6 +146,8 @@ typedef void (*InstructionReader)(Program &, std::ifstream &, std::map<size_t, T
 static const std::map<std::string, InstructionReader> InstructionReaders = {
     {"NOOP", [](Program &_prog, std::ifstream &_stream, std::map<size_t, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::NOOP); }},
+    {"PUSH", [](Program &_prog, std::ifstream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::PUSH, ReadHexOperand(_stream, UINT64_MAX)); }},
     {"PUSHI", [](Program &_prog, std::ifstream &_stream, std::map<size_t, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::PUSH, ReadInt64Operand(_stream)); }},
     {"PUSHD", [](Program &_prog, std::ifstream &_stream, std::map<size_t, Token> &_labelReplacePositions)
@@ -167,7 +197,9 @@ static const std::map<std::string, InstructionReader> InstructionReaders = {
          Instructions::Insert(_prog, size_t());
      }},
     {"EXIT", [](Program &_prog, std::ifstream &_stream, std::map<size_t, Token> &labelOperands)
-     { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::EXIT); }}};
+     { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::EXIT); }},
+    {"PRINTC", [](Program &_prog, std::ifstream &_stream, std::map<size_t, Token> &labelOperands)
+     { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::PRINTC); }}};
 
 namespace Instructions
 {

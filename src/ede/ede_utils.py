@@ -1,5 +1,5 @@
-from typing import Any, Generic, NamedTuple, NoReturn, Optional, TypeVar
-from enum import EnumMeta, IntEnum, auto
+from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar
+from enum import IntEnum, auto
 
 # TODO: Comment File
 
@@ -117,12 +117,3 @@ class Error(NamedTuple):
         return Error(type, self.position, self.msg)
 
 Result = Success[T] | Error
-
-class DefaultEnumMeta(EnumMeta):
-    default = object()
-
-    def __call__(cls: Any, *args: Any, **kwargs: Any) -> Any:
-        if len(args) == 0:
-            # Assume the first enum is default
-            return next(iter(cls))
-        return super().__call__(*args, **kwargs)

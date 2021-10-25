@@ -1,0 +1,16 @@
+PUSHI 32
+
+@LOOP:
+    SLOAD -8
+    PRINTC
+    PUSHI 1
+    IADD
+    SLOAD -8
+    PUSHI 127
+    EQ
+    JUMPZ @LOOP
+
+PUSHI 0xA
+PRINTC
+PUSHI 0
+EXIT
