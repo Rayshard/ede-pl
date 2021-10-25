@@ -2,11 +2,7 @@
 #include "thread.h"
 
 VM::VM(Program &&_program)
-    : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0)
-    {
-        exitInfo.code = 0;
-        exitInfo.result = VMResult::SUCCESS;
-    }
+    : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0), exitCode(0) {}
 
 VM::~VM()
 {
@@ -16,12 +12,10 @@ VM::~VM()
     heap.clear();
 }
 
-VMResult VM::Run(size_t _stackSize)
+int64_t VM::Run(size_t _stackSize)
 {
     running = true;
-
-    size_t initialThreadID;
-    VM_PERFORM(SpawnThread(_stackSize, 0, initialThreadID));
+    SpawnThread(_stackSize, 0);
 
     while (threads.size() != 0)
     {
@@ -53,29 +47,31 @@ VMResult VM::Run(size_t _stackSize)
     }
 
     running = false;
-    return exitInfo.result;
+
+    if (const VMError *error = std::get_if<VMError>(&exitCode))
+        throw *error;
+
+    return std::get<int64_t>(exitCode);
 }
 
-void VM::Quit(VMResult _res, int64_t _code)
+void VM::Quit(VMExitCode _code)
 {
     if (!running)
         return;
 
-    exitInfo.code = _code;
-    exitInfo.result = _res;
+    exitCode = _code;
     running = false;
 }
 
-VMResult VM::SpawnThread(size_t _stackSize, size_t _startIP, size_t &_id)
+size_t VM::SpawnThread(size_t _stackSize, size_t _startIP)
 {
     if (!running)
-        return VMResult::CANNOT_SPAWN_THREAD;
+        throw VMError::CANNOT_SPAWN_THREAD();
 
-    _id = nextThreadID++;
-    threads.emplace(_id, Thread(this, _id, _stackSize, _startIP));
-    threads.at(_id).Start();
-
-    return VMResult::SUCCESS;
+    auto id = nextThreadID++;
+    threads.emplace(id, Thread(this, id, _stackSize, _startIP));
+    threads.at(id).Start();
+    return id;
 }
 
 void VM::JoinThread(size_t _id)

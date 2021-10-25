@@ -2,7 +2,10 @@
 #include "evm.h"
 #include <mutex>
 #include <map>
+#include <variant>
 #include "program.h"
+
+class Thread;
 
 enum class VMErrorType
 {
@@ -25,15 +28,19 @@ class VMError : public std::runtime_error
         : type(_type), std::runtime_error(_msg) {}
 
 public:
-    VMError IP_OUT_OF_BOUNDS() { return VMError(VMErrorType::IP_OUT_OF_BOUNDS, "Instruction pointer out of bounds!"); }
-    VMError IP_OVERFLOW() { return VMError(VMErrorType::IP_OVERFLOW, "Instruction pointer overflow!"); }
-    VMError UNKNOWN_OP_CODE() { return VMError(VMErrorType::UNKNOWN_OP_CODE, "Unknown op code encountered!"); }
-    VMError STACK_OVERFLOW() { return VMError(VMErrorType::STACK_OVERFLOW, "Stack overflow!"); }
-    VMError STACK_UNDERFLOW() { return VMError(VMErrorType::STACK_UNDERFLOW, "Stack underflow!"); }
-    VMError DIV_BY_ZERO() { return VMError(VMErrorType::DIV_BY_ZERO, "Division by zero!"); }
-    VMError CANNOT_SPAWN_THREAD() { return VMError(VMErrorType::CANNOT_SPAWN_THREAD, "Cannot spawn thread!"); }
-    VMError UNKNOWN_SYSCALL_CODE() { return VMError(VMErrorType::UNKNOWN_SYSCALL_CODE, "Unknown syscall code encountered!"); }
+    VMErrorType GetType() const { return type; }
+
+    static VMError IP_OUT_OF_BOUNDS() { return VMError(VMErrorType::IP_OUT_OF_BOUNDS, "Instruction pointer out of bounds!"); }
+    static VMError IP_OVERFLOW() { return VMError(VMErrorType::IP_OVERFLOW, "Instruction pointer overflow!"); }
+    static VMError UNKNOWN_OP_CODE() { return VMError(VMErrorType::UNKNOWN_OP_CODE, "Unknown op code encountered!"); }
+    static VMError STACK_OVERFLOW() { return VMError(VMErrorType::STACK_OVERFLOW, "Stack overflow!"); }
+    static VMError STACK_UNDERFLOW() { return VMError(VMErrorType::STACK_UNDERFLOW, "Stack underflow!"); }
+    static VMError DIV_BY_ZERO() { return VMError(VMErrorType::DIV_BY_ZERO, "Division by zero!"); }
+    static VMError CANNOT_SPAWN_THREAD() { return VMError(VMErrorType::CANNOT_SPAWN_THREAD, "Cannot spawn thread!"); }
+    static VMError UNKNOWN_SYSCALL_CODE() { return VMError(VMErrorType::UNKNOWN_SYSCALL_CODE, "Unknown syscall code encountered!"); }
 };
+
+typedef std::variant<VMError, int64_t> VMExitCode;
 
 class VM
 {
@@ -43,11 +50,7 @@ private:
     std::map<byte *, std::vector<byte>> heap;
     std::map<size_t, Thread> threads;
     size_t nextThreadID;
-    struct
-    {
-        int64_t code;
-        VMResult result;
-    } exitInfo;
+    VMExitCode exitCode;
 
 public:
     std::mutex mutex;
@@ -55,13 +58,12 @@ public:
     VM(Program &&_program);
     ~VM();
 
-    VMResult Run(size_t _stackSize);
-    void Quit(VMResult _res, int64_t _code);
+    int64_t Run(size_t _stackSize);
+    void Quit(VMExitCode _code);
 
-    VMResult SpawnThread(size_t _stackSize, size_t _startIP, size_t &_id);
+    size_t SpawnThread(size_t _stackSize, size_t _startIP);
     void JoinThread(size_t _id);
 
     const Program &GetProgram() { return program; }
-    int64_t GetExitCode() { return exitInfo.code; }
     bool IsRunning() { return running; }
 };

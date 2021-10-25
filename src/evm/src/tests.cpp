@@ -1,5 +1,8 @@
 #include "tests.h"
 #include "evm.h"
+#include "instructions.h"
+#include "program.h"
+#include "vm.h"
 
 INIT_TEST_SUITE();
 
@@ -16,10 +19,7 @@ DEFINE_TEST(NOOP)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 579ll);
+    ASSERT(vm.Run(64) == 579ll);
 }
 
 DEFINE_TEST(PUSH)
@@ -29,10 +29,7 @@ DEFINE_TEST(PUSH)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 123ll);
+    ASSERT(vm.Run(64) == 123ll);
 }
 
 DEFINE_TEST(POP)
@@ -45,12 +42,12 @@ DEFINE_TEST(POP)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 789ll);
+    ASSERT(vm.Run(64) == 789ll);
 }
 
+#pragma region Instructions
+
+#pragma region Loads and Stores
 DEFINE_TEST(SLOAD)
 {
     Program program = CreateProgram(
@@ -60,10 +57,7 @@ DEFINE_TEST(SLOAD)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 123ll);
+    ASSERT(vm.Run(64) == 123ll);
 }
 
 DEFINE_TEST(SSTORE)
@@ -77,12 +71,11 @@ DEFINE_TEST(SSTORE)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 789ll);
+    ASSERT(vm.Run(64) == 789ll);
 }
+#pragma endregion
 
+#pragma region Binops
 DEFINE_TEST(IADD)
 {
     Program program = CreateProgram(
@@ -92,25 +85,19 @@ DEFINE_TEST(IADD)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 579ll);
+    ASSERT(vm.Run(64) == 579ll);
 }
 
 DEFINE_TEST(ISUB)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, 123ll,
         OpCode::PUSH, 456ll,
+        OpCode::PUSH, 123ll,
         OpCode::ISUB,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == -333ll);
+    ASSERT(vm.Run(64) == -333ll);
 }
 
 DEFINE_TEST(IMUL)
@@ -122,39 +109,19 @@ DEFINE_TEST(IMUL)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 56088ll);
+    ASSERT(vm.Run(64) == 56088ll);
 }
 
 DEFINE_TEST(IDIV)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, 100ll,
         OpCode::PUSH, 20ll,
-        OpCode::IDIV,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 5ll);
-}
-
-DEFINE_TEST(IDIV_DIV_BY_ZERO)
-{
-    Program program = CreateProgram(
         OpCode::PUSH, 100ll,
-        OpCode::PUSH, 0ll,
         OpCode::IDIV,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::DIV_BY_ZERO);
+    ASSERT(vm.Run(64) == 5ll);
 }
 
 DEFINE_TEST(DADD)
@@ -166,25 +133,19 @@ DEFINE_TEST(DADD)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(Word(vm.GetExitCode()).as_double == 579.0);
+    ASSERT(Word(vm.Run(64)).as_double == 579.0);
 }
 
 DEFINE_TEST(DSUB)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, 123.0,
         OpCode::PUSH, 456.0,
+        OpCode::PUSH, 123.0,
         OpCode::DSUB,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(Word(vm.GetExitCode()).as_double == -333.0);
+    ASSERT(Word(vm.Run(64)).as_double == -333.0);
 }
 
 DEFINE_TEST(DMUL)
@@ -196,39 +157,19 @@ DEFINE_TEST(DMUL)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(Word(vm.GetExitCode()).as_double == 56088.0);
+    ASSERT(Word(vm.Run(64)).as_double == 56088.0);
 }
 
 DEFINE_TEST(DDIV)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, 100.0,
         OpCode::PUSH, 20.0,
-        OpCode::DDIV,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(Word(vm.GetExitCode()).as_double == 5.0);
-}
-
-DEFINE_TEST(DDIV_DIV_BY_ZERO)
-{
-    Program program = CreateProgram(
         OpCode::PUSH, 100.0,
-        OpCode::PUSH, 0.0,
         OpCode::DDIV,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::DIV_BY_ZERO);
+    ASSERT(Word(vm.Run(64)).as_double == 5.0);
 }
 
 DEFINE_TEST(EQ)
@@ -240,10 +181,7 @@ DEFINE_TEST(EQ)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(Word(vm.GetExitCode()).as_uint == 1ull);
+    ASSERT(vm.Run(64) == 1ull);
 }
 
 DEFINE_TEST(NEQ)
@@ -255,16 +193,13 @@ DEFINE_TEST(NEQ)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(Word(vm.GetExitCode()).as_uint == 0ull);
+    ASSERT(vm.Run(64) == 0ull);
 }
 
 DEFINE_TEST(JUMP)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, (int64_t)100,
+        OpCode::PUSH, 100ll,
         OpCode::JUMP, (int64_t)28,
         OpCode::PUSH, (int64_t)200,
         OpCode::SYSCALL, SysCallCode::EXIT,
@@ -272,10 +207,7 @@ DEFINE_TEST(JUMP)
         OpCode::JUMP, (int64_t)27);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 300);
+    ASSERT(vm.Run(64) == 300);
 }
 
 DEFINE_TEST(JUMPZ)
@@ -291,10 +223,7 @@ DEFINE_TEST(JUMPZ)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 300);
+    ASSERT(vm.Run(64) == 300);
 }
 
 DEFINE_TEST(JUMPNZ)
@@ -310,24 +239,186 @@ DEFINE_TEST(JUMPNZ)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 300);
+    ASSERT(vm.Run(64) == 300);
 }
 
 DEFINE_TEST(SYSCALL_EXIT)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, (int64_t)100,
+        OpCode::PUSH, 100ll,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    VMResult result = vm.Run(64);
-
-    ASSERT(result == VMResult::SUCCESS);
-    ASSERT(vm.GetExitCode() == 100);
+    ASSERT(vm.Run(64) == 100);
 }
+#pragma endregion
+
+#pragma endregion
+
+#pragma region VMErrors
+DEFINE_TEST(IDIV_DIV_BY_ZERO)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 0ll,
+        OpCode::PUSH, 100ll,
+        OpCode::IDIV,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+    
+    try
+    {
+        vm.Run(64);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::DIV_BY_ZERO);
+    }
+}
+
+DEFINE_TEST(DDIV_DIV_BY_ZERO)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 0.0,
+        OpCode::PUSH, 100.0,
+        OpCode::DDIV,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+
+    try
+    {
+        vm.Run(64);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::DIV_BY_ZERO);
+    }
+}
+
+DEFINE_TEST(STACK_OVERFLOW)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 100ll,
+        OpCode::PUSH, 100ll,
+        OpCode::PUSH, 100ll,
+        OpCode::PUSH, 100ll,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+
+    try
+    {
+        vm.Run(24);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::STACK_OVERFLOW);
+    }
+}
+
+DEFINE_TEST(STACK_UNDERFLOW)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 100ll,
+        OpCode::POP,
+        OpCode::POP,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+
+    try
+    {
+        vm.Run(24);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::STACK_UNDERFLOW);
+    }
+}
+
+DEFINE_TEST(IP_OVERFLOW)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 100ll,
+        OpCode::PUSH);
+
+    VM vm(std::move(program));
+
+    try
+    {
+        vm.Run(24);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::IP_OVERFLOW);
+    }
+}
+
+DEFINE_TEST(IP_OUT_OF_BOUNDS)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 100ll,
+        OpCode::JUMP, 100ull,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+
+    try
+    {
+        vm.Run(24);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::IP_OUT_OF_BOUNDS);
+    }
+}
+
+DEFINE_TEST(UNKNOWN_OP_CODE)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 100ll,
+        OpCode::_COUNT, 100ull,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+
+    try
+    {
+        vm.Run(24);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::UNKNOWN_OP_CODE);
+    }
+}
+
+DEFINE_TEST(UNKNOWN_SYSCALL_CODE)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 100ll,
+        OpCode::SYSCALL, SysCallCode::_COUNT);
+
+    VM vm(std::move(program));
+
+    try
+    {
+        vm.Run(24);
+        ASSERT(false);
+    }
+    catch(const VMError& e)
+    {
+        ASSERT(e.GetType() == VMErrorType::UNKNOWN_SYSCALL_CODE);
+    }
+}
+#pragma endregion
 
 DEFINE_TEST(TEST_FILES)
 {

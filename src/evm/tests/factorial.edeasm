@@ -7,8 +7,8 @@
     JUMPNZ @EXIT
     SLOAD -16       # push num
     IMUL            # result *= num 
-    SLOAD -16       # push num
     PUSHI 1
+    SLOAD -24       # push num
     ISUB
     SSTORE -16      # num -= 1
     JUMP @LOOP

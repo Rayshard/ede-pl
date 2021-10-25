@@ -1,6 +1,8 @@
 #pragma once
 #include "evm.h"
 
+class Thread;
+
 namespace Instructions
 {
     enum class OpCode : byte
@@ -40,7 +42,7 @@ namespace Instructions
 #define OP_CODE_SIZE sizeof(Instructions::OpCode)
 #define SYSCALL_CODE_SIZE sizeof(Instructions::SysCallCode)
 
-    typedef VMResult (*ExecutionFunc)(Thread *);
+    typedef void (*ExecutionFunc)(Thread *);
     extern ExecutionFunc ExecutionFuncs[(size_t)OpCode::_COUNT];
 
     void Init();

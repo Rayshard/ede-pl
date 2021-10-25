@@ -16,20 +16,14 @@ int main(int argc, char *argv[])
 
         //Run
         VM vm(std::move(program));
-        VMResult result = vm.Run(64);
+        auto exitCode = vm.Run(64);
 
-        if (result == VMResult::SUCCESS)
-        {
-            std::cout << "Exited with code " << vm.GetExitCode() << "." << std::endl;
-            return vm.GetExitCode();
-        }
-
-        std::cout << GetVMResultString(result) << std::endl;
-        return -1;
+        std::cout << "Exited with code " << exitCode << "." << std::endl;
+        return exitCode;
     }
     catch (const std::runtime_error &e)
     {
-        std::cerr << e.what() << std::endl;
+        std::cout << e.what() << std::endl;
         return -1;
     }
 }

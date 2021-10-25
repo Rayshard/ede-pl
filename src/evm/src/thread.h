@@ -3,6 +3,7 @@
 #include <thread>
 #include <vector>
 #include <optional>
+#include "vm.h"
 
 class Thread
 {
@@ -14,7 +15,6 @@ private:
 
     std::thread thread;
     bool isAlive;
-    std::optional<VMResult> execResult;
 
 public:
     size_t instrPtr;
@@ -23,7 +23,7 @@ public:
 
     void Start();
     void Join();
-    VMResult Run();
+    void Run();
 
     void PrintStack();
 
@@ -33,47 +33,42 @@ public:
 
     ///Reads the stack relative to the stack pointer
     template <typename T>
-    VMResult ReadStack(int64_t _offset, T &_value)
+    T ReadStack(int64_t _offset)
     {
         int64_t pos = stackPtr + _offset;
         if (pos < 0)
-            return VMResult::STACK_UNDERFLOW;
+            throw VMError::STACK_UNDERFLOW();
         else if (pos + sizeof(T) > stack.size())
-            return VMResult::STACK_OVERFLOW;
+            throw VMError::STACK_OVERFLOW();
 
-        _value = *(T *)&stack[pos];
-        return VMResult::SUCCESS;
+        return *(T *)&stack[pos];
     }
 
     ///Writes to the stack relative to the stack pointer
     template <typename T>
-    VMResult WriteStack(size_t _offset, const T &_value)
+    void WriteStack(size_t _offset, const T &_value)
     {
         int64_t pos = stackPtr + _offset;
         if (pos < 0)
-            return VMResult::STACK_UNDERFLOW;
+            throw VMError::STACK_UNDERFLOW();
         else if (pos + sizeof(T) > stack.size())
-            return VMResult::STACK_OVERFLOW;
+            throw VMError::STACK_OVERFLOW();
 
         std::copy((byte *)&_value, (byte *)&_value + sizeof(T), &stack[pos]);
-        return VMResult::SUCCESS;
     }
 
     template <typename T>
-    VMResult PushStack(const T &_value)
+    void PushStack(const T &_value)
     {
-        VM_PERFORM(WriteStack(0, _value));
-
+        WriteStack(0, _value);
         stackPtr += sizeof(T);
-        return VMResult::SUCCESS;
     }
 
     template <typename T>
-    VMResult PopStack(T &value)
+    T PopStack()
     {
-        VM_PERFORM(ReadStack(-8, value));
-
+        auto result = ReadStack<T>(-8);
         stackPtr -= sizeof(T);
-        return VMResult::SUCCESS;
+        return result;
     }
 };

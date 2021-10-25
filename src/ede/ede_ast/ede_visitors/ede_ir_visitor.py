@@ -55,8 +55,8 @@ def visit_BinopExpr(b: BinopExpr, builder: ModuleIRBuilder) -> None:
     if b.op == BinopType.ASSIGN:
         pass
     else:
-        IRVisitor.visit(b.left, builder)
         IRVisitor.visit(b.right, builder)
+        IRVisitor.visit(b.left, builder)
         
         match b.type_pattern:
             case (EdePrimitive(prim_type=TSPrimitiveType.INT), EdePrimitive(prim_type=TSPrimitiveType.INT), BinopType.ADD):
