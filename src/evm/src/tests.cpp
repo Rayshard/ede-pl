@@ -329,6 +329,11 @@ DEFINE_TEST(SYSCALL_EXIT)
     ASSERT(vm.GetExitCode() == 100);
 }
 
+DEFINE_TEST(TEST_FILES)
+{
+    
+}
+
 int main()
 {
     Instructions::Init();

@@ -1,4 +1,5 @@
-#include "evm.h"
+#include "vm.h"
+#include "thread.h"
 
 VM::VM(Program &&_program)
     : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0)

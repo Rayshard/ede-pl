@@ -1,5 +1,7 @@
-#include "evm.h"
+#include "instructions.h"
 #include <iostream>
+#include "thread.h"
+#include "vm.h"
 
 #define PRINT_INSTRUCTIONS_ON_EXECUTION false
 #define DO_IF(stmt, cond) \

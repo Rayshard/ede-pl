@@ -1,5 +1,9 @@
-#include "evm.h"
+#include "thread.h"
+#include <mutex>
 #include <iostream>
+#include "program.h"
+#include "vm.h"
+#include "instructions.h"
 
 Thread::Thread(VM *_vm, size_t _id, size_t _stackSize, size_t _startIP)
     : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0), execResult(), isAlive(false)
