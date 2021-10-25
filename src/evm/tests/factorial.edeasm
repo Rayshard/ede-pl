@@ -1,0 +1,16 @@
+    PUSHI 5         # num: the number the take the factorial of
+    PUSHI 1         # The result
+@LOOP:
+    SLOAD -16       # push num
+    PUSHI 1         # push 1 to compare num to
+    EQ              # push num == 1
+    JUMPNZ @EXIT
+    SLOAD -16       # push num
+    IMUL            # result *= num 
+    SLOAD -16       # push num
+    PUSHI 1
+    ISUB
+    SSTORE -16      # num -= 1
+    JUMP @LOOP
+@EXIT:
+    EXIT

@@ -1,5 +1,5 @@
-from typing import Generic, NamedTuple, NoReturn, Optional, TypeVar
-from enum import IntEnum, auto
+from typing import Any, Generic, NamedTuple, NoReturn, Optional, TypeVar
+from enum import EnumMeta, IntEnum, auto
 
 # TODO: Comment File
 
@@ -10,6 +10,15 @@ class char(str):
         assert len(value) == 1, "char must be of length 1"
 
         obj = str.__new__(cls, value)
+        return obj
+
+class byte(int):
+    '''Byte data type'''
+
+    def __new__(cls, value: int = 0):
+        assert 0 <= value < 255, "byte must be between 0 and 255"
+
+        obj = int.__new__(cls, value)
         return obj
 
 class unit:
@@ -108,3 +117,12 @@ class Error(NamedTuple):
         return Error(type, self.position, self.msg)
 
 Result = Success[T] | Error
+
+class DefaultEnumMeta(EnumMeta):
+    default = object()
+
+    def __call__(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        if len(args) == 0:
+            # Assume the first enum is default
+            return next(iter(cls))
+        return super().__call__(*args, **kwargs)

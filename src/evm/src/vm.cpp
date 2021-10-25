@@ -1,18 +1,11 @@
 #include "evm.h"
 
-const char *VMResultStrings[] = {
-    "",                                   //SUCCESS
-    "Instruction pointer out of bounds!", //IP_OUT_OF_BOUNDS
-    "Instruction pointer overflow!",      //IP_OVERFLOW
-    "Unknown op code encountered!",       //UNKNOWN_OP_CODE
-    "Stack overflow!",                    //STACK_OVERFLOW
-    "Stack underflow!",                   //STACK_UNDERFLOW
-    "Division by zero!",                  //DIV_BY_ZERO
-    "Cannot spawn thread!",               //CANNOT_SPAWN_THREAD
-};
-
 VM::VM(Program &&_program)
-    : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0) {}
+    : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0)
+    {
+        exitInfo.code = 0;
+        exitInfo.result = VMResult::SUCCESS;
+    }
 
 VM::~VM()
 {

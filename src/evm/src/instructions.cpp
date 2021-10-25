@@ -2,12 +2,19 @@
 #include <iostream>
 
 #define PRINT_INSTRUCTIONS_ON_EXECUTION false
-#define DO_IF(stmt, cond) if constexpr(cond) stmt
+#define DO_IF(stmt, cond) \
+    if constexpr (cond)   \
+    stmt
 
 namespace Instructions
 {
-    const size_t Sizes[(size_t)OpCode::_COUNT] = {INSTRUCTION_SIZES};
     ExecutionFunc ExecutionFuncs[(size_t)OpCode::_COUNT];
+    ExecutionFunc SysCallExecutionFuncs[(size_t)SysCallCode::_COUNT];
+
+    VMResult NOOP(Thread *_thread)
+    {
+        return VMResult::SUCCESS;
+    }
 
     VMResult PUSH(Thread *_thread)
     {
@@ -127,18 +134,70 @@ namespace Instructions
         return _thread->PushStack(sum);
     }
 
+    VMResult EQ(Thread *_thread)
+    {
+        DO_IF(std::cout << "EQ" << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+
+        Word left, right, result;
+        VM_PERFORM(_thread->PopStack(right));
+        VM_PERFORM(_thread->PopStack(left));
+
+        result.as_uint = left.as_uint == right.as_uint;
+        return _thread->PushStack(result);
+    }
+
+    VMResult NEQ(Thread *_thread)
+    {
+        DO_IF(std::cout << "NEQ" << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+
+        Word left, right, result;
+        VM_PERFORM(_thread->PopStack(right));
+        VM_PERFORM(_thread->PopStack(left));
+
+        result.as_uint = left.as_uint != right.as_uint ? 1u : 0u;
+        return _thread->PushStack(result);
+    }
+
     VMResult JUMP(Thread *_thread)
     {
-        Word word = *(Word *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
-        DO_IF(std::cout << "JUMP " << word.as_ptr << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+        Word target = *(Word *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        DO_IF(std::cout << "JUMP " << target.as_ptr << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
 
-        _thread->instrPtr = word.as_uint - Sizes[(size_t)OpCode::JUMP];
+        _thread->instrPtr = target.as_uint - GetSize(OpCode::JUMP);
         return VMResult::SUCCESS;
     }
 
-    VMResult EXIT(Thread *_thread)
+    VMResult JUMPNZ(Thread *_thread)
     {
-        DO_IF(std::cout << "EXIT" << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+        Word target = *(Word *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        DO_IF(std::cout << "JUMPNZ " << target.as_ptr << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+
+        Word condition;
+        VM_PERFORM(_thread->PopStack(condition));
+
+        if (condition.as_uint != 0u)
+            _thread->instrPtr = target.as_uint - GetSize(OpCode::JUMPNZ);
+
+        return VMResult::SUCCESS;
+    }
+
+    VMResult JUMPZ(Thread *_thread)
+    {
+        Word target = *(Word *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        DO_IF(std::cout << "JUMPZ " << target.as_ptr << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+
+        Word condition;
+        VM_PERFORM(_thread->PopStack(condition));
+
+        if (condition.as_uint == 0u)
+            _thread->instrPtr = target.as_uint - GetSize(OpCode::JUMPZ);
+
+        return VMResult::SUCCESS;
+    }
+
+    VMResult SYSCALL_EXIT(Thread *_thread)
+    {
+        DO_IF(std::cout << "SYSCALL EXIT" << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
 
         Word code;
         VM_PERFORM(_thread->PopStack(code));
@@ -147,8 +206,42 @@ namespace Instructions
         return VMResult::SUCCESS;
     }
 
+    VMResult SYSCALL(Thread *_thread)
+    {
+        byte code = _thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        if (code >= (size_t)SysCallCode::_COUNT)
+            return VMResult::UNKNOWN_SYSCALL_CODE;
+
+        return SysCallExecutionFuncs[code](_thread);
+    }
+
+#pragma region Loads and Stores
+    VMResult SLOAD(Thread *_thread)
+    {
+        int64_t offset = *(int64_t *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        DO_IF(std::cout << "SLOAD " << offset << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+
+        Word result;
+        VM_PERFORM(_thread->ReadStack(offset, result));
+
+        return _thread->PushStack(result);
+    }
+
+    VMResult SSTORE(Thread *_thread)
+    {
+        int64_t offset = *(int64_t *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        DO_IF(std::cout << "SSTORE " << offset << std::endl, PRINT_INSTRUCTIONS_ON_EXECUTION);
+
+        Word value;
+        VM_PERFORM(_thread->PopStack(value));
+
+        return _thread->WriteStack(offset, value);
+    }
+#pragma endregion
+
     void Init()
     {
+        ExecutionFuncs[(size_t)OpCode::NOOP] = &NOOP;
         ExecutionFuncs[(size_t)OpCode::PUSH] = &PUSH;
         ExecutionFuncs[(size_t)OpCode::POP] = &POP;
         ExecutionFuncs[(size_t)OpCode::IADD] = &IADD;
@@ -159,7 +252,15 @@ namespace Instructions
         ExecutionFuncs[(size_t)OpCode::DSUB] = &DSUB;
         ExecutionFuncs[(size_t)OpCode::DMUL] = &DMUL;
         ExecutionFuncs[(size_t)OpCode::DDIV] = &DDIV;
-        ExecutionFuncs[(size_t)OpCode::EXIT] = &EXIT;
         ExecutionFuncs[(size_t)OpCode::JUMP] = &JUMP;
+        ExecutionFuncs[(size_t)OpCode::JUMPZ] = &JUMPZ;
+        ExecutionFuncs[(size_t)OpCode::JUMPNZ] = &JUMPNZ;
+        ExecutionFuncs[(size_t)OpCode::SYSCALL] = &SYSCALL;
+        ExecutionFuncs[(size_t)OpCode::EQ] = &EQ;
+        ExecutionFuncs[(size_t)OpCode::NEQ] = &NEQ;
+        ExecutionFuncs[(size_t)OpCode::SLOAD] = &SLOAD;
+        ExecutionFuncs[(size_t)OpCode::SSTORE] = &SSTORE;
+
+        SysCallExecutionFuncs[(size_t)SysCallCode::EXIT] = &SYSCALL_EXIT;
     }
 }

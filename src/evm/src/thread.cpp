@@ -13,12 +13,12 @@ void Thread::Start()
     isAlive = true;
     thread = std::thread([this]
                          {
-                              this->execResult = this->Run();
-                              
-                              std::scoped_lock<std::mutex> lock(vm->mutex);
+                             this->execResult = this->Run();
 
-                              if (this->execResult.value() != VMResult::SUCCESS)
-                                  this->vm->Quit(this->execResult.value(), 0);
+                             std::scoped_lock<std::mutex> lock(vm->mutex);
+
+                             if (this->execResult.value() != VMResult::SUCCESS)
+                                 this->vm->Quit(this->execResult.value(), 0);
 
                              isAlive = false;
                          });
@@ -39,11 +39,12 @@ VMResult Thread::Run()
         byte opcode = program[instrPtr];
         if (opcode >= (size_t)Instructions::OpCode::_COUNT)
             return VMResult::UNKNOWN_OP_CODE;
-        else if (instrPtr + Instructions::Sizes[opcode] > program.size())
+        else if (instrPtr + Instructions::GetSize((Instructions::OpCode)opcode) > program.size())
             return VMResult::IP_OVERFLOW;
 
         VM_PERFORM(Instructions::ExecutionFuncs[opcode](this));
-        instrPtr += Instructions::Sizes[opcode];
+        //PrintStack();
+        instrPtr += Instructions::GetSize((Instructions::OpCode)opcode);
     }
 
     return VMResult::SUCCESS;
@@ -55,35 +56,15 @@ void Thread::Join()
         ;
 }
 
-VMResult Thread::PushStack(Word _word)
-{
-    if (stackPtr + WORD_SIZE > stack.size())
-        return VMResult::STACK_OVERFLOW;
-
-    std::copy(_word.bytes, _word.bytes + WORD_SIZE, &stack[stackPtr]);
-    stackPtr += WORD_SIZE;
-    return VMResult::SUCCESS;
-}
-
-VMResult Thread::PopStack(Word &word)
-{
-    if (stackPtr < WORD_SIZE)
-        return VMResult::STACK_UNDERFLOW;
-
-    word = *(Word *)&stack[stackPtr - WORD_SIZE];
-    stackPtr -= WORD_SIZE;
-    return VMResult::SUCCESS;
-}
-
 void Thread::PrintStack()
 {
     std::cout << std::string(40, '=') << "Thread ID: " << id << std::string(40, '=') << std::endl;
 
-    for (size_t i = 0; i < stack.size(); i += WORD_SIZE)
+    for (size_t i = 0; i < stackPtr; i += WORD_SIZE)
     {
         std::cout << reinterpret_cast<void *>(&stack[i]);
-        std::cout << ":\t" << ((Word *)&stack[i])->as_int;
-        std::cout << "\t" << ((Word *)&stack[i])->as_double;
+        std::cout << ":\ti64: " << ((Word *)&stack[i])->as_int;
+        std::cout << "\tf64: " << ((Word *)&stack[i])->as_double;
 
         if (i + WORD_SIZE == stackPtr)
             std::cout << "\t\t<-------";

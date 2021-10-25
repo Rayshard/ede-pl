@@ -116,8 +116,10 @@ def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
         for instr in instrs:
             match instr.get_op_code():
                 case OpCode.JUMP_: bytecode += Instruction(OpCode.JUMP, [labels[str(instr.get_operands()[0])]]).get_bytes()
-                case OpCode.PUSH_I: bytecode += Instruction(OpCode.PUSH, [Word(cast(int, instr.get_operands()[0]))]).get_bytes()
-                case OpCode.PUSH_D: bytecode += Instruction(OpCode.PUSH, [Word(cast(double, instr.get_operands()[0]))]).get_bytes()
+                case OpCode.JUMPZ_: bytecode += Instruction(OpCode.JUMPZ, [labels[str(instr.get_operands()[0])]]).get_bytes()
+                case OpCode.JUMPNZ_: bytecode += Instruction(OpCode.JUMPNZ, [labels[str(instr.get_operands()[0])]]).get_bytes()
+                case OpCode.PUSH_I_: bytecode += Instruction(OpCode.PUSH, [Word(cast(int, instr.get_operands()[0]))]).get_bytes()
+                case OpCode.PUSH_D_: bytecode += Instruction(OpCode.PUSH, [Word(cast(double, instr.get_operands()[0]))]).get_bytes()
                 case _: bytecode += instr.get_bytes()
 
         bytecode_file_path = modules[0].file_path + 'c'
@@ -126,6 +128,3 @@ def cli(simulate: bool, ast: bool, cfg: bool, ec: bool, file_paths: List[str]):
             f_bc.write(bytecode)
 
         subprocess.call(["bin/evm.exe", bytecode_file_path])
-
-# if __name__ == '__main__':
-#     cli()

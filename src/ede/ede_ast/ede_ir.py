@@ -2,6 +2,8 @@ from enum import IntEnum, auto
 import struct
 from typing import List, Type
 
+from ..ede_utils import DefaultEnumMeta
+
 OP_CODE_SIZE = 1
 WORD_SIZE = 8
 
@@ -31,10 +33,19 @@ class Word:
     def as_double(self) -> double:
         return double_from_bytes(self.__bytes)
 
-Operand = Word | int | double | str
+class SysCallCode(IntEnum, metaclass=DefaultEnumMeta):
+    EXIT = 0
+    PRINTC = auto()
+    PRINTS = auto()
+    MALLOC = auto()
+    FREE = auto()
 
-def int_to_bytes(value: int) -> bytes:
-    return value.to_bytes(WORD_SIZE, 'little', signed=True)
+assert len(SysCallCode) <= 256, "SysCallCodes should be representable as 1 byte"
+
+Operand = Word | int | double | SysCallCode | str
+
+def int_to_bytes(value: int, size: int = WORD_SIZE, signed: bool = True) -> bytes:
+    return value.to_bytes(size, 'little', signed=signed)
 
 def double_to_bytes(value: double) -> bytes:
     return struct.pack("d", value)
@@ -50,6 +61,7 @@ def get_operand_size(operand: Operand) -> int:
         case Word(): return WORD_SIZE
         case int(): return WORD_SIZE
         case double(): return WORD_SIZE
+        case SysCallCode(): return 1
         case str(): raise Exception("Cannot get the size of a string")
         case _: raise Exception("Case not handled")
 
@@ -58,11 +70,14 @@ def get_operand_bytes(operand: Operand) -> bytes:
         case Word(): return operand.as_bytes()
         case int(): return int_to_bytes(operand)
         case double(): return double_to_bytes(operand)
+        case SysCallCode(): return int_to_bytes(operand, 1, False)
         case str(): raise Exception("Cannot get the bytes of a string")
         case _: raise Exception("Case not handled")
 
 class OpCode(IntEnum):
-    PUSH = 0
+    NOOP = 0
+    PUSH = auto()
+    POP = auto()
     IADD = auto()
     ISUB = auto()
     IMUL = auto()
@@ -71,20 +86,24 @@ class OpCode(IntEnum):
     DSUB = auto()
     DMUL = auto()
     DDIV = auto()
-    POP = auto()
     JUMP = auto()
+    JUMPZ = auto()
+    JUMPNZ = auto()
+    SYSCALL = auto()
     EXIT = auto()
 
     # Placeholder op codes
-    PUSH_I = auto()
-    PUSH_D = auto()
+    PUSH_I_ = auto()
+    PUSH_D_ = auto()
     JUMP_ = auto()
+    JUMPZ_ = auto()
+    JUMPNZ_ = auto()
 
     def get_bytes(self) -> bytes:
         if self.is_placeholder():
             raise Exception("Could not get the bytes for a placeholder op code!")
 
-        return self.value.to_bytes(OP_CODE_SIZE, 'big', signed=False)
+        return self.value.to_bytes(OP_CODE_SIZE, 'little', signed=False)
 
     def is_placeholder(self) -> bool:
         return self.name.endswith('_')
@@ -92,8 +111,8 @@ class OpCode(IntEnum):
     def get_operand_types(self) -> List[Type[Operand]]:
         match self:
             case OpCode.PUSH: return [Word]
-            case OpCode.PUSH_I: return [int]
-            case OpCode.PUSH_D: return [double]
+            case OpCode.PUSH_I_: return [int]
+            case OpCode.PUSH_D_: return [double]
             case OpCode.IADD: return []
             case OpCode.ISUB: return []
             case OpCode.IMUL: return []
@@ -103,16 +122,22 @@ class OpCode(IntEnum):
             case OpCode.DMUL: return []
             case OpCode.DDIV: return []
             case OpCode.POP: return []
+            case OpCode.NOOP: return []
             case OpCode.EXIT: return []
             case OpCode.JUMP: return [int]
             case OpCode.JUMP_: return [str]
+            case OpCode.JUMPZ: return [int]
+            case OpCode.JUMPZ_: return [str]
+            case OpCode.JUMPNZ: return [int]
+            case OpCode.JUMPNZ_: return [str]
+            case OpCode.SYSCALL: return [SysCallCode]
             case _: raise Exception(f"Case not handled '{self.name}'")
 
     def get_instr_byte_size(self) -> int:
         if self.is_placeholder():
             return OpCode[self.name.split('_')[0]].get_instr_byte_size()
-
-        return OP_CODE_SIZE + sum([get_operand_size(operand()) for operand in self.get_operand_types()])
+        
+        return OP_CODE_SIZE + sum([1 if operand is SysCallCode else get_operand_size(operand()) for operand in self.get_operand_types()])
 
 class Instruction:
 
@@ -144,10 +169,13 @@ class Instruction:
         return self.__operands
 
     @staticmethod
-    def PUSHI(constant: int): return Instruction(OpCode.PUSH_I, [constant])
+    def NOOP(): return Instruction(OpCode.NOOP, [])
 
     @staticmethod
-    def PUSHD(constant: double): return Instruction(OpCode.PUSH_D, [constant])
+    def PUSHI(constant: int): return Instruction(OpCode.PUSH_I_, [constant])
+
+    @staticmethod
+    def PUSHD(constant: double): return Instruction(OpCode.PUSH_D_, [constant])
 
     @staticmethod
     def POP(): return Instruction(OpCode.POP, [])
@@ -181,3 +209,12 @@ class Instruction:
 
     @staticmethod
     def JUMP(label: str): return Instruction(OpCode.JUMP_, [label])
+
+    @staticmethod
+    def JUMPZ(label: str): return Instruction(OpCode.JUMPZ_, [label])
+
+    @staticmethod
+    def JUMPNZ(label: str): return Instruction(OpCode.JUMPNZ_, [label])
+
+    @staticmethod
+    def SYSCALL(code: SysCallCode): return Instruction(OpCode.SYSCALL, [code])
