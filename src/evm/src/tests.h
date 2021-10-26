@@ -51,6 +51,15 @@ public:
 #define S2(x) S1(x)
 #define LOCATION __FILE__ ":" S2(__LINE__)
 
+#define ASSERT_MSG(a, msg)                                  \
+    do                                                      \
+    {                                                       \
+        if (!(a))                                           \
+        {                                                   \
+            throw std::runtime_error(std::string(msg) + " " + LOCATION); \
+        }                                                   \
+    } while (false)
+
 #define ASSERT(a)                               \
     do                                          \
     {                                           \

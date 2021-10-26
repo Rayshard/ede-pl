@@ -1,8 +1,9 @@
 #include "vm.h"
 #include "thread.h"
+#include <iostream>
 
 VM::VM(Program &&_program)
-    : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0), exitCode(0) {}
+    : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0), exitCode(0), stdInput(std::wcin.rdbuf()), stdOutput(std::wcout.rdbuf()) {}
 
 VM::~VM()
 {
@@ -81,4 +82,10 @@ void VM::JoinThread(size_t _id)
         return;
 
     idSearch->second.Join();
+}
+
+void VM::SetStdIO(std::wstreambuf *_in, std::wstreambuf *_out)
+{
+    stdInput.rdbuf(_in ? _in : std::wcin.rdbuf());
+    stdOutput.rdbuf(_out ? _out : std::wcout.rdbuf());
 }

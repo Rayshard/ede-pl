@@ -3,6 +3,9 @@
 #include "instructions.h"
 #include "program.h"
 #include "vm.h"
+#include <fstream>
+#include <string>
+#include <sstream>
 
 INIT_TEST_SUITE();
 
@@ -253,6 +256,34 @@ DEFINE_TEST(SYSCALL_EXIT)
 }
 #pragma endregion
 
+#pragma region Converters
+DEFINE_TEST(D2I)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 123ll,
+        OpCode::PUSH, 456.0,
+        OpCode::D2I,
+        OpCode::IADD,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+    ASSERT(vm.Run(64) == 579ll);
+}
+
+DEFINE_TEST(I2D)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 456.0,
+        OpCode::PUSH, 123ll,
+        OpCode::I2D,
+        OpCode::DADD,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm(std::move(program));
+    ASSERT(Word(vm.Run(64)).as_double == 579.0);
+}
+#pragma endregion
+
 #pragma endregion
 
 #pragma region VMErrors
@@ -265,13 +296,13 @@ DEFINE_TEST(IDIV_DIV_BY_ZERO)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm(std::move(program));
-    
+
     try
     {
         vm.Run(64);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::DIV_BY_ZERO);
     }
@@ -292,7 +323,7 @@ DEFINE_TEST(DDIV_DIV_BY_ZERO)
         vm.Run(64);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::DIV_BY_ZERO);
     }
@@ -314,7 +345,7 @@ DEFINE_TEST(STACK_OVERFLOW)
         vm.Run(24);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::STACK_OVERFLOW);
     }
@@ -335,7 +366,7 @@ DEFINE_TEST(STACK_UNDERFLOW)
         vm.Run(24);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::STACK_UNDERFLOW);
     }
@@ -354,7 +385,7 @@ DEFINE_TEST(IP_OVERFLOW)
         vm.Run(24);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::IP_OVERFLOW);
     }
@@ -374,7 +405,7 @@ DEFINE_TEST(IP_OUT_OF_BOUNDS)
         vm.Run(24);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::IP_OUT_OF_BOUNDS);
     }
@@ -394,7 +425,7 @@ DEFINE_TEST(UNKNOWN_OP_CODE)
         vm.Run(24);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::UNKNOWN_OP_CODE);
     }
@@ -413,7 +444,7 @@ DEFINE_TEST(UNKNOWN_SYSCALL_CODE)
         vm.Run(24);
         ASSERT(false);
     }
-    catch(const VMError& e)
+    catch (const VMError &e)
     {
         ASSERT(e.GetType() == VMErrorType::UNKNOWN_SYSCALL_CODE);
     }
@@ -422,7 +453,38 @@ DEFINE_TEST(UNKNOWN_SYSCALL_CODE)
 
 DEFINE_TEST(TEST_FILES)
 {
-    
+    std::string dirPath = "tests/evm/";
+    std::wifstream expectedFile(dirPath + "expected.txt");
+    ASSERT(expectedFile.is_open());
+
+    //Skip Header
+    std::wstring line;
+    std::getline(expectedFile, line);
+    std::getline(expectedFile, line);
+
+    std::wstring caseName, expectedOutput;
+    int64_t expectedExitCode;
+
+    while(expectedFile >> caseName)
+    {
+        expectedFile >> expectedExitCode;
+
+        //Get expected output
+        std::getline(expectedFile, expectedOutput);
+        expectedOutput = expectedOutput.substr(expectedOutput.find_first_of(L'"') + 1);
+        expectedOutput = expectedOutput.substr(0, expectedOutput.find_last_of(L'"'));
+
+
+        std::string filePath = dirPath + std::string(caseName.begin(), caseName.end()) + ".edeasm";
+        Program program = Instructions::ParseEdeASM(filePath.c_str());
+        VM vm(std::move(program));
+        
+        std::wstringstream stdIO;
+        vm.SetStdIO(stdOut.rdbuf(), stdOut.rdbuf());
+
+        ASSERT_MSG(vm.Run(64) == expectedExitCode, filePath);
+        ASSERT_MSG(stdIO.str() == expectedOutput, filePath);
+    }
 }
 
 int main()

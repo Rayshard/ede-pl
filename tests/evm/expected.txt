@@ -1,0 +1,5 @@
+filename            exit code          output
+--------            ---------          -------
+exit                123                ""
+factorial           120                ""
+print_chars         0                  " !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~"

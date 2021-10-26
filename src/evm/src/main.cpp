@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
     {
         //Parse the ede asm file
         Program program = Instructions::ParseEdeASM(argv[1]);
-
+        
         //Run
         VM vm(std::move(program));
         auto exitCode = vm.Run(64);

@@ -51,6 +51,8 @@ private:
     std::map<size_t, Thread> threads;
     size_t nextThreadID;
     VMExitCode exitCode;
+    std::wistream stdInput;
+    std::wostream stdOutput;
 
 public:
     std::mutex mutex;
@@ -63,7 +65,10 @@ public:
 
     size_t SpawnThread(size_t _stackSize, size_t _startIP);
     void JoinThread(size_t _id);
+    void SetStdIO(std::wstreambuf *_in = nullptr, std::wstreambuf *_out = nullptr);
 
     const Program &GetProgram() { return program; }
     bool IsRunning() { return running; }
+    std::wistream &GetStdIn() { return stdInput; }
+    std::wostream &GetStdOut() { return stdOutput; }
 };

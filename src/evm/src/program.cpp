@@ -2,8 +2,6 @@
 #include <map>
 #include <regex>
 #include <fstream>
-#include <sstream>
-#include <iomanip>
 #include "instructions.h"
 
 using Instructions::OpCode, Instructions::SysCallCode;
@@ -125,10 +123,7 @@ uint64_t ReadHexOperand(std::ifstream &_stream, uint64_t _max)
     }
     catch (...)
     {
-        std::stringstream hexStream("0x");
-        hexStream << std::setfill('0') << std::setw(sizeof(uint64_t) * 2) << std::hex << _max;
-
-        throw Error::EXPECTATION(token.position, "a hex number no greater than " + hexStream.str(), "\"" + token.value + "\"");
+        throw Error::EXPECTATION(token.position, "a hex number no greater than " + Hex(_max), "\"" + token.value + "\"");
     }
 }
 

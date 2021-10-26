@@ -5,6 +5,9 @@
 #include "vm.h"
 #include "instructions.h"
 
+#define PRINT_INSTRUCTIONS_ON_EXECUTION false
+#define PRINT_STACK_AFTER_INSTR_EXECUTION false
+
 Thread::Thread(VM *_vm, size_t _id, size_t _stackSize, size_t _startIP)
     : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0), isAlive(false)
 {
@@ -50,9 +53,16 @@ void Thread::Run()
         else if (instrPtr + Instructions::GetSize((Instructions::OpCode)opcode) > program.size())
             throw VMError::IP_OVERFLOW();
 
+        #if PRINT_INSTRUCTIONS_ON_EXECUTION
+            std::cout << Instructions::ToString(&program[instrPtr]) << std::endl;
+        #endif
+
         Instructions::ExecutionFuncs[opcode](this);
-        //PrintStack();
         instrPtr += Instructions::GetSize((Instructions::OpCode)opcode);
+        
+        #if PRINT_STACK_AFTER_INSTR_EXECUTION
+           PrintStack();
+        #endif
     }
 }
 
