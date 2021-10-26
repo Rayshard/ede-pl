@@ -1,7 +1,7 @@
 import setuptools
 
-with open("README.md") as fh:
-    long_description = fh.read()
+with open("README.md", 'rb') as f:
+    long_description = f.read()
 
 setuptools.setup(
     name="ede",
@@ -17,7 +17,7 @@ setuptools.setup(
     python_requires=">=3.10",
     install_requires=["click", "pydot"],
     extras_require={"dev": ["pytest", "mypy"]},
-    package_data={'evm': ['src/*']},
+    package_data={'evm': ['src/*', 'build.h']},
     entry_points={
         'console_scripts': [
             'ede = ede.ede:cli',

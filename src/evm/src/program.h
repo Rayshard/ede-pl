@@ -25,5 +25,5 @@ namespace Instructions
         return program;
     }
 
-    Program ParseEdeASM(const char *_filePath);
+    Program ParseEdeASM(const std::string& _filePath);
 }

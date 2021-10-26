@@ -474,22 +474,14 @@ DEFINE_TEST(TEST_FILES)
         expectedOutput = expectedOutput.substr(expectedOutput.find_first_of(L'"') + 1);
         expectedOutput = expectedOutput.substr(0, expectedOutput.find_last_of(L'"'));
 
-
         std::string filePath = dirPath + std::string(caseName.begin(), caseName.end()) + ".edeasm";
         Program program = Instructions::ParseEdeASM(filePath.c_str());
         VM vm(std::move(program));
         
         std::wstringstream stdIO;
-        vm.SetStdIO(stdOut.rdbuf(), stdOut.rdbuf());
+        vm.SetStdIO(stdIO.rdbuf(), stdIO.rdbuf());
 
         ASSERT_MSG(vm.Run(64) == expectedExitCode, filePath);
         ASSERT_MSG(stdIO.str() == expectedOutput, filePath);
     }
-}
-
-int main()
-{
-    Instructions::Init();
-    RUN_TEST_SUITE();
-    return 0;
 }
