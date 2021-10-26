@@ -1,0 +1,96 @@
+Todo:
+    ✔ make type symbol a node @done(21-10-03 12:32)
+    ✔ make to_json have the __type__ be the str reprentatoin of the node/expr/stmt type @done(21-10-03 12:54)
+    ✘ make Result a base class and add error as a func @cancelled(21-10-03 22:49)
+    ✔ make all statements return unit but expr stmt can still print value @done(21-10-04 20:56)
+    ✔ turn Unions to | @done(21-10-08 17:56)
+    ✔ allow certain parsing to be restricted @done(21-10-15 09:50)
+    ✔ FIX parsing with operator precedance! @done(21-10-20 09:30)
+    ✔ transform lexing error types to LEX prefix @done(21-10-21 00:45)
+    ✔ make VMResultStrings in evm a map @done(21-10-25 00:14)
+    ✔ instead of using results...use exception throwing @done(21-10-25 03:30)
+    ☐ review testing
+    ☐ add binop to add to chars together to make a string
+    ☐ add binop to add to char and string together to make a string
+  
+  Features To Implement:
+    ✔ statement blocks @done(21-10-04 00:09)
+    ✔ if else statements @done(21-10-04 01:37)
+      ✔ to solve the dangling else problem, just attach the else to the closest if @done(21-10-04 01:37)
+    ✔ arrays @done(21-10-08 22:40)
+      ✔ handle empty array. this can either be through using a default keyword that take a type or creating an any type and cast func for types @done(21-10-08 22:40)
+    ✔ tuples @done(21-10-05 04:25)
+    ✔ objects @done(21-10-05 04:25)
+    ✔ comments @done(21-10-20 23:30)
+    ☐ Instructions to implement
+      ✔ NOOP @done(21-10-24 02:33)
+      ✔ PUSH [word] @done(21-10-24 02:22)
+      ✔ POP @done(21-10-24 02:22)
+      ☐ LOAD AND STORE
+        ☐ LLOAD [idx]              - local load; pushes the value of the local at the specified idx onto the stack
+        ☐ LSTORE [idx]             - local store; pops the value from the top of the stack and stores it in the local at the specified idx
+        ☐ PLOAD [idx]              - param load; pushes the value of the parameter at the specified idx onto the stack
+        ☐ PSTORE [idx]             - param store; pops the value from the top of the stack and stores it in the parameter at the specified idx
+        ☐ GLOAD [idx]              - global load; pushes the value of the global at the specified idx onto the stack
+        ☐ GSTORE [idx]             - global store; pops the value from the top of the stack and stores it in the global at the specified idx
+        ☐ MLOAD                    - memory load; pops memory address from top of stack and pushes the value located at that address onto the stack
+        ☐ MSTORE                   - memory store; pops memory address from top of stack then pops the value from the top of the stack and stores it at that address
+        ✔ SLOAD [offset]           - stack loads; loads the word located [offset] bytes from the top of the stack and pushes the value onto the stack @done(21-10-25 01:07)
+        ✔ SSTORE [offset]          - stack stack; pops the value from the top of the stack and stores it on the stack, [offset] bytes from the top of the stack (after the pop) @done(21-10-25 01:07)
+      ☐ Converters
+        ✔ I2D                      - assumes the top of the stack is an integer, pops it off, converts it to a double, and pushes the result onto the stack @done(21-10-26 02:51)
+        ✔ D2I                      - assumes the top of the stack is an double, pops it off, converts it to an integer, and pushes the result onto the stack @done(21-10-26 02:51)
+      ☐ Binops         
+        ✔ IADD                     - integer power; a=POP(), b=POP(), PUSH(b+a) where a and b are intgers @done(21-10-24 02:25)
+        ✔ ISUB                     - integer power; a=POP(), b=POP(), PUSH(b-a) where a and b are intgers @done(21-10-24 02:25)
+        ✔ IMUL                     - integer power; a=POP(), b=POP(), PUSH(b*a) where a and b are intgers @done(21-10-24 02:25)
+        ✔ IDIV                     - integer power; a=POP(), b=POP(), PUSH(b/a) where a and b are intgers and a is not 0 @done(21-10-24 02:25)
+        ☐ IPOW                     - integer power; a=POP(), b=POP(), PUSH(a**b) where a and b are integers and either a or b are not 0
+        ✔ DADD                     - double power; a=POP(), b=POP(), PUSH(b+a) where a and b are doubles @done(21-10-24 02:25)
+        ✔ DSUB                     - double power; a=POP(), b=POP(), PUSH(b-a) where a and b are doubles @done(21-10-24 02:25)
+        ✔ DMUL                     - double power; a=POP(), b=POP(), PUSH(b*a) where a and b are doubles @done(21-10-24 02:25)
+        ✔ DDIV                     - double power; a=POP(), b=POP(), PUSH(b/a) where a and b are doubles and a is not 0 @done(21-10-24 02:25)
+        ☐ DPOW                     - double power; a=POP(), b=POP(), PUSH(a**b) where a and b are doubles and either a or b are not 0
+        ☐ MOD                      - modulus; a=POP(), b=POP(), PUSH(b%a) where a and b are intgers
+        ☐ BAND       
+        ☐ XOR        
+        ☐ LSHIFT       
+        ☐ RSHIFT       
+        ✔ EQ @done(21-10-25 01:08)
+        ✔ NEQ @done(21-10-25 01:08)
+        ☐ IGT        
+        ☐ DGT        
+        ☐ ILT        
+        ☐ DLT        
+        ☐ ILTEQ        
+        ☐ DLTEQ        
+      ☐ Unops        
+        ☐ INEG                     - negate integer
+        ☐ DNEG                     - negate double
+        ☐ LNOT                     - logical not
+        ☐ BNOT                     - binary not
+        ☐ LAND
+      ☐ Branching
+        ✔ JUMP [instr addr] @done(21-10-24 02:26)
+        ✔ JUMPNZ [instr addr]       - pops the top of the stack and jumps to the given address if the the value is not 0; otherwise, falls through @done(21-10-24 09:42)
+        ✔ JUMPZ [instr addr]        - pops the top of the stack and jumps to the given address if the the value is 0; otherwise, falls through @done(21-10-24 09:42)
+        ☐ CALL [storage]           - pops the memory address from the top of the stack, pushes the current ip onto the stack (plus the size of the CALL instr), allocates [storage] which is used from non-paramter locals
+      ☐ System Call; SYSCALL [id]
+        ✔ EXIT @done(21-10-25 01:08)
+        ✔ PRINTC @done(21-10-25 04:35)
+        ☐ MALLOC                   - pops the size off the top of the stack and allocates that much memory on the head then pushes the memory location to the top of the stack
+        ☐ FREE                     - pop the memory address from the top of the stack and free that memory
+    ☐ exceptions
+    ☐ access operator
+    ☐ functions: `def myfunc = function (arg1:int, arg2:int) -> bool { ... }`
+    ☐ while statement
+      ☐ `loop {}` will be syntax sugar for `while True { }`
+    ☐ for loop
+    ☐ loop: `loop x { }` loops the code block x times; not syntatic sugar because one can change x in the loop but the loop still loops the original x times
+    ☐ match stmts and exprs
+  
+  Programs to Test:
+    ☐ Factorial
+    ☐ Rule 110
+    ☐ Game of Life
+    ☐ Hash Table
