@@ -238,6 +238,10 @@ static const std::map<std::string, InstructionReader> InstructionReaders = {
      { Instructions::Insert(_prog, OpCode::RETV); }},
     {"EXIT", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::EXIT); }},
+    {"MALLOC", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &labelOperands)
+     { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::MALLOC); }},
+    {"FREE", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &labelOperands)
+     { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::FREE); }},
     {"PRINTC", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::PRINTC); }}};
 

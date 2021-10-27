@@ -15,7 +15,8 @@ enum class VMErrorType
     DIV_BY_ZERO,          // Division by zero occurred
     CANNOT_SPAWN_THREAD,  // Thread could not be spawned
     UNKNOWN_SYSCALL_CODE, // Unable to decode the code for the syscall instruction
-    INVALID_FP,            // The frame pointer has been set to a position outside of the stack
+    INVALID_FP,           // The frame pointer has been set to a position outside of the stack
+    MEMORY_NOT_ALLOCATED, // Attempted to free unallocated memory
     _COUNT
 };
 
@@ -36,6 +37,7 @@ public:
     static VMError CANNOT_SPAWN_THREAD() { return VMError(VMErrorType::CANNOT_SPAWN_THREAD, "Cannot spawn thread!"); }
     static VMError UNKNOWN_SYSCALL_CODE() { return VMError(VMErrorType::UNKNOWN_SYSCALL_CODE, "Unknown syscall code encountered!"); }
     static VMError INVALID_FP() { return VMError(VMErrorType::INVALID_FP, "Frame pointer has been set to an invalid position!"); }
+    static VMError MEMORY_NOT_ALLOCATED() { return VMError(VMErrorType::INVALID_FP, "Attempted to free unallocated memory!"); }
 };
 
 typedef std::variant<VMError, int64_t> VMExitCode;
@@ -57,10 +59,14 @@ public:
     VM();
     ~VM();
 
-    int64_t Run(size_t _stackSize, byte* _startIP);
+    int64_t Run(size_t _stackSize, byte *_startIP);
     void Quit(VMExitCode _code);
 
-    size_t SpawnThread(size_t _stackSize, byte* _startIP);
+    byte *Malloc(size_t _amt);
+    void Free(byte *_addr);
+    bool IsAllocated(byte *_addr);
+
+    size_t SpawnThread(size_t _stackSize, byte *_startIP);
     void JoinThread(size_t _id);
     void SetStdIO(std::wstreambuf *_in = nullptr, std::wstreambuf *_out = nullptr);
 

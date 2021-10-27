@@ -138,6 +138,16 @@ namespace Instructions
         _thread->GetVM()->GetStdOut() << static_cast<wchar_t>(_thread->PopStack<int64_t>());
     }
 
+    void SYSCALL_MALLOC(Thread *_thread)
+    {
+        _thread->PushStack(_thread->GetVM()->Malloc(_thread->PopStack<uint64_t>()));
+    }
+
+    void SYSCALL_FREE(Thread *_thread)
+    {
+        _thread->GetVM()->Free(_thread->PopStack<byte*>());
+    }
+
     void SYSCALL(Thread *_thread)
     {
         byte code = _thread->instrPtr[OP_CODE_SIZE];
@@ -256,6 +266,8 @@ namespace Instructions
 
         SysCallExecutionFuncs[(size_t)SysCallCode::EXIT] = &SYSCALL_EXIT;
         SysCallExecutionFuncs[(size_t)SysCallCode::PRINTC] = &SYSCALL_PRINTC;
+        SysCallExecutionFuncs[(size_t)SysCallCode::MALLOC] = &SYSCALL_MALLOC;
+        SysCallExecutionFuncs[(size_t)SysCallCode::FREE] = &SYSCALL_FREE;
     }
 
     std::string ToString(const byte *_instr)

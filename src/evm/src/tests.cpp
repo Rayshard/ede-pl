@@ -433,6 +433,32 @@ DEFINE_TEST(SYSCALL_PRINTC)
     ASSERT(vm.Run(16, &program[0]) == 123ll);
     ASSERT(stdIO.str() == L"A");
 }
+
+DEFINE_TEST(SYSCALL_MALLOC)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 16ull,
+        OpCode::SYSCALL, SysCallCode::MALLOC,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm;
+    byte* address = (byte*)Word(vm.Run(8, &program[0])).as_ptr;
+    ASSERT(vm.IsAllocated(address));
+}
+
+DEFINE_TEST(SYSCALL_FREE)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 16ull,
+        OpCode::SYSCALL, SysCallCode::MALLOC,
+        OpCode::SLOAD, -8ll,
+        OpCode::SYSCALL, SysCallCode::FREE,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm;
+    byte* address = Word(vm.Run(16, &program[0])).bytes;
+    ASSERT(!vm.IsAllocated(address));
+}
 #pragma endregion
 
 #pragma region Converters
