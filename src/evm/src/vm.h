@@ -6,6 +6,7 @@
 #include "program.h"
 
 class Thread;
+typedef vm_ui64 ThreadID;
 
 enum class VMErrorType
 {
@@ -40,15 +41,15 @@ public:
     static VMError MEMORY_NOT_ALLOCATED() { return VMError(VMErrorType::INVALID_FP, "Attempted to free unallocated memory!"); }
 };
 
-typedef std::variant<VMError, int64_t> VMExitCode;
+typedef std::variant<VMError, vm_i64> VMExitCode;
 
 class VM
 {
 private:
     bool running;
-    std::map<byte *, std::vector<byte>> heap;
-    std::map<size_t, Thread> threads;
-    size_t nextThreadID;
+    std::map<vm_byte *, std::vector<vm_byte>> heap;
+    std::map<ThreadID, Thread> threads;
+    ThreadID nextThreadID;
     VMExitCode exitCode;
     std::wistream stdInput;
     std::wostream stdOutput;
@@ -59,15 +60,15 @@ public:
     VM();
     ~VM();
 
-    int64_t Run(size_t _stackSize, byte *_startIP);
+    vm_i64 Run(vm_ui64 _stackSize, vm_byte *_startIP);
     void Quit(VMExitCode _code);
 
-    byte *Malloc(size_t _amt);
-    void Free(byte *_addr);
-    bool IsAllocated(byte *_addr);
+    vm_byte *Malloc(vm_ui64 _amt);
+    void Free(vm_byte *_addr);
+    bool IsAllocated(vm_byte *_addr);
 
-    size_t SpawnThread(size_t _stackSize, byte *_startIP);
-    void JoinThread(size_t _id);
+    ThreadID SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP);
+    void JoinThread(vm_ui64 _id);
     void SetStdIO(std::wstreambuf *_in = nullptr, std::wstreambuf *_out = nullptr);
 
     bool IsRunning() { return running; }

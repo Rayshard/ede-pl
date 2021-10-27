@@ -94,7 +94,7 @@ Token GetNextToken(TokenStream &_stream)
     return Token{value, pos};
 }
 
-double ReadDoubleOperand(TokenStream &_stream)
+vm_f64 ReadF64Operand(TokenStream &_stream)
 {
     Token token = GetNextToken(_stream);
 
@@ -111,7 +111,7 @@ double ReadDoubleOperand(TokenStream &_stream)
     }
 }
 
-int64_t ReadInt64Operand(TokenStream &_stream)
+vm_i64 ReadI64Operand(TokenStream &_stream)
 {
     Token token = GetNextToken(_stream);
 
@@ -130,7 +130,7 @@ int64_t ReadInt64Operand(TokenStream &_stream)
     }
 }
 
-uint32_t ReadUInt32Operand(TokenStream &_stream)
+vm_ui32 ReadUI32Operand(TokenStream &_stream)
 {
     Token token = GetNextToken(_stream);
 
@@ -149,7 +149,7 @@ uint32_t ReadUInt32Operand(TokenStream &_stream)
     }
 }
 
-uint64_t ReadHexOperand(TokenStream &_stream, uint64_t _max)
+vm_ui64 ReadHexOperand(TokenStream &_stream, vm_ui64 _max)
 {
     Token token = GetNextToken(_stream);
 
@@ -180,91 +180,91 @@ Token ReadLabelOperand(TokenStream &_stream)
     return token;
 }
 
-typedef void (*InstructionReader)(Program &, TokenStream &, std::map<size_t, Token> &);
+typedef void (*InstructionReader)(Program &, TokenStream &, std::map<vm_ui64, Token> &);
 static const std::map<std::string, InstructionReader> InstructionReaders = {
-    {"NOOP", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"NOOP", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::NOOP); }},
-    {"PUSH", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"PUSH", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::PUSH, ReadHexOperand(_stream, UINT64_MAX)); }},
-    {"PUSHI", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::PUSH, ReadInt64Operand(_stream)); }},
-    {"PUSHD", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::PUSH, ReadDoubleOperand(_stream)); }},
-    {"POP", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"PUSHI", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::PUSH, ReadI64Operand(_stream)); }},
+    {"PUSHD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::PUSH, ReadF64Operand(_stream)); }},
+    {"POP", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::POP); }},
-    {"IADD", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"IADD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::IADD); }},
-    {"ISUB", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"ISUB", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::ISUB); }},
-    {"IMUL", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"IMUL", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::IMUL); }},
-    {"IDIV", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"IDIV", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::IDIV); }},
-    {"DADD", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"DADD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::DADD); }},
-    {"DSUB", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"DSUB", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::DSUB); }},
-    {"DMUL", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"DMUL", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::DMUL); }},
-    {"DDIV", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"DDIV", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::DDIV); }},
-    {"EQ", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"EQ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::EQ); }},
-    {"NEQ", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+    {"NEQ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::NEQ); }},
-    {"SLOAD", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::SLOAD, ReadInt64Operand(_stream)); }},
-    {"SSTORE", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::SSTORE, ReadInt64Operand(_stream)); }},
-    {"LLOAD", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::LLOAD, ReadUInt32Operand(_stream)); }},
-    {"LSTORE", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::LSTORE, ReadUInt32Operand(_stream)); }},
-    {"PLOAD", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::PLOAD, ReadUInt32Operand(_stream)); }},
-    {"PSTORE", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::PSTORE, ReadUInt32Operand(_stream)); }},
-    {"GLOAD", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::GLOAD, ReadUInt32Operand(_stream)); }},
-    {"GSTORE", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &_labelReplacePositions)
-     { Instructions::Insert(_prog, OpCode::GSTORE, ReadUInt32Operand(_stream)); }},
-    {"JUMP", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"SLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::SLOAD, ReadI64Operand(_stream)); }},
+    {"SSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::SSTORE, ReadI64Operand(_stream)); }},
+    {"LLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::LLOAD, ReadUI32Operand(_stream)); }},
+    {"LSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::LSTORE, ReadUI32Operand(_stream)); }},
+    {"PLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::PLOAD, ReadUI32Operand(_stream)); }},
+    {"PSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::PSTORE, ReadUI32Operand(_stream)); }},
+    {"GLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::GLOAD, ReadUI32Operand(_stream)); }},
+    {"GSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::GSTORE, ReadUI32Operand(_stream)); }},
+    {"JUMP", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      {
          Instructions::Insert(_prog, OpCode::JUMP);
          labelOperands.emplace(_prog.size(), ReadLabelOperand(_stream));
-         Instructions::Insert(_prog, size_t());
+         Instructions::Insert(_prog, vm_ui64());
      }},
-    {"JUMPZ", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"JUMPZ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      {
          Instructions::Insert(_prog, OpCode::JUMPZ);
          labelOperands.emplace(_prog.size(), ReadLabelOperand(_stream));
-         Instructions::Insert(_prog, size_t());
+         Instructions::Insert(_prog, vm_ui64());
      }},
-    {"JUMPNZ", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"JUMPNZ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      {
          Instructions::Insert(_prog, OpCode::JUMPNZ);
          labelOperands.emplace(_prog.size(), ReadLabelOperand(_stream));
-         Instructions::Insert(_prog, size_t());
+         Instructions::Insert(_prog, vm_ui64());
      }},
-    {"CALL", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"CALL", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      {
          Instructions::Insert(_prog, OpCode::CALL);
 
          labelOperands.emplace(_prog.size(), ReadLabelOperand(_stream));
-         Instructions::Insert(_prog, size_t());                   //Insert label
-         Instructions::Insert(_prog, ReadUInt32Operand(_stream)); //Insert storage
+         Instructions::Insert(_prog, vm_ui64());                   //Insert label
+         Instructions::Insert(_prog, ReadUI32Operand(_stream)); //Insert storage
      }},
-    {"RET", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"RET", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::RET); }},
-    {"RETV", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"RETV", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::RETV); }},
-    {"EXIT", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"EXIT", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::EXIT); }},
-    {"MALLOC", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"MALLOC", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::MALLOC); }},
-    {"FREE", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"FREE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::FREE); }},
-    {"PRINTC", [](Program &_prog, TokenStream &_stream, std::map<size_t, Token> &labelOperands)
+    {"PRINTC", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &labelOperands)
      { Instructions::Insert(_prog, OpCode::SYSCALL, SysCallCode::PRINTC); }}};
 
 namespace Instructions
@@ -282,8 +282,8 @@ namespace Instructions
     {
         TokenStream stream(&_stream);
         Program program;
-        std::map<std::string, size_t> labels;
-        std::map<size_t, Token> labelOperands;
+        std::map<std::string, vm_ui64> labels;
+        std::map<vm_ui64, Token> labelOperands;
 
         while (true)
         {
@@ -326,8 +326,8 @@ namespace Instructions
             if (labelSearch == labels.end())
                 throw Error::UNDEFINED_LABEL(token.position, token.value);
 
-            size_t target = labelSearch->second;
-            std::copy((byte *)&target, (byte *)&target + sizeof(target), &program[pos]);
+            vm_ui64 target = labelSearch->second;
+            std::copy((vm_byte *)&target, (vm_byte *)&target + VM_PTR_SIZE, &program[pos]);
         }
 
         ValidateAndInitProgram(program);
@@ -336,9 +336,9 @@ namespace Instructions
 
     void ValidateAndInitProgram(Program &_prog)
     {
-        byte *start = _prog.data(), *end = &_prog.back() + 1;
+        vm_byte *start = _prog.data(), *end = &_prog.back() + 1;
 
-        for (byte *ptr = start; ptr != end; ptr += GetSize((OpCode)*ptr))
+        for (vm_byte *ptr = start; ptr != end; ptr += GetSize((OpCode)*ptr))
         {
             OpCode opcode = (OpCode)*ptr;
 
@@ -355,16 +355,16 @@ namespace Instructions
             case OpCode::JUMPZ:
             case OpCode::CALL:
             {
-                byte *operand = ptr + 1;
-                size_t offset = *(size_t *)operand;
+                vm_byte *operand = ptr + 1;
+                vm_ui64 offset = *(vm_ui64 *)operand;
                 if (offset >= _prog.size())
                     throw Error::INVALID_PROGRAM();
 
-                byte *target = start + offset;
+                vm_byte *target = start + offset;
                 if (end - target <= 0)
                     throw Error::INVALID_PROGRAM();
 
-                std::copy((byte *)&target, (byte *)&target + sizeof(target), operand);
+                std::copy((vm_byte *)&target, (vm_byte *)&target + VM_PTR_SIZE, operand);
             }
             break;
             default:

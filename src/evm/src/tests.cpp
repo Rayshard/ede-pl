@@ -224,7 +224,7 @@ DEFINE_TEST(DADD)
         OpCode::DADD,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    ASSERT(Word(VM().Run(64, &program[0])).as_double == 579.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_f64 == 579.0);
 }
 
 DEFINE_TEST(DSUB)
@@ -235,7 +235,7 @@ DEFINE_TEST(DSUB)
         OpCode::DSUB,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    ASSERT(Word(VM().Run(64, &program[0])).as_double == -333.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_f64 == -333.0);
 }
 
 DEFINE_TEST(DMUL)
@@ -246,7 +246,7 @@ DEFINE_TEST(DMUL)
         OpCode::DMUL,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    ASSERT(Word(VM().Run(64, &program[0])).as_double == 56088.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_f64 == 56088.0);
 }
 
 DEFINE_TEST(DDIV)
@@ -257,7 +257,7 @@ DEFINE_TEST(DDIV)
         OpCode::DDIV,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    ASSERT(Word(VM().Run(64, &program[0])).as_double == 5.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_f64 == 5.0);
 }
 
 DEFINE_TEST(EQ)
@@ -287,12 +287,12 @@ DEFINE_TEST(NEQ)
 DEFINE_TEST(JUMP)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, 100ll,
-        OpCode::JUMP, (int64_t)28,
-        OpCode::PUSH, (int64_t)200,
+        OpCode::PUSH, (vm_i64)100,
+        OpCode::JUMP, (vm_ui64)28,
+        OpCode::PUSH, (vm_i64)200,
         OpCode::SYSCALL, SysCallCode::EXIT,
-        OpCode::PUSH, (int64_t)300,
-        OpCode::JUMP, (int64_t)27);
+        OpCode::PUSH, (vm_i64)300,
+        OpCode::JUMP, (vm_ui64)27);
 
     ASSERT(VM().Run(64, &program[0]) == 300);
 }
@@ -380,13 +380,13 @@ DEFINE_TEST(RETV)
 DEFINE_TEST(JUMPZ)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, (int64_t)0,
-        OpCode::JUMPZ, (int64_t)28,
-        OpCode::PUSH, (int64_t)200,
+        OpCode::PUSH, (vm_i64)0,
+        OpCode::JUMPZ, (vm_ui64)28,
+        OpCode::PUSH, (vm_i64)200,
         OpCode::SYSCALL, SysCallCode::EXIT,
-        OpCode::PUSH, (int64_t)5,
-        OpCode::JUMPZ, (int64_t)18,
-        OpCode::PUSH, (int64_t)300,
+        OpCode::PUSH, (vm_i64)5,
+        OpCode::JUMPZ, (vm_ui64)18,
+        OpCode::PUSH, (vm_i64)300,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     ASSERT(VM().Run(64, &program[0]) == 300);
@@ -395,13 +395,13 @@ DEFINE_TEST(JUMPZ)
 DEFINE_TEST(JUMPNZ)
 {
     Program program = CreateProgram(
-        OpCode::PUSH, (int64_t)5,
-        OpCode::JUMPNZ, (int64_t)28,
-        OpCode::PUSH, (int64_t)200,
+        OpCode::PUSH, (vm_i64)5,
+        OpCode::JUMPNZ, (vm_ui64)28,
+        OpCode::PUSH, (vm_i64)200,
         OpCode::SYSCALL, SysCallCode::EXIT,
-        OpCode::PUSH, (int64_t)0,
-        OpCode::JUMPNZ, (int64_t)18,
-        OpCode::PUSH, (int64_t)300,
+        OpCode::PUSH, (vm_i64)0,
+        OpCode::JUMPNZ, (vm_ui64)18,
+        OpCode::PUSH, (vm_i64)300,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     ASSERT(VM().Run(64, &program[0]) == 300);
@@ -442,7 +442,7 @@ DEFINE_TEST(SYSCALL_MALLOC)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm;
-    byte* address = (byte*)Word(vm.Run(8, &program[0])).as_ptr;
+    vm_byte *address = (vm_byte *)Word(vm.Run(8, &program[0])).as_ptr;
     ASSERT(vm.IsAllocated(address));
 }
 
@@ -456,7 +456,7 @@ DEFINE_TEST(SYSCALL_FREE)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm;
-    byte* address = (byte*)Word(vm.Run(16, &program[0])).as_ptr;
+    vm_byte *address = (vm_byte *)Word(vm.Run(16, &program[0])).as_ptr;
     ASSERT(!vm.IsAllocated(address));
 }
 #pragma endregion
@@ -483,7 +483,7 @@ DEFINE_TEST(I2D)
         OpCode::DADD,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    ASSERT(Word(VM().Run(64, &program[0])).as_double == 579.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_f64 == 579.0);
 }
 #pragma endregion
 
@@ -616,7 +616,7 @@ DEFINE_TEST(TEST_FILES)
     std::getline(expectedFile, line);
 
     std::wstring caseName, expectedOutput;
-    int64_t expectedExitCode;
+    vm_i64 expectedExitCode;
 
     while (expectedFile >> caseName)
     {

@@ -6,11 +6,11 @@
 #include "instructions.h"
 #include "../build.h"
 
-Thread::Thread(VM *_vm, size_t _id, uint64_t _stackSize, byte *_startIP)
-    : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0), framePtr(0), isAlive(false)
+Thread::Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP)
+    : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0ull), framePtr(0ull), isAlive(false)
 {
     assert(_stackSize % WORD_SIZE == 0);
-    stack = std::vector<byte>(_stackSize);
+    stack = std::vector<vm_byte>(_stackSize);
 }
 
 void Thread::Start()
@@ -44,7 +44,7 @@ void Thread::Run()
     {
         std::scoped_lock<std::mutex> lock(vm->mutex); //Lock execution to a thread so that this finishes an instruction uninterrupted
 
-        byte opcode = *instrPtr;
+        vm_byte opcode = *instrPtr;
         if (opcode >= (size_t)Instructions::OpCode::_COUNT)
             throw VMError::UNKNOWN_OP_CODE();
 
@@ -69,24 +69,17 @@ void Thread::Join()
         ;
 }
 
-void Thread::SetSP(int64_t _pos)
-{
-    stackPtr = _pos;
-    if (stackPtr < 0)
-        throw VMError::STACK_UNDERFLOW();
-    else if (stackPtr > stack.size())
-        throw VMError::STACK_OVERFLOW();
-}
-
 void Thread::PrintStack()
 {
     std::cout << std::string(40, '=') << "Thread ID: " << id << std::string(40, '=') << std::endl;
 
     for (uint64_t i = 0; i < stackPtr; i += WORD_SIZE)
     {
-        std::cout << reinterpret_cast<void *>(&stack[i]);
-        std::cout << ":\ti64: " << ((Word *)&stack[i])->as_int;
-        std::cout << "\tf64: " << ((Word *)&stack[i])->as_double;
+        std::cout << ":\ti32: " << ((Word *)&stack[i])->as_i32;
+        std::cout << "\ti64: " << ((Word *)&stack[i])->as_i64;
+        std::cout << "\tf32: " << ((Word *)&stack[i])->as_f32;
+        std::cout << "\tf64: " << ((Word *)&stack[i])->as_f64;
+        std::cout << "\tptr: " << ((Word *)&stack[i])->as_ptr;
 
         if (i + WORD_SIZE == stackPtr)
             std::cout << "\t\t<-------";
@@ -95,4 +88,26 @@ void Thread::PrintStack()
     }
 
     std::cout << std::string(90, '=') << std::endl;
+}
+
+void Thread::OffsetSP(vm_i64 _off)
+{
+    stackPtr += _off;
+    if (stackPtr > stack.size())
+        throw VMError::STACK_OVERFLOW();
+}
+
+void Thread::PushFrame()
+{
+    PushStack(framePtr);
+    framePtr = stackPtr;
+}
+
+void Thread::PopFrame()
+{
+    stackPtr = framePtr;
+    if (stackPtr > stack.size())
+        throw VMError::STACK_OVERFLOW();
+    
+    framePtr = PopStack<vm_ui64>();
 }

@@ -16,22 +16,23 @@ namespace Instructions
 #pragma region Binops
     void IADD(Thread *_thread)
     {
-        _thread->PushStack(_thread->PopStack<int64_t>() + _thread->PopStack<int64_t>());
+        _thread->PushStack(_thread->PopStack<vm_i64>() + _thread->PopStack<vm_i64>());
     }
 
     void ISUB(Thread *_thread)
     {
-        _thread->PushStack(_thread->PopStack<int64_t>() - _thread->PopStack<int64_t>());
+        auto left = _thread->PopStack<vm_i64>(), right = _thread->PopStack<vm_i64>();
+        _thread->PushStack(left - right);
     }
 
     void IMUL(Thread *_thread)
     {
-        _thread->PushStack(_thread->PopStack<int64_t>() * _thread->PopStack<int64_t>());
+        _thread->PushStack(_thread->PopStack<vm_i64>() * _thread->PopStack<vm_i64>());
     }
 
     void IDIV(Thread *_thread)
     {
-        int64_t left = _thread->PopStack<int64_t>(), right = _thread->PopStack<int64_t>();
+        vm_i64 left = _thread->PopStack<vm_i64>(), right = _thread->PopStack<vm_i64>();
         if (right == 0ll)
             throw VMError::DIV_BY_ZERO();
 
@@ -40,23 +41,24 @@ namespace Instructions
 
     void DADD(Thread *_thread)
     {
-        _thread->PushStack(_thread->PopStack<double>() + _thread->PopStack<double>());
+        _thread->PushStack(_thread->PopStack<vm_f64>() + _thread->PopStack<vm_f64>());
     }
 
     void DSUB(Thread *_thread)
     {
-        _thread->PushStack(_thread->PopStack<double>() - _thread->PopStack<double>());
+        auto left = _thread->PopStack<vm_f64>(), right = _thread->PopStack<vm_f64>();
+        _thread->PushStack(left - right);
     }
 
     void DMUL(Thread *_thread)
     {
-        _thread->PushStack(_thread->PopStack<double>() * _thread->PopStack<double>());
+        _thread->PushStack(_thread->PopStack<vm_f64>() * _thread->PopStack<vm_f64>());
     }
 
     void DDIV(Thread *_thread)
     {
 
-        double left = _thread->PopStack<double>(), right = _thread->PopStack<double>();
+        vm_f64 left = _thread->PopStack<vm_f64>(), right = _thread->PopStack<vm_f64>();
         if (right == 0.0)
             throw VMError::DIV_BY_ZERO();
 
@@ -65,12 +67,12 @@ namespace Instructions
 
     void EQ(Thread *_thread)
     {
-        _thread->PushStack(uint64_t(_thread->PopStack<uint64_t>() == _thread->PopStack<uint64_t>()));
+        _thread->PushStack(vm_i64(_thread->PopStack<vm_i64>() == _thread->PopStack<vm_i64>()));
     }
 
     void NEQ(Thread *_thread)
     {
-        _thread->PushStack(uint64_t(_thread->PopStack<uint64_t>() != _thread->PopStack<uint64_t>()));
+        _thread->PushStack(vm_i64(_thread->PopStack<vm_i64>() != _thread->PopStack<vm_i64>()));
     }
 
 #pragma endregion
@@ -78,51 +80,49 @@ namespace Instructions
 #pragma region Branching
     void JUMP(Thread *_thread)
     {
-        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMP);
     }
 
     void JUMPNZ(Thread *_thread)
     {
-        if (_thread->PopStack<uint64_t>() == 0ull)
+        if (_thread->PopStack<vm_i64>() == 0ull)
             return;
 
-        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMPNZ);
     }
 
     void JUMPZ(Thread *_thread)
     {
-        if (_thread->PopStack<uint64_t>() != 0ull)
+        if (_thread->PopStack<vm_i64>() != 0ull)
             return;
 
-        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMPZ);
     }
 
     void CALL(Thread *_thread)
     {
-        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
-        uint32_t storage = *(uint32_t *)(_thread->instrPtr + OP_CODE_SIZE + sizeof(byte *));
+        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_ui32 storage = *(vm_ui32 *)(_thread->instrPtr + OP_CODE_SIZE + sizeof(vm_byte *));
 
         _thread->PushStack(_thread->instrPtr + GetSize(OpCode::CALL)); //Push return value
-        _thread->PushStack(_thread->GetFP());                          //Push current frame pointer
-        _thread->framePtr = _thread->GetSP();                          //Set the frame pointer for new frame
-        _thread->SetSP(_thread->GetSP() + storage);                    //Allocate space of stack for function local storage
+        _thread->PushFrame();                                          //Push current frame pointer and set the frame pointer for new frame
+        _thread->OffsetSP(storage);                                    //Allocate space of stack for function local storage
         _thread->instrPtr = target - GetSize(OpCode::CALL);            //Jump to target
     }
 
     void RET(Thread *_thread)
     {
-        _thread->SetSP(_thread->framePtr);                                      //Clear current frame
-        _thread->framePtr = _thread->PopStack<uint64_t>();                      //Restore previous frame pointer
-        _thread->instrPtr = _thread->PopStack<byte *>() - GetSize(OpCode::RET); //Jump to instruction after most recent call
+        _thread->PopFrame();                                                       //Clear current frame and restore previous frame pointer
+        _thread->instrPtr = _thread->PopStack<vm_byte *>() - GetSize(OpCode::RET); //Jump to instruction after most recent call
     }
 
     void RETV(Thread *_thread)
     {
         Word retValue = _thread->PopStack<Word>(); //Pop off return value
-        RET(_thread);                              //Do return
+        RET(_thread);                              //Execute return
         _thread->PushStack(retValue);              //Push return value
     }
 #pragma endregion
@@ -130,28 +130,28 @@ namespace Instructions
 #pragma region Syscalls
     void SYSCALL_EXIT(Thread *_thread)
     {
-        _thread->GetVM()->Quit(_thread->PopStack<int64_t>());
+        _thread->GetVM()->Quit(_thread->PopStack<vm_i64>());
     }
 
     void SYSCALL_PRINTC(Thread *_thread)
     {
-        _thread->GetVM()->GetStdOut() << static_cast<wchar_t>(_thread->PopStack<int64_t>());
+        _thread->GetVM()->GetStdOut() << static_cast<wchar_t>(_thread->PopStack<vm_i64>());
     }
 
     void SYSCALL_MALLOC(Thread *_thread)
     {
-        _thread->PushStack(_thread->GetVM()->Malloc(_thread->PopStack<uint64_t>()));
+        _thread->PushStack(_thread->GetVM()->Malloc(_thread->PopStack<vm_i64>()));
     }
 
     void SYSCALL_FREE(Thread *_thread)
     {
-        _thread->GetVM()->Free(_thread->PopStack<byte*>());
+        _thread->GetVM()->Free(_thread->PopStack<vm_byte *>());
     }
 
     void SYSCALL(Thread *_thread)
     {
-        byte code = _thread->instrPtr[OP_CODE_SIZE];
-        if (code >= (size_t)SysCallCode::_COUNT)
+        vm_byte code = _thread->instrPtr[OP_CODE_SIZE];
+        if (code >= (vm_byte)SysCallCode::_COUNT)
             throw VMError::UNKNOWN_SYSCALL_CODE();
 
         SysCallExecutionFuncs[code](_thread);
@@ -161,12 +161,12 @@ namespace Instructions
 #pragma region Converters
     void I2D(Thread *_thread)
     {
-        _thread->PushStack((double)_thread->PopStack<int64_t>());
+        _thread->PushStack((vm_f64)_thread->PopStack<vm_i64>());
     }
 
     void D2I(Thread *_thread)
     {
-        _thread->PushStack((int64_t)_thread->PopStack<double>());
+        _thread->PushStack((vm_i64)_thread->PopStack<vm_f64>());
     }
 #pragma endregion
 
@@ -184,50 +184,50 @@ namespace Instructions
 
     void SLOAD(Thread *_thread)
     {
-        int64_t offset = *(int64_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_i64 offset = *(vm_i64 *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->PushStack(_thread->ReadStack<Word>(_thread->GetSP() + offset));
     }
 
     void SSTORE(Thread *_thread)
     {
-        int64_t offset = *(int64_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_i64 offset = *(vm_i64 *)&_thread->instrPtr[OP_CODE_SIZE];
         auto value = _thread->PopStack<Word>();
         _thread->WriteStack(_thread->GetSP() + offset, value);
     }
 
     void LLOAD(Thread *_thread)
     {
-        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->PushStack(_thread->ReadStack<Word>(_thread->GetFP() + idx * WORD_SIZE));
     }
 
     void LSTORE(Thread *_thread)
     {
-        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->WriteStack(_thread->GetFP() + idx * WORD_SIZE, _thread->PopStack<Word>());
     }
 
     void PLOAD(Thread *_thread)
     {
-        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->PushStack(_thread->ReadStack<Word>(_thread->GetFP() - WORD_SIZE * 2 - (idx + 1) * WORD_SIZE));
     }
 
     void PSTORE(Thread *_thread)
     {
-        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->WriteStack(_thread->GetFP() - WORD_SIZE * 2 - (idx + 1) * WORD_SIZE, _thread->PopStack<Word>());
     }
 
     void GLOAD(Thread *_thread)
     {
-        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->PushStack(_thread->ReadStack<Word>(idx * WORD_SIZE));
     }
 
     void GSTORE(Thread *_thread)
     {
-        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->WriteStack(idx * WORD_SIZE, _thread->PopStack<Word>());
     }
 #pragma endregion
@@ -271,7 +271,7 @@ namespace Instructions
         SysCallExecutionFuncs[(size_t)SysCallCode::FREE] = &SYSCALL_FREE;
     }
 
-    std::string ToString(const byte *_instr)
+    std::string ToString(const vm_byte *_instr)
     {
         switch ((OpCode)*_instr)
         {
@@ -308,15 +308,15 @@ namespace Instructions
         case OpCode::RETV:
             return "RETV";
         case OpCode::PUSH:
-            return "PUSH " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
+            return "PUSH " + Hex(*(vm_ui64 *)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMP:
-            return "JUMP " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
+            return "JUMP " + Hex(*(vm_ui64 *)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMPNZ:
-            return "JUMPNZ " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
+            return "JUMPNZ " + Hex(*(vm_ui64 *)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMPZ:
-            return "JUMPZ " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
+            return "JUMPZ " + Hex(*(vm_ui64 *)&_instr[OP_CODE_SIZE]);
         case OpCode::CALL:
-            return "CALL " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]) + ", " + std::to_string(*(uint32_t *)&_instr[OP_CODE_SIZE + sizeof(uint64_t)]);
+            return "CALL " + Hex(*(vm_ui64 *)&_instr[OP_CODE_SIZE]) + ", " + std::to_string(*(vm_ui32 *)&_instr[OP_CODE_SIZE + VM_UI64_SIZE]);
         case OpCode::SYSCALL:
         {
             switch ((SysCallCode)_instr[1])
@@ -335,21 +335,21 @@ namespace Instructions
         }
         break;
         case OpCode::SLOAD:
-            return "SLOAD " + std::to_string(*(int64_t *)&_instr[1]);
+            return "SLOAD " + std::to_string(*(vm_i64 *)&_instr[1]);
         case OpCode::SSTORE:
-            return "SSTORE " + std::to_string(*(int64_t *)&_instr[1]);
+            return "SSTORE " + std::to_string(*(vm_i64 *)&_instr[1]);
         case OpCode::LLOAD:
-            return "LLOAD " + std::to_string(*(uint32_t *)&_instr[1]);
+            return "LLOAD " + std::to_string(*(vm_ui32 *)&_instr[1]);
         case OpCode::LSTORE:
-            return "LSTORE " + std::to_string(*(uint32_t *)&_instr[1]);
+            return "LSTORE " + std::to_string(*(vm_ui32 *)&_instr[1]);
         case OpCode::GLOAD:
-            return "GLOAD " + std::to_string(*(uint32_t *)&_instr[1]);
+            return "GLOAD " + std::to_string(*(vm_ui32 *)&_instr[1]);
         case OpCode::GSTORE:
-            return "GSTORE " + std::to_string(*(uint32_t *)&_instr[1]);
+            return "GSTORE " + std::to_string(*(vm_ui32 *)&_instr[1]);
         case OpCode::PLOAD:
-            return "PLOAD " + std::to_string(*(uint32_t *)&_instr[1]);
+            return "PLOAD " + std::to_string(*(vm_ui32 *)&_instr[1]);
         case OpCode::PSTORE:
-            return "PSTORE " + std::to_string(*(uint32_t *)&_instr[1]);
+            return "PSTORE " + std::to_string(*(vm_ui32 *)&_instr[1]);
         default:
             assert(false && "Case not handled");
         }
