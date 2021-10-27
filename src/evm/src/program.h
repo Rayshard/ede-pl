@@ -6,6 +6,10 @@ typedef std::vector<byte> Program;
 
 namespace Instructions
 {
+    void ValidateAndInitProgram(Program &_prog);
+    Program ParseFile(const std::string& _filePath);
+    Program ParseStream(std::istream& _stream);
+
     template <class type>
     void Insert(Program &_prog, type _value) { _prog.insert(_prog.end(), (char *)&_value, (char *)&_value + sizeof(_value)); }
 
@@ -22,8 +26,7 @@ namespace Instructions
         Program program = Program();
         Insert(program, _arg1);
         Insert(program, _rest...);
+        ValidateAndInitProgram(program);
         return program;
     }
-
-    Program ParseEdeASM(const std::string& _filePath);
 }

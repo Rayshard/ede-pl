@@ -34,6 +34,7 @@ namespace Instructions
         JUMPNZ,
         CALL,
         RET,
+        RETV,
 
         //CONVERTERS
         I2D,
@@ -77,12 +78,16 @@ namespace Instructions
         case OpCode::DDIV:
         case OpCode::EQ:
         case OpCode::NEQ:
+        case OpCode::RET:
+        case OpCode::RETV:
             return OP_CODE_SIZE;
         case OpCode::PUSH:
         case OpCode::JUMP:
         case OpCode::JUMPNZ:
         case OpCode::JUMPZ:
             return OP_CODE_SIZE + WORD_SIZE;
+        case OpCode::CALL:
+            return OP_CODE_SIZE + WORD_SIZE + sizeof(uint32_t);
         case OpCode::SYSCALL:
             return OP_CODE_SIZE + SYSCALL_CODE_SIZE;
         case OpCode::SLOAD:
@@ -95,5 +100,5 @@ namespace Instructions
         return 0;
     }
 
-    std::string ToString(const byte* _instr);
+    std::string ToString(const byte *_instr);
 }

@@ -9,6 +9,7 @@ Todo:
     ✔ transform lexing error types to LEX prefix @done(21-10-21 00:45)
     ✔ make VMResultStrings in evm a map @done(21-10-25 00:14)
     ✔ instead of using results...use exception throwing @done(21-10-25 03:30)
+    ☐ write tests for evm parsing errors
     ☐ review testing
     ☐ add binop to add to chars together to make a string
     ☐ add binop to add to char and string together to make a string
@@ -74,7 +75,9 @@ Todo:
         ✔ JUMP [instr addr] @done(21-10-24 02:26)
         ✔ JUMPNZ [instr addr]          - pops the top of the stack and jumps to the given address if the the value is not 0; otherwise, falls through @done(21-10-24 09:42)
         ✔ JUMPZ [instr addr]           - pops the top of the stack and jumps to the given address if the the value is 0; otherwise, falls through @done(21-10-24 09:42)
-        ☐ CALL [instr addr] [storage]  - pops the memory address from the top of the stack, pushes the current ip onto the stack (plus the size of the CALL instr), allocates [storage] which is used from non-paramter locals
+        ✔ CALL [instr addr] [storage]  - pushes the next instructions ip onto the stack (return address), pushes the current frame pointer, set frame pointer to stack ptr, allocates [storage] which is used from non-paramter locals, jump to target @done(21-10-27 01:31)
+        ✔ RET                          - sets the stack pointer to the frame pointer (clear current frame), pops old frame pointer and set the frame pointer to that, pops the return address and jumps to that @done(21-10-27 01:36)
+        ✔ RETV                         - pops return value and stores it, executes RET, pushes stored return value @done(21-10-27 01:36)
       ☐ System Call; SYSCALL [id]
         ✔ EXIT @done(21-10-25 01:08)
         ✔ PRINTC @done(21-10-25 04:35)

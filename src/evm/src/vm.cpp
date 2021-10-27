@@ -1,9 +1,10 @@
 #include "vm.h"
 #include "thread.h"
+#include "instructions.h"
 #include <iostream>
 
-VM::VM(Program &&_program)
-    : program(std::move(_program)), heap(), threads(), running(false), nextThreadID(0), exitCode(0), stdInput(std::wcin.rdbuf()), stdOutput(std::wcout.rdbuf()) {}
+VM::VM()
+    : heap(), threads(), running(false), nextThreadID(0), exitCode(0), stdInput(std::wcin.rdbuf()), stdOutput(std::wcout.rdbuf()) {}
 
 VM::~VM()
 {
@@ -13,10 +14,10 @@ VM::~VM()
     heap.clear();
 }
 
-int64_t VM::Run(size_t _stackSize)
+int64_t VM::Run(size_t _stackSize, byte* _startIP)
 {
     running = true;
-    SpawnThread(_stackSize, 0);
+    SpawnThread(_stackSize, _startIP);
 
     while (threads.size() != 0)
     {
@@ -64,7 +65,7 @@ void VM::Quit(VMExitCode _code)
     running = false;
 }
 
-size_t VM::SpawnThread(size_t _stackSize, size_t _startIP)
+size_t VM::SpawnThread(size_t _stackSize, byte* _startIP)
 {
     if (!running)
         throw VMError::CANNOT_SPAWN_THREAD();

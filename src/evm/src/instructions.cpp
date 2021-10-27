@@ -78,7 +78,7 @@ namespace Instructions
 #pragma region Branching
     void JUMP(Thread *_thread)
     {
-        uint64_t target = *(uint64_t *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMP);
     }
 
@@ -87,7 +87,7 @@ namespace Instructions
         if (_thread->PopStack<uint64_t>() == 0ull)
             return;
 
-        uint64_t target = *(uint64_t *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMPNZ);
     }
 
@@ -96,10 +96,35 @@ namespace Instructions
         if (_thread->PopStack<uint64_t>() != 0ull)
             return;
 
-        uint64_t target = *(uint64_t *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMPZ);
     }
 
+    void CALL(Thread *_thread)
+    {
+        byte *target = (byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        uint32_t storage = *(uint32_t *)(_thread->instrPtr + OP_CODE_SIZE + sizeof(byte *));
+
+        _thread->PushStack(_thread->instrPtr + GetSize(OpCode::CALL)); //Push return value
+        _thread->PushStack(_thread->GetFP());                          //Push current frame pointer
+        _thread->framePtr = _thread->GetSP();                          //Set the frame pointer for new frame
+        _thread->SetSP(_thread->GetSP() + storage);                    //Allocate space of stack for function local storage
+        _thread->instrPtr = target - GetSize(OpCode::CALL);            //Jump to target
+    }
+
+    void RET(Thread *_thread)
+    {
+        _thread->SetSP(_thread->framePtr);                                      //Clear current frame
+        _thread->framePtr = _thread->PopStack<uint64_t>();                      //Restore previous frame pointer
+        _thread->instrPtr = _thread->PopStack<byte *>() - GetSize(OpCode::RET); //Jump to instruction after most recent call
+    }
+
+    void RETV(Thread *_thread)
+    {
+        Word retValue = _thread->PopStack<Word>(); //Pop off return value
+        RET(_thread);                              //Do return
+        _thread->PushStack(retValue);              //Push return value
+    }
 #pragma endregion
 
 #pragma region Syscalls
@@ -115,7 +140,7 @@ namespace Instructions
 
     void SYSCALL(Thread *_thread)
     {
-        byte code = _thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        byte code = _thread->instrPtr[OP_CODE_SIZE];
         if (code >= (size_t)SysCallCode::_COUNT)
             throw VMError::UNKNOWN_SYSCALL_CODE();
 
@@ -138,7 +163,7 @@ namespace Instructions
 #pragma region Loads and Stores
     void PUSH(Thread *_thread)
     {
-        Word word = *(Word *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        Word word = *(Word *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->PushStack(word);
     }
 
@@ -149,13 +174,13 @@ namespace Instructions
 
     void SLOAD(Thread *_thread)
     {
-        int64_t offset = *(int64_t *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        int64_t offset = *(int64_t *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->PushStack(_thread->ReadStack<Word>(offset));
     }
 
     void SSTORE(Thread *_thread)
     {
-        int64_t offset = *(int64_t *)&_thread->GetVM()->GetProgram()[_thread->instrPtr + OP_CODE_SIZE];
+        int64_t offset = *(int64_t *)&_thread->instrPtr[OP_CODE_SIZE];
         _thread->WriteStack(offset, _thread->PopStack<Word>());
     }
 #pragma endregion
@@ -183,6 +208,9 @@ namespace Instructions
         ExecutionFuncs[(size_t)OpCode::SSTORE] = &SSTORE;
         ExecutionFuncs[(size_t)OpCode::I2D] = &I2D;
         ExecutionFuncs[(size_t)OpCode::D2I] = &D2I;
+        ExecutionFuncs[(size_t)OpCode::CALL] = &CALL;
+        ExecutionFuncs[(size_t)OpCode::RET] = &RET;
+        ExecutionFuncs[(size_t)OpCode::RETV] = &RETV;
 
         SysCallExecutionFuncs[(size_t)SysCallCode::EXIT] = &SYSCALL_EXIT;
         SysCallExecutionFuncs[(size_t)SysCallCode::PRINTC] = &SYSCALL_PRINTC;
@@ -220,14 +248,20 @@ namespace Instructions
             return "EQ";
         case OpCode::NEQ:
             return "NEQ";
+        case OpCode::RET:
+            return "RET";
+        case OpCode::RETV:
+            return "RETV";
         case OpCode::PUSH:
-            return "PUSH " + Hex(*(uint64_t *)&_instr[1]);
+            return "PUSH " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMP:
-            return "JUMP " + Hex(*(uint64_t *)&_instr[1]);
+            return "JUMP " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMPNZ:
-            return "JUMPNZ " + Hex(*(uint64_t *)&_instr[1]);
+            return "JUMPNZ " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMPZ:
-            return "JUMPZ " + Hex(*(uint64_t *)&_instr[1]);
+            return "JUMPZ " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]);
+        case OpCode::CALL:
+            return "CALL " + Hex(*(uint64_t *)&_instr[OP_CODE_SIZE]) + ", " + std::to_string(*(uint32_t *)&_instr[OP_CODE_SIZE + sizeof(uint64_t)]);
         case OpCode::SYSCALL:
         {
             switch ((SysCallCode)_instr[1])
@@ -243,7 +277,8 @@ namespace Instructions
             default:
                 assert(false && "Case not handled");
             }
-        } break;
+        }
+        break;
         case OpCode::SLOAD:
             return "SLOAD " + std::to_string(*(int64_t *)&_instr[1]);
         case OpCode::SSTORE:

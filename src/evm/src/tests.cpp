@@ -21,8 +21,7 @@ DEFINE_TEST(NOOP)
         OpCode::IADD,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 579ll);
+    ASSERT(VM().Run(64, &program[0]) == 579ll);
 }
 
 DEFINE_TEST(PUSH)
@@ -31,8 +30,7 @@ DEFINE_TEST(PUSH)
         OpCode::PUSH, 123ll,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 123ll);
+    ASSERT(VM().Run(64, &program[0]) == 123ll);
 }
 
 DEFINE_TEST(POP)
@@ -44,8 +42,7 @@ DEFINE_TEST(POP)
         OpCode::POP,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 789ll);
+    ASSERT(VM().Run(64, &program[0]) == 789ll);
 }
 
 #pragma region Instructions
@@ -59,8 +56,7 @@ DEFINE_TEST(SLOAD)
         OpCode::SLOAD, -16ll,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 123ll);
+    ASSERT(VM().Run(64, &program[0]) == 123ll);
 }
 
 DEFINE_TEST(SSTORE)
@@ -73,8 +69,7 @@ DEFINE_TEST(SSTORE)
         OpCode::POP,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 789ll);
+    ASSERT(VM().Run(64, &program[0]) == 789ll);
 }
 #pragma endregion
 
@@ -87,8 +82,7 @@ DEFINE_TEST(IADD)
         OpCode::IADD,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 579ll);
+    ASSERT(VM().Run(64, &program[0]) == 579ll);
 }
 
 DEFINE_TEST(ISUB)
@@ -99,8 +93,7 @@ DEFINE_TEST(ISUB)
         OpCode::ISUB,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == -333ll);
+    ASSERT(VM().Run(64, &program[0]) == -333ll);
 }
 
 DEFINE_TEST(IMUL)
@@ -111,8 +104,7 @@ DEFINE_TEST(IMUL)
         OpCode::IMUL,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 56088ll);
+    ASSERT(VM().Run(64, &program[0]) == 56088ll);
 }
 
 DEFINE_TEST(IDIV)
@@ -123,8 +115,7 @@ DEFINE_TEST(IDIV)
         OpCode::IDIV,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 5ll);
+    ASSERT(VM().Run(64, &program[0]) == 5ll);
 }
 
 DEFINE_TEST(DADD)
@@ -135,8 +126,7 @@ DEFINE_TEST(DADD)
         OpCode::DADD,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(Word(vm.Run(64)).as_double == 579.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_double == 579.0);
 }
 
 DEFINE_TEST(DSUB)
@@ -147,8 +137,7 @@ DEFINE_TEST(DSUB)
         OpCode::DSUB,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(Word(vm.Run(64)).as_double == -333.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_double == -333.0);
 }
 
 DEFINE_TEST(DMUL)
@@ -159,8 +148,7 @@ DEFINE_TEST(DMUL)
         OpCode::DMUL,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(Word(vm.Run(64)).as_double == 56088.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_double == 56088.0);
 }
 
 DEFINE_TEST(DDIV)
@@ -171,8 +159,7 @@ DEFINE_TEST(DDIV)
         OpCode::DDIV,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(Word(vm.Run(64)).as_double == 5.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_double == 5.0);
 }
 
 DEFINE_TEST(EQ)
@@ -183,8 +170,7 @@ DEFINE_TEST(EQ)
         OpCode::EQ,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 1ull);
+    ASSERT(VM().Run(64, &program[0]) == 1ull);
 }
 
 DEFINE_TEST(NEQ)
@@ -195,8 +181,7 @@ DEFINE_TEST(NEQ)
         OpCode::NEQ,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 0ull);
+    ASSERT(VM().Run(64, &program[0]) == 0ull);
 }
 
 DEFINE_TEST(JUMP)
@@ -209,8 +194,87 @@ DEFINE_TEST(JUMP)
         OpCode::PUSH, (int64_t)300,
         OpCode::JUMP, (int64_t)27);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 300);
+    ASSERT(VM().Run(64, &program[0]) == 300);
+}
+
+DEFINE_TEST(CALL)
+{
+    std::stringstream stream1("   CALL @FUNC 48\n"
+                              "   PUSHI 0\n"
+                              "   EXIT\n"
+                              "@FUNC:\n"
+                              "   PUSHI 1\n"
+                              "   EXIT\n");
+    Program program1 = Instructions::ParseStream(stream1);
+
+    ASSERT(VM().Run(72, &program1[0]) == 1);
+
+    std::stringstream stream2("   CALL @FUNC 48\n"
+                              "   PUSHI 0\n"
+                              "   EXIT\n"
+                              "@FUNC:\n"
+                              "   PUSHI 1\n"
+                              "   PUSHI 2\n"
+                              "   EXIT\n");
+    Program program2 = Instructions::ParseStream(stream2);
+
+    try
+    {
+        VM().Run(64, &program2[0]);
+        ASSERT(false);
+    }
+    catch (const VMError &e)
+    {
+        ASSERT(e.GetType() == VMErrorType::STACK_OVERFLOW);
+    }
+}
+
+DEFINE_TEST(RET)
+{
+    std::stringstream stream1("   CALL @FUNC 16\n"
+                              "   PUSHI 123\n"
+                              "   PUSHI 456\n"
+                              "   PUSHI 789\n"
+                              "   PUSHI 147\n"
+                              "   EXIT\n"
+                              "@FUNC:\n"
+                              "   RET\n");
+    Program program1 = Instructions::ParseStream(stream1);
+
+    ASSERT(VM().Run(32, &program1[0]) == 147);
+
+    std::stringstream stream2("   CALL @FUNC 16\n"
+                              "   PUSHI 123\n"
+                              "   PUSHI 456\n"
+                              "   PUSHI 789\n"
+                              "   PUSHI 147\n"
+                              "   PUSHI 258\n"
+                              "   EXIT\n"
+                              "@FUNC:\n"
+                              "   RET\n");
+    Program program2 = Instructions::ParseStream(stream2);
+
+    try
+    {
+        VM().Run(32, &program2[0]);
+        ASSERT(false);
+    }
+    catch (const VMError &e)
+    {
+        ASSERT(e.GetType() == VMErrorType::STACK_OVERFLOW);
+    }
+}
+
+DEFINE_TEST(RETV)
+{
+    std::stringstream stream("   CALL @FUNC 16\n"
+                              "   EXIT\n"
+                              "@FUNC:\n"
+                              "   PUSHI 123\n"
+                              "   RETV\n");
+    Program program = Instructions::ParseStream(stream);
+
+    ASSERT(VM().Run(48, &program[0]) == 123);
 }
 
 DEFINE_TEST(JUMPZ)
@@ -225,8 +289,7 @@ DEFINE_TEST(JUMPZ)
         OpCode::PUSH, (int64_t)300,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 300);
+    ASSERT(VM().Run(64, &program[0]) == 300);
 }
 
 DEFINE_TEST(JUMPNZ)
@@ -241,8 +304,7 @@ DEFINE_TEST(JUMPNZ)
         OpCode::PUSH, (int64_t)300,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 300);
+    ASSERT(VM().Run(64, &program[0]) == 300);
 }
 
 DEFINE_TEST(SYSCALL_EXIT)
@@ -251,8 +313,7 @@ DEFINE_TEST(SYSCALL_EXIT)
         OpCode::PUSH, 100ll,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 100);
+    ASSERT(VM().Run(64, &program[0]) == 100);
 }
 #pragma endregion
 
@@ -266,8 +327,7 @@ DEFINE_TEST(D2I)
         OpCode::IADD,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(vm.Run(64) == 579ll);
+    ASSERT(VM().Run(64, &program[0]) == 579ll);
 }
 
 DEFINE_TEST(I2D)
@@ -279,8 +339,7 @@ DEFINE_TEST(I2D)
         OpCode::DADD,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-    ASSERT(Word(vm.Run(64)).as_double == 579.0);
+    ASSERT(Word(VM().Run(64, &program[0])).as_double == 579.0);
 }
 #pragma endregion
 
@@ -295,11 +354,9 @@ DEFINE_TEST(IDIV_DIV_BY_ZERO)
         OpCode::IDIV,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-
     try
     {
-        vm.Run(64);
+        VM().Run(64, &program[0]);
         ASSERT(false);
     }
     catch (const VMError &e)
@@ -316,11 +373,9 @@ DEFINE_TEST(DDIV_DIV_BY_ZERO)
         OpCode::DDIV,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-
     try
     {
-        vm.Run(64);
+        VM().Run(64, &program[0]);
         ASSERT(false);
     }
     catch (const VMError &e)
@@ -338,11 +393,9 @@ DEFINE_TEST(STACK_OVERFLOW)
         OpCode::PUSH, 100ll,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-
     try
     {
-        vm.Run(24);
+        VM().Run(24, &program[0]);
         ASSERT(false);
     }
     catch (const VMError &e)
@@ -359,11 +412,9 @@ DEFINE_TEST(STACK_UNDERFLOW)
         OpCode::POP,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
-    VM vm(std::move(program));
-
     try
     {
-        vm.Run(24);
+        VM().Run(24, &program[0]);
         ASSERT(false);
     }
     catch (const VMError &e)
@@ -372,57 +423,17 @@ DEFINE_TEST(STACK_UNDERFLOW)
     }
 }
 
-DEFINE_TEST(IP_OVERFLOW)
-{
-    Program program = CreateProgram(
-        OpCode::PUSH, 100ll,
-        OpCode::PUSH);
-
-    VM vm(std::move(program));
-
-    try
-    {
-        vm.Run(24);
-        ASSERT(false);
-    }
-    catch (const VMError &e)
-    {
-        ASSERT(e.GetType() == VMErrorType::IP_OVERFLOW);
-    }
-}
-
-DEFINE_TEST(IP_OUT_OF_BOUNDS)
-{
-    Program program = CreateProgram(
-        OpCode::PUSH, 100ll,
-        OpCode::JUMP, 100ull,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    VM vm(std::move(program));
-
-    try
-    {
-        vm.Run(24);
-        ASSERT(false);
-    }
-    catch (const VMError &e)
-    {
-        ASSERT(e.GetType() == VMErrorType::IP_OUT_OF_BOUNDS);
-    }
-}
-
 DEFINE_TEST(UNKNOWN_OP_CODE)
 {
-    Program program = CreateProgram(
-        OpCode::PUSH, 100ll,
-        OpCode::_COUNT, 100ull,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    VM vm(std::move(program));
+    Program program;
+    Instructions::Insert(program,
+                         OpCode::PUSH, 100ll,
+                         OpCode::_COUNT, 100ull,
+                         OpCode::SYSCALL, SysCallCode::EXIT);
 
     try
     {
-        vm.Run(24);
+        VM().Run(24, &program[0]);
         ASSERT(false);
     }
     catch (const VMError &e)
@@ -437,11 +448,9 @@ DEFINE_TEST(UNKNOWN_SYSCALL_CODE)
         OpCode::PUSH, 100ll,
         OpCode::SYSCALL, SysCallCode::_COUNT);
 
-    VM vm(std::move(program));
-
     try
     {
-        vm.Run(24);
+        VM().Run(24, &program[0]);
         ASSERT(false);
     }
     catch (const VMError &e)
@@ -465,7 +474,7 @@ DEFINE_TEST(TEST_FILES)
     std::wstring caseName, expectedOutput;
     int64_t expectedExitCode;
 
-    while(expectedFile >> caseName)
+    while (expectedFile >> caseName)
     {
         expectedFile >> expectedExitCode;
 
@@ -475,13 +484,13 @@ DEFINE_TEST(TEST_FILES)
         expectedOutput = expectedOutput.substr(0, expectedOutput.find_last_of(L'"'));
 
         std::string filePath = dirPath + std::string(caseName.begin(), caseName.end()) + ".edeasm";
-        Program program = Instructions::ParseEdeASM(filePath.c_str());
-        VM vm(std::move(program));
-        
+        Program program = Instructions::ParseFile(filePath.c_str());
+
+        VM vm;
         std::wstringstream stdIO;
         vm.SetStdIO(stdIO.rdbuf(), stdIO.rdbuf());
 
-        ASSERT_MSG(vm.Run(64) == expectedExitCode, filePath);
+        ASSERT_MSG(vm.Run(64, &program[0]) == expectedExitCode, filePath);
         ASSERT_MSG(stdIO.str() == expectedOutput, filePath);
     }
 }

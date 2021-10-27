@@ -53,11 +53,10 @@ int run(const std::vector<std::string> &_args)
     try
     {
         //Parse the ede asm file
-        Program program = Instructions::ParseEdeASM(_args[0]);
-
+        Program program = Instructions::ParseFile(_args[0]);
+        
         //Run
-        VM vm(std::move(program));
-        auto exitCode = vm.Run(64);
+        auto exitCode = VM().Run(64, &program[0]);
 
         std::cout << "Exited with code " << exitCode << "." << std::endl;
         return exitCode;
