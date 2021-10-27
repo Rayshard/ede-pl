@@ -34,8 +34,8 @@ Todo:
         ✔ PSTORE [idx]             - param store; pops the value from the top of the stack and stores it in the parameter at the specified idx @done(21-10-27 02:32)
         ✔ GLOAD [idx]              - global load; pushes the value of the global at the specified idx onto the stack @done(21-10-27 02:32)
         ✔ GSTORE [idx]             - global store; pops the value from the top of the stack and stores it in the global at the specified idx @done(21-10-27 02:32)
-        ☐ MLOAD                    - memory load; pops memory address from top of stack and pushes the value located at that address onto the stack
-        ☐ MSTORE                   - memory store; pops memory address from top of stack then pops the value from the top of the stack and stores it at that address
+        ☐ MLOAD [offset]           - memory load; pops memory address from top of stack and pushes the value located at that address + offset onto the stack
+        ☐ MSTORE [offset]          - memory store; pops memory address from top of stack then pops the value from the top of the stack and stores it at that address + offset
         ✔ SLOAD [offset]           - stack loads; loads the word located [offset] bytes from the top of the stack and pushes the value onto the stack @done(21-10-25 01:07)
         ✔ SSTORE [offset]          - stack stack; pops the value from the top of the stack and stores it on the stack, [offset] bytes from the top of the stack (after the pop) @done(21-10-25 01:07)
       ☐ Converters
