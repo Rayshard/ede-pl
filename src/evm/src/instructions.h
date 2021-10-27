@@ -5,7 +5,7 @@ class Thread;
 
 namespace Instructions
 {
-    enum class OpCode : byte
+    enum class OpCode : vm_byte
     {
         NOOP,
         SYSCALL,
@@ -49,7 +49,7 @@ namespace Instructions
         _COUNT
     };
 
-    enum class SysCallCode : byte
+    enum class SysCallCode : vm_byte
     {
         EXIT,
         PRINTC,
@@ -66,7 +66,7 @@ namespace Instructions
 
     void Init();
 
-    constexpr size_t GetSize(OpCode _opCode)
+    constexpr vm_ui64 GetSize(OpCode _opCode)
     {
         switch (_opCode)
         {
@@ -91,21 +91,21 @@ namespace Instructions
         case OpCode::JUMP:
         case OpCode::JUMPNZ:
         case OpCode::JUMPZ:
-            return OP_CODE_SIZE + WORD_SIZE;
+            return OP_CODE_SIZE + VM_PTR_SIZE;
         case OpCode::CALL:
-            return OP_CODE_SIZE + WORD_SIZE + sizeof(uint32_t);
+            return OP_CODE_SIZE + VM_PTR_SIZE + VM_UI32_SIZE;
         case OpCode::SYSCALL:
             return OP_CODE_SIZE + SYSCALL_CODE_SIZE;
         case OpCode::SLOAD:
         case OpCode::SSTORE:
-            return OP_CODE_SIZE + sizeof(int64_t);
+            return OP_CODE_SIZE + VM_I64_SIZE;
         case OpCode::LLOAD:
         case OpCode::LSTORE:
         case OpCode::GLOAD:
         case OpCode::GSTORE:
         case OpCode::PLOAD:
         case OpCode::PSTORE:
-            return OP_CODE_SIZE + sizeof(uint32_t);
+            return OP_CODE_SIZE + VM_UI32_SIZE;
         default:
             assert(false && "Case not handled");
         }
@@ -113,5 +113,5 @@ namespace Instructions
         return 0;
     }
 
-    std::string ToString(const byte *_instr);
+    std::string ToString(const vm_byte *_instr);
 }
