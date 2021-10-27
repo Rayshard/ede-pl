@@ -4,11 +4,9 @@
 #include "program.h"
 #include "vm.h"
 #include "instructions.h"
+#include "../build.h"
 
-#define PRINT_INSTRUCTIONS_ON_EXECUTION false
-#define PRINT_STACK_AFTER_INSTR_EXECUTION false
-
-Thread::Thread(VM *_vm, size_t _id, uint64_t _stackSize, byte* _startIP)
+Thread::Thread(VM *_vm, size_t _id, uint64_t _stackSize, byte *_startIP)
     : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0), framePtr(0), isAlive(false)
 {
     assert(_stackSize % WORD_SIZE == 0);
@@ -31,6 +29,10 @@ void Thread::Start()
                              }
 
                              std::scoped_lock<std::mutex> lock(vm->mutex);
+#ifdef BUILD_DEBUG
+                             if (PRINT_STACK_AFTER_THREAD_END)
+                                 PrintStack();
+#endif
                              isAlive = false;
                          });
     thread.detach();
@@ -45,17 +47,19 @@ void Thread::Run()
         byte opcode = *instrPtr;
         if (opcode >= (size_t)Instructions::OpCode::_COUNT)
             throw VMError::UNKNOWN_OP_CODE();
-        
-        #if PRINT_INSTRUCTIONS_ON_EXECUTION
-            std::cout << Instructions::ToString(instrPtr) << std::endl;
-        #endif
+
+#ifdef BUILD_DEBUG
+        if (PRINT_INSTR_BEFORE_EXECUTION)
+            std::cout << Instructions::ToString(instrPtr) << "\t(Thread ID: " << id << ")" << std::endl;
+#endif
 
         Instructions::ExecutionFuncs[opcode](this);
         instrPtr += Instructions::GetSize((Instructions::OpCode)opcode);
-        
-        #if PRINT_STACK_AFTER_INSTR_EXECUTION
-           PrintStack();
-        #endif
+
+#ifdef BUILD_DEBUG
+        if (PRINT_STACK_AFTER_INSTR_EXECUTION)
+            PrintStack();
+#endif
     }
 }
 

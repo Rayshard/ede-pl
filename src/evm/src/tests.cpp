@@ -456,7 +456,7 @@ DEFINE_TEST(SYSCALL_FREE)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm;
-    byte* address = Word(vm.Run(16, &program[0])).bytes;
+    byte* address = (byte*)Word(vm.Run(16, &program[0])).as_ptr;
     ASSERT(!vm.IsAllocated(address));
 }
 #pragma endregion

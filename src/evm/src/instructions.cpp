@@ -191,7 +191,7 @@ namespace Instructions
     void SSTORE(Thread *_thread)
     {
         int64_t offset = *(int64_t *)&_thread->instrPtr[OP_CODE_SIZE];
-        _thread->WriteStack(_thread->GetSP() + offset, _thread->PopStack<Word>());
+        _thread->WriteStack(_thread->GetSP() - WORD_SIZE + offset, _thread->PopStack<Word>());
     }
 
     void LLOAD(Thread *_thread)

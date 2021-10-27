@@ -45,19 +45,45 @@ public:
         else
             std::cout << "\nFailed " << numFailed << " tests!" << std::endl;
     }
+
+    static void RunInstance(std::string _name)
+    {
+
+        for (size_t i = 0; i < INSTANCES.size(); i++)
+        {
+            auto test = INSTANCES[i];
+            if (test->GetName() == _name)
+            {
+                try
+                {
+                    std::cout << "Running " << test->GetName() << "..." << std::endl;
+                    test->Run();
+                    std::cout << "SUCCEEDED " << test->GetName() << std::endl;
+                }
+                catch (const std::exception &e)
+                {
+                    std::cout << "FAILED    " << test->GetName() << "\t" << e.what() << std::endl;
+                }
+
+                return;
+            }
+        }
+
+        std::cout << "No test found with name: " << _name << std::endl;
+    }
 };
 
 #define S1(x) #x
 #define S2(x) S1(x)
 #define LOCATION __FILE__ ":" S2(__LINE__)
 
-#define ASSERT_MSG(a, msg)                                  \
-    do                                                      \
-    {                                                       \
-        if (!(a))                                           \
-        {                                                   \
+#define ASSERT_MSG(a, msg)                                               \
+    do                                                                   \
+    {                                                                    \
+        if (!(a))                                                        \
+        {                                                                \
             throw std::runtime_error(std::string(msg) + " " + LOCATION); \
-        }                                                   \
+        }                                                                \
     } while (false)
 
 #define ASSERT(a)                               \
@@ -96,3 +122,4 @@ public:
 
 #define INIT_TEST_SUITE() std::vector<Test *> Test::INSTANCES = std::vector<Test *>()
 #define RUN_TEST_SUITE() Test::RunInstances()
+#define RUN_TEST(NAME) Test::RunInstance(NAME)

@@ -12,11 +12,22 @@ struct Position
 
     Position(int _line, int _column) : line(_line), column(_column) {}
 
-    Position(std::istream &_stream)
+    Position(std::istream &_stream) : Position(1, 1)
     {
-        //TODO: Implement
-        line = 0;
-        column = 0;
+        // auto pos = _stream.tellg();
+        // _stream.seekg(0);
+        // std::string sLine;
+
+        // while (std::getline(_stream, sLine))
+        // {
+        //     column += sLine.size();
+        //     if (_stream.tellg() >= pos)
+        //     {
+        //         column -= _stream.tellg() - pos;
+        //         break;
+        //     }
+        //     line++;
+        // }
     }
 };
 
@@ -344,6 +355,8 @@ namespace Instructions
                 std::copy((byte *)&target, (byte *)&target + sizeof(target), operand);
             }
             break;
+            default:
+                continue;
             }
         }
     }

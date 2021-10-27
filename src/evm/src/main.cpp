@@ -5,6 +5,12 @@
 #include "vm.h"
 #include "../build.h"
 
+#ifdef BUILD_DEBUG
+bool PRINT_INSTR_BEFORE_EXECUTION = false;
+bool PRINT_STACK_AFTER_THREAD_END = false;
+bool PRINT_STACK_AFTER_INSTR_EXECUTION = false;
+#endif
+
 #ifdef BUILD_WITH_TESTS
 #include "tests.h"
 #endif
@@ -16,6 +22,11 @@ int usage(const std::string &_cmd = "")
     if (_cmd == "")
     {
         std::cout << "Usage: evm COMMAND [ARGS]...\n\n"
+                     "Options:\n"
+                     "   --ibe      Print each instruction before it is executed.\n"
+                     "   --sate     Print each thread's stack after the thread ends.\n"
+                     "   --saie     Print each thread's stack after an instruction is executed.\n"
+                     "\n"
                      "Commands:\n"
                      "   test       Run test suite.\n"
                      "   run        Executes an ede program.\n"
@@ -37,7 +48,13 @@ int usage(const std::string &_cmd = "")
 int test(const std::vector<std::string> &_args)
 {
 #ifdef BUILD_WITH_TESTS
-    RUN_TEST_SUITE();
+    if (_args.size() == 0)
+        RUN_TEST_SUITE();
+    else
+    {
+        for (auto &name : _args)
+            RUN_TEST(name);
+    }
 #else
     std::cout << "Tests were not included in build!" << std::endl;
 #endif
@@ -54,7 +71,7 @@ int run(const std::vector<std::string> &_args)
     {
         //Parse the ede asm file
         Program program = Instructions::ParseFile(_args[0]);
-        
+
         //Run
         auto exitCode = VM().Run(64, &program[0]);
 
@@ -81,10 +98,42 @@ int main(int _argc, char *_argv[])
     if (_argc == 1)
         return usage();
 
-    auto commandsSearch = commands.find(_argv[1]);
-    if (commandsSearch != commands.end())
-        return commandsSearch->second(std::vector<std::string>(_argv + 2, _argv + 2 + _argc - 2));
+    size_t iArg = 1;
+    std::string arg;
 
-    std::cout << "Unknown Command: " << _argv[1] << std::endl;
+    //Parse options
+    while(true)
+    {
+        arg = _argv[iArg];
+        if (arg[0] != '-')
+            break;
+
+            //Add new options here
+#ifdef BUILD_DEBUG
+        if (arg == "--ibe")
+            PRINT_INSTR_BEFORE_EXECUTION = true;
+        else if (arg == "--saie")
+            PRINT_STACK_AFTER_INSTR_EXECUTION = true;
+        else if (arg == "--sate")
+            PRINT_STACK_AFTER_THREAD_END = true;
+        else
+#endif
+        {
+            std::cout << "Unknown Option: " << arg << std::endl;
+            return usage();
+        }
+
+        if(++iArg == _argc)
+        {
+            std::cout << "Expected Command" << std::endl;
+            return usage();
+        }
+    }
+
+    auto commandsSearch = commands.find(arg);
+    if (commandsSearch != commands.end())
+        return commandsSearch->second(std::vector<std::string>(_argv + iArg + 1, _argv + _argc));
+
+    std::cout << "Unknown Command: " << arg << std::endl;
     return usage();
 }
