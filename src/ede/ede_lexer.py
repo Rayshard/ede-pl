@@ -1,6 +1,6 @@
-from ede.ede_utils import Error, ErrorType, Result, Success, char
+from .ede_utils import Error, ErrorType, Result, Success, char
 from typing import List
-from ede.ede_token import SYMBOL_DICT_INV, Position, Token, TokenType, is_keyword, is_symbol
+from .ede_token import SYMBOL_DICT_INV, Position, Token, TokenType, is_keyword, is_symbol
 
 # TODO: Comment File
 

@@ -7,9 +7,9 @@ from .ede_ast.ede_module import Module
 from .ede_ast.ede_stmt import Block, ExprStmt, IfElseStmt, ReturnStmt, Statement, StmtType, VarDeclStmt
 from .ede_ast.ede_type_symbol import ArrayTypeSymbol, NameTypeSymbol, PrimitiveTypeSymbol, TupleTypeSymbol, TypeSymbol
 from .ede_ast.ede_typesystem import EdePrimitive
-from ede import ede_lexer
-from ede.ede_token import Token, TokenType
-from ede.ede_utils import Error, ErrorType, Position, Positioned, Result, Success, char
+from . import ede_lexer
+from .ede_token import Token, TokenType
+from .ede_utils import Error, ErrorType, Position, Positioned, Result, Success, char
 from .ede_ast.ede_literal import BoolLiteral, CharLiteral, IntLiteral, StringLiteral, UnitLiteral
 
 class TokenReader:

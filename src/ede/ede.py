@@ -7,10 +7,10 @@ from .ede_ast.ede_visitors.ede_cfg_visitor import CFG, CFGVisitor
 from .ede_ast.ede_visitors.ede_execution_visitor import ExecutionVisitor
 from .ede_ast.ede_visitors.ede_ir_visitor import IRVisitor, ModuleIRBuilder
 from .ede_ast.ede_visitors.ede_typecheck_visitor import TypecheckVisitor
-from ede import ede_parser
 from .ede_ast.ede_typesystem import TCContext
 from .ede_ast.ede_visitors.ede_json_visitor import JsonVisitor
-from ede.interpreter import ExecContext
+from . import ede_parser
+from .interpreter import ExecContext
 
 # TODO: Comment File
 

@@ -21,7 +21,8 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'ede = ede.ede:cli',
-            'evm-build = evm.build:cli'
+            'evm = evm.evm:run',
+            'evm-build = evm.evm:build',
         ]
     }
 )

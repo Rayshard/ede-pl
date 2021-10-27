@@ -32,6 +32,8 @@ namespace Instructions
         JUMP,
         JUMPZ,
         JUMPNZ,
+        CALL,
+        RET,
 
         //CONVERTERS
         I2D,

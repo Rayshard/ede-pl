@@ -1,6 +1,5 @@
 from typing import List
-from ede.ede_ast.ede_definition import Definition
-
+from .ede_definition import Definition
 from ..ede_utils import Position
 from .ede_ast import Node, NodeType
 from .ede_stmt import Statement

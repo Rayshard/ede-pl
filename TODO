@@ -72,9 +72,9 @@ Todo:
         ☐ LAND
       ☐ Branching
         ✔ JUMP [instr addr] @done(21-10-24 02:26)
-        ✔ JUMPNZ [instr addr]       - pops the top of the stack and jumps to the given address if the the value is not 0; otherwise, falls through @done(21-10-24 09:42)
-        ✔ JUMPZ [instr addr]        - pops the top of the stack and jumps to the given address if the the value is 0; otherwise, falls through @done(21-10-24 09:42)
-        ☐ CALL [storage]           - pops the memory address from the top of the stack, pushes the current ip onto the stack (plus the size of the CALL instr), allocates [storage] which is used from non-paramter locals
+        ✔ JUMPNZ [instr addr]          - pops the top of the stack and jumps to the given address if the the value is not 0; otherwise, falls through @done(21-10-24 09:42)
+        ✔ JUMPZ [instr addr]           - pops the top of the stack and jumps to the given address if the the value is 0; otherwise, falls through @done(21-10-24 09:42)
+        ☐ CALL [instr addr] [storage]  - pops the memory address from the top of the stack, pushes the current ip onto the stack (plus the size of the CALL instr), allocates [storage] which is used from non-paramter locals
       ☐ System Call; SYSCALL [id]
         ✔ EXIT @done(21-10-25 01:08)
         ✔ PRINTC @done(21-10-25 04:35)
