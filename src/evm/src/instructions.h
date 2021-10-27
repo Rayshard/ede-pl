@@ -15,6 +15,12 @@ namespace Instructions
         POP,
         SLOAD,
         SSTORE,
+        LLOAD,
+        LSTORE,
+        PLOAD,
+        PSTORE,
+        GLOAD,
+        GSTORE,
 
         //BINOPS
         IADD,
@@ -93,6 +99,13 @@ namespace Instructions
         case OpCode::SLOAD:
         case OpCode::SSTORE:
             return OP_CODE_SIZE + sizeof(int64_t);
+        case OpCode::LLOAD:
+        case OpCode::LSTORE:
+        case OpCode::GLOAD:
+        case OpCode::GSTORE:
+        case OpCode::PLOAD:
+        case OpCode::PSTORE:
+            return OP_CODE_SIZE + sizeof(uint32_t);
         default:
             assert(false && "Case not handled");
         }

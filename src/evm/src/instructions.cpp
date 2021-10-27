@@ -175,13 +175,49 @@ namespace Instructions
     void SLOAD(Thread *_thread)
     {
         int64_t offset = *(int64_t *)&_thread->instrPtr[OP_CODE_SIZE];
-        _thread->PushStack(_thread->ReadStack<Word>(offset));
+        _thread->PushStack(_thread->ReadStack<Word>(_thread->GetSP() + offset));
     }
 
     void SSTORE(Thread *_thread)
     {
         int64_t offset = *(int64_t *)&_thread->instrPtr[OP_CODE_SIZE];
-        _thread->WriteStack(offset, _thread->PopStack<Word>());
+        _thread->WriteStack(_thread->GetSP() + offset, _thread->PopStack<Word>());
+    }
+
+    void LLOAD(Thread *_thread)
+    {
+        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        _thread->PushStack(_thread->ReadStack<Word>(_thread->GetFP() + idx * WORD_SIZE));
+    }
+
+    void LSTORE(Thread *_thread)
+    {
+        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        _thread->WriteStack(_thread->GetFP() + idx * WORD_SIZE, _thread->PopStack<Word>());
+    }
+
+    void PLOAD(Thread *_thread)
+    {
+        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        _thread->PushStack(_thread->ReadStack<Word>(_thread->GetFP() - WORD_SIZE * 2 - (idx + 1) * WORD_SIZE));
+    }
+
+    void PSTORE(Thread *_thread)
+    {
+        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        _thread->WriteStack(_thread->GetFP() - WORD_SIZE * 2 - (idx + 1) * WORD_SIZE, _thread->PopStack<Word>());
+    }
+
+    void GLOAD(Thread *_thread)
+    {
+        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        _thread->PushStack(_thread->ReadStack<Word>(idx * WORD_SIZE));
+    }
+
+    void GSTORE(Thread *_thread)
+    {
+        uint32_t idx = *(uint32_t *)&_thread->instrPtr[OP_CODE_SIZE];
+        _thread->WriteStack(idx * WORD_SIZE, _thread->PopStack<Word>());
     }
 #pragma endregion
 
@@ -206,6 +242,12 @@ namespace Instructions
         ExecutionFuncs[(size_t)OpCode::NEQ] = &NEQ;
         ExecutionFuncs[(size_t)OpCode::SLOAD] = &SLOAD;
         ExecutionFuncs[(size_t)OpCode::SSTORE] = &SSTORE;
+        ExecutionFuncs[(size_t)OpCode::LLOAD] = &LLOAD;
+        ExecutionFuncs[(size_t)OpCode::LSTORE] = &LSTORE;
+        ExecutionFuncs[(size_t)OpCode::GLOAD] = &GLOAD;
+        ExecutionFuncs[(size_t)OpCode::GSTORE] = &GSTORE;
+        ExecutionFuncs[(size_t)OpCode::PLOAD] = &PLOAD;
+        ExecutionFuncs[(size_t)OpCode::PSTORE] = &PSTORE;
         ExecutionFuncs[(size_t)OpCode::I2D] = &I2D;
         ExecutionFuncs[(size_t)OpCode::D2I] = &D2I;
         ExecutionFuncs[(size_t)OpCode::CALL] = &CALL;
@@ -283,6 +325,18 @@ namespace Instructions
             return "SLOAD " + std::to_string(*(int64_t *)&_instr[1]);
         case OpCode::SSTORE:
             return "SSTORE " + std::to_string(*(int64_t *)&_instr[1]);
+        case OpCode::LLOAD:
+            return "LLOAD " + std::to_string(*(uint32_t *)&_instr[1]);
+        case OpCode::LSTORE:
+            return "LSTORE " + std::to_string(*(uint32_t *)&_instr[1]);
+        case OpCode::GLOAD:
+            return "GLOAD " + std::to_string(*(uint32_t *)&_instr[1]);
+        case OpCode::GSTORE:
+            return "GSTORE " + std::to_string(*(uint32_t *)&_instr[1]);
+        case OpCode::PLOAD:
+            return "PLOAD " + std::to_string(*(uint32_t *)&_instr[1]);
+        case OpCode::PSTORE:
+            return "PSTORE " + std::to_string(*(uint32_t *)&_instr[1]);
         default:
             assert(false && "Case not handled");
         }

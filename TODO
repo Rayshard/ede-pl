@@ -28,12 +28,12 @@ Todo:
       ✔ PUSH [word] @done(21-10-24 02:22)
       ✔ POP @done(21-10-24 02:22)
       ☐ LOAD AND STORE
-        ☐ LLOAD [idx]              - local load; pushes the value of the local at the specified idx onto the stack
-        ☐ LSTORE [idx]             - local store; pops the value from the top of the stack and stores it in the local at the specified idx
-        ☐ PLOAD [idx]              - param load; pushes the value of the parameter at the specified idx onto the stack
-        ☐ PSTORE [idx]             - param store; pops the value from the top of the stack and stores it in the parameter at the specified idx
-        ☐ GLOAD [idx]              - global load; pushes the value of the global at the specified idx onto the stack
-        ☐ GSTORE [idx]             - global store; pops the value from the top of the stack and stores it in the global at the specified idx
+        ✔ LLOAD [idx]              - local load; pushes the value of the local at the specified idx onto the stack @done(21-10-27 02:15)
+        ✔ LSTORE [idx]             - local store; pops the value from the top of the stack and stores it in the local at the specified idx @done(21-10-27 02:15)
+        ✔ PLOAD [idx]              - param load; pushes the value of the parameter at the specified idx onto the stack @done(21-10-27 02:32)
+        ✔ PSTORE [idx]             - param store; pops the value from the top of the stack and stores it in the parameter at the specified idx @done(21-10-27 02:32)
+        ✔ GLOAD [idx]              - global load; pushes the value of the global at the specified idx onto the stack @done(21-10-27 02:32)
+        ✔ GSTORE [idx]             - global store; pops the value from the top of the stack and stores it in the global at the specified idx @done(21-10-27 02:32)
         ☐ MLOAD                    - memory load; pops memory address from top of stack and pushes the value located at that address onto the stack
         ☐ MSTORE                   - memory store; pops memory address from top of stack then pops the value from the top of the stack and stores it at that address
         ✔ SLOAD [offset]           - stack loads; loads the word located [offset] bytes from the top of the stack and pushes the value onto the stack @done(21-10-25 01:07)
@@ -80,7 +80,7 @@ Todo:
         ✔ RETV                         - pops return value and stores it, executes RET, pushes stored return value @done(21-10-27 01:36)
       ☐ System Call; SYSCALL [id]
         ✔ EXIT @done(21-10-25 01:08)
-        ✔ PRINTC @done(21-10-25 04:35)
+        ✔ PRINTC @done(21-10-27 02:39)
         ☐ MALLOC                   - pops the size off the top of the stack and allocates that much memory on the head then pushes the memory location to the top of the stack
         ☐ FREE                     - pop the memory address from the top of the stack and free that memory
     ☐ exceptions

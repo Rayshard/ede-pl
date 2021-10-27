@@ -36,43 +36,39 @@ public:
     uint64_t GetSP() { return stackPtr; }
     uint64_t GetFP() { return framePtr; }
 
-    ///Reads the stack relative to the stack pointer
     template <typename T>
-    T ReadStack(int64_t _offset)
+    T ReadStack(int64_t _pos)
     {
-        int64_t pos = stackPtr + _offset;
-        if (pos < 0)
+        if (_pos < 0)
             throw VMError::STACK_UNDERFLOW();
-        else if (pos + sizeof(T) > stack.size())
+        else if (_pos + sizeof(T) > stack.size())
             throw VMError::STACK_OVERFLOW();
 
-        return *(T *)&stack[pos];
+        return *(T *)&stack[_pos];
     }
 
-    ///Writes to the stack relative to the stack pointer
     template <typename T>
-    void WriteStack(int64_t _offset, const T &_value)
+    void WriteStack(int64_t _pos, const T &_value)
     {
-        int64_t pos = stackPtr + _offset;
-        if (pos < 0)
+        if (_pos < 0)
             throw VMError::STACK_UNDERFLOW();
-        else if (pos + sizeof(T) > stack.size())
+        else if (_pos + sizeof(T) > stack.size())
             throw VMError::STACK_OVERFLOW();
 
-        std::copy((byte *)&_value, (byte *)&_value + sizeof(T), &stack[pos]);
+        std::copy((byte *)&_value, (byte *)&_value + sizeof(T), &stack[_pos]);
     }
 
     template <typename T>
     void PushStack(const T &_value)
     {
-        WriteStack(0, _value);
+        WriteStack(stackPtr, _value);
         stackPtr += sizeof(T);
     }
 
     template <typename T>
     T PopStack()
     {
-        auto result = ReadStack<T>(-8);
+        auto result = ReadStack<T>(stackPtr - sizeof(T));
         stackPtr -= sizeof(T);
         return result;
     }

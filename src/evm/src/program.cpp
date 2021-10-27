@@ -194,6 +194,18 @@ static const std::map<std::string, InstructionReader> InstructionReaders = {
      { Instructions::Insert(_prog, OpCode::SLOAD, ReadInt64Operand(_stream)); }},
     {"SSTORE", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &_labelReplacePositions)
      { Instructions::Insert(_prog, OpCode::SSTORE, ReadInt64Operand(_stream)); }},
+    {"LLOAD", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::LLOAD, ReadUInt32Operand(_stream)); }},
+    {"LSTORE", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::LSTORE, ReadUInt32Operand(_stream)); }},
+    {"PLOAD", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::PLOAD, ReadUInt32Operand(_stream)); }},
+    {"PSTORE", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::PSTORE, ReadUInt32Operand(_stream)); }},
+    {"GLOAD", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::GLOAD, ReadUInt32Operand(_stream)); }},
+    {"GSTORE", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &_labelReplacePositions)
+     { Instructions::Insert(_prog, OpCode::GSTORE, ReadUInt32Operand(_stream)); }},
     {"JUMP", [](Program &_prog, std::istream &_stream, std::map<size_t, Token> &labelOperands)
      {
          Instructions::Insert(_prog, OpCode::JUMP);

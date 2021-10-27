@@ -71,6 +71,104 @@ DEFINE_TEST(SSTORE)
 
     ASSERT(VM().Run(64, &program[0]) == 789ll);
 }
+
+DEFINE_TEST(LLOAD)
+{
+    std::stringstream stream(
+        "   CALL @FUNC 16\n"
+        "@FUNC:\n"
+        "   PUSHI 123"
+        "   SSTORE -16\n"
+        "   PUSHI 456"
+        "   SSTORE -8\n"
+        "   LLOAD 0"
+        "   LLOAD 1"
+        "   IADD"
+        "   EXIT\n");
+    Program program = Instructions::ParseStream(stream);
+
+    ASSERT(VM().Run(72, &program[0]) == 579);
+}
+
+DEFINE_TEST(LSTORE)
+{
+    std::stringstream stream(
+        "   CALL @FUNC 16\n"
+        "@FUNC:\n"
+        "   PUSHI 123"
+        "   LSTORE 0\n"
+        "   PUSHI 456"
+        "   LSTORE 1\n"
+        "   LLOAD 0"
+        "   LLOAD 1"
+        "   IADD"
+        "   EXIT\n");
+    Program program = Instructions::ParseStream(stream);
+
+    ASSERT(VM().Run(72, &program[0]) == 579);
+}
+
+DEFINE_TEST(PLOAD)
+{
+    std::stringstream stream(
+        "   PUSHI 123"
+        "   PUSHI 456"
+        "   CALL @FUNC 0\n"
+        "@FUNC:\n"
+        "   PLOAD 1"
+        "   PLOAD 0"
+        "   ISUB"
+        "   EXIT\n");
+    Program program = Instructions::ParseStream(stream);
+    ASSERT(VM().Run(72, &program[0]) == 333);
+}
+
+DEFINE_TEST(PSTORE)
+{
+    std::stringstream stream(
+        "   PUSHI 0\n"
+        "   PUSHI 0\n"
+        "   CALL @FUNC 0\n"
+        "   ISUB\n"
+        "   EXIT\n"
+        "@FUNC:\n"
+        "   PUSHI 123\n"
+        "   PSTORE 1\n"
+        "   PUSHI 456\n"
+        "   PSTORE 0\n"
+        "   RET\n");
+    Program program = Instructions::ParseStream(stream);
+    ASSERT(VM().Run(72, &program[0]) == 333);
+}
+
+DEFINE_TEST(GLOAD)
+{
+    std::stringstream stream(
+        "   PUSHI 123"
+        "   PUSHI 456"
+        "   PUSHI 789"
+        "   GLOAD 0"
+        "   GLOAD 1"
+        "   ISUB"
+        "   EXIT\n");
+    Program program = Instructions::ParseStream(stream);
+    ASSERT(VM().Run(72, &program[0]) == 333);
+}
+
+DEFINE_TEST(GSTORE)
+{
+    std::stringstream stream(
+        "   PUSHI 0"
+        "   PUSHI 0"
+        "   PUSHI 123"
+        "   PUSHI 456"
+        "   GSTORE 1"
+        "   GSTORE 0"
+        "   ISUB"
+        "   EXIT\n");
+    Program program = Instructions::ParseStream(stream);
+    ASSERT(VM().Run(72, &program[0]) == 333);
+}
 #pragma endregion
 
 #pragma region Binops
@@ -183,7 +281,9 @@ DEFINE_TEST(NEQ)
 
     ASSERT(VM().Run(64, &program[0]) == 0ull);
 }
+#pragma endregion
 
+#pragma region Branching
 DEFINE_TEST(JUMP)
 {
     Program program = CreateProgram(
@@ -268,10 +368,10 @@ DEFINE_TEST(RET)
 DEFINE_TEST(RETV)
 {
     std::stringstream stream("   CALL @FUNC 16\n"
-                              "   EXIT\n"
-                              "@FUNC:\n"
-                              "   PUSHI 123\n"
-                              "   RETV\n");
+                             "   EXIT\n"
+                             "@FUNC:\n"
+                             "   PUSHI 123\n"
+                             "   RETV\n");
     Program program = Instructions::ParseStream(stream);
 
     ASSERT(VM().Run(48, &program[0]) == 123);
@@ -306,7 +406,9 @@ DEFINE_TEST(JUMPNZ)
 
     ASSERT(VM().Run(64, &program[0]) == 300);
 }
+#pragma endregion
 
+#pragma region System Calls
 DEFINE_TEST(SYSCALL_EXIT)
 {
     Program program = CreateProgram(
@@ -314,6 +416,22 @@ DEFINE_TEST(SYSCALL_EXIT)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     ASSERT(VM().Run(64, &program[0]) == 100);
+}
+
+DEFINE_TEST(SYSCALL_PRINTC)
+{
+    Program program = CreateProgram(
+        OpCode::PUSH, 65ll,
+        OpCode::SYSCALL, SysCallCode::PRINTC,
+        OpCode::PUSH, 123ll,
+        OpCode::SYSCALL, SysCallCode::EXIT);
+
+    VM vm;
+    std::wstringstream stdIO;
+    vm.SetStdIO(stdIO.rdbuf(), stdIO.rdbuf());
+
+    ASSERT(vm.Run(16, &program[0]) == 123ll);
+    ASSERT(stdIO.str() == L"A");
 }
 #pragma endregion
 
