@@ -9,7 +9,6 @@ Todo:
     ✔ transform lexing error types to LEX prefix @done(21-10-21 00:45)
     ✔ make VMResultStrings in evm a map @done(21-10-25 00:14)
     ✔ instead of using results...use exception throwing @done(21-10-25 03:30)
-    ☐ chnage name of instr like IADD to I64ADD
     ☐ write tests for evm parsing errors
     ☐ review testing
     ☐ add binop to add to chars together to make a string
