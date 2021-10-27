@@ -81,8 +81,8 @@ Todo:
       ☐ System Call; SYSCALL [id]
         ✔ EXIT @done(21-10-25 01:08)
         ✔ PRINTC @done(21-10-27 02:39)
-        ☐ MALLOC                   - pops the size off the top of the stack and allocates that much memory on the head then pushes the memory location to the top of the stack
-        ☐ FREE                     - pop the memory address from the top of the stack and free that memory
+        ✔ MALLOC                       - pops the size off the top of the stack and allocates that much memory on the head then pushes the memory location to the top of the stack @done(21-10-27 03:43)
+        ✔ FREE                         - pop the memory address from the top of the stack and free that memory @done(21-10-27 03:43)
     ☐ exceptions
     ☐ access operator
     ☐ functions: `def myfunc = function (arg1:int, arg2:int) -> bool { ... }`
