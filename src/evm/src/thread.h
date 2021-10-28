@@ -10,7 +10,7 @@ class Thread
 private:
     VM *vm;
 
-    std::vector<vm_byte> stack;
+    Memory stack;
     vm_ui64 stackPtr, framePtr;
 
     std::thread thread;
@@ -37,6 +37,7 @@ public:
     bool IsAlive() { return isAlive; }
     vm_ui64 GetSP() { return stackPtr; }
     vm_ui64 GetFP() { return framePtr; }
+    const Memory& GetStack() { return stack; }
 
     template <typename T>
     T ReadStack(vm_i64 _pos)

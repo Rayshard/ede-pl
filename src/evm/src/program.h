@@ -2,7 +2,7 @@
 #include "evm.h"
 #include <vector>
 
-typedef std::vector<vm_byte> Program;
+typedef Memory Program;
 
 namespace Instructions
 {

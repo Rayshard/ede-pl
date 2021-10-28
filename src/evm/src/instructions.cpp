@@ -80,7 +80,7 @@ namespace Instructions
 #pragma region Branching
     void JUMP(Thread *_thread)
     {
-        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_byte *target = ((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMP);
     }
 
@@ -89,7 +89,7 @@ namespace Instructions
         if (_thread->PopStack<vm_i64>() == 0ull)
             return;
 
-        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_byte *target = ((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMPNZ);
     }
 
@@ -98,14 +98,14 @@ namespace Instructions
         if (_thread->PopStack<vm_i64>() != 0ull)
             return;
 
-        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_byte *target = ((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
         _thread->instrPtr = target - GetSize(OpCode::JUMPZ);
     }
 
     void CALL(Thread *_thread)
     {
-        vm_byte *target = (vm_byte *)((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
-        vm_ui32 storage = *(vm_ui32 *)(_thread->instrPtr + OP_CODE_SIZE + sizeof(vm_byte *));
+        vm_byte *target = ((Word *)(_thread->instrPtr + OP_CODE_SIZE))->as_ptr;
+        vm_ui32 storage = *(vm_ui32 *)(_thread->instrPtr + OP_CODE_SIZE + VM_PTR_SIZE);
 
         _thread->PushStack(_thread->instrPtr + GetSize(OpCode::CALL)); //Push return value
         _thread->PushFrame();                                          //Push current frame pointer and set the frame pointer for new frame
@@ -152,7 +152,7 @@ namespace Instructions
     {
         vm_byte code = _thread->instrPtr[OP_CODE_SIZE];
         if (code >= (vm_byte)SysCallCode::_COUNT)
-            throw VMError::UNKNOWN_SYSCALL_CODE();
+            throw VMError::UNKNOWN_SYSCALL_CODE(code);
 
         SysCallExecutionFuncs[code](_thread);
     }

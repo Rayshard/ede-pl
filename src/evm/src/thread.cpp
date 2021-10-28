@@ -10,7 +10,7 @@ Thread::Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP)
     : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0ull), framePtr(0ull), isAlive(false)
 {
     assert(_stackSize % WORD_SIZE == 0);
-    stack = std::vector<vm_byte>(_stackSize);
+    stack = Memory(_stackSize);
 }
 
 void Thread::Start()
@@ -46,7 +46,7 @@ void Thread::Run()
 
         vm_byte opcode = *instrPtr;
         if (opcode >= (size_t)Instructions::OpCode::_COUNT)
-            throw VMError::UNKNOWN_OP_CODE();
+            throw VMError::UNKNOWN_OP_CODE(opcode);
 
 #ifdef BUILD_DEBUG
         if (PRINT_INSTR_BEFORE_EXECUTION)

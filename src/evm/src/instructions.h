@@ -113,5 +113,5 @@ namespace Instructions
         return 0;
     }
 
-    std::string ToString(const vm_byte *_instr);
+    std::string ToString(const vm_byte * _instr);
 }

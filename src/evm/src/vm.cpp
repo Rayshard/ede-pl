@@ -8,7 +8,6 @@ VM::VM()
 
 VM::~VM()
 {
-    
 }
 
 vm_i64 VM::Run(vm_ui64 _stackSize, vm_byte *_startIP)
@@ -73,13 +72,13 @@ ThreadID VM::SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP)
     return id;
 }
 
-void VM::JoinThread(ThreadID _id)
+Thread &VM::GetThread(ThreadID _id)
 {
     auto idSearch = threads.find(_id);
     if (idSearch == threads.end())
-        return;
+        throw VMError::INVALID_THREAD_ID(_id);
 
-    idSearch->second.Join();
+    return idSearch->second;
 }
 
 void VM::SetStdIO(std::wstreambuf *_in, std::wstreambuf *_out)
@@ -90,8 +89,8 @@ void VM::SetStdIO(std::wstreambuf *_in, std::wstreambuf *_out)
 
 vm_byte *VM::Malloc(vm_ui64 _amt)
 {
-    std::vector<vm_byte> buffer(_amt);
-    vm_byte* address = buffer.data();
+    Memory buffer(_amt);
+    vm_byte *address = buffer.data();
 
     heap.emplace(address, std::move(buffer));
     return address;

@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 
 typedef uint8_t vm_byte;
 typedef int32_t vm_i32;
@@ -12,7 +13,7 @@ typedef uint32_t vm_ui32;
 typedef uint64_t vm_ui64;
 typedef float vm_f32;
 typedef double vm_f64;
-typedef void *vm_ptr;
+typedef std::vector<vm_byte> Memory;
 
 #define VM_BYTE_SIZE sizeof(vm_byte)
 #define VM_I32_SIZE sizeof(vm_i32)
@@ -21,8 +22,8 @@ typedef void *vm_ptr;
 #define VM_UI64_SIZE sizeof(vm_ui64)
 #define VM_F32_SIZE sizeof(vm_f32)
 #define VM_F64_SIZE sizeof(vm_f64)
-#define VM_PTR_SIZE sizeof(vm_ptr)
-#define WORD_SIZE sizeof(vm_ptr)
+#define VM_PTR_SIZE sizeof(vm_byte*)
+#define WORD_SIZE 8ull
 
 union Word
 {
@@ -33,8 +34,8 @@ union Word
     vm_ui64 as_ui64;
     vm_f32 as_f32;
     vm_f64 as_f64;
-    vm_ptr as_ptr;
-    vm_byte bytes[sizeof(vm_ptr)];
+    vm_byte* as_ptr;
+    vm_byte bytes[sizeof(vm_byte*)];
 
     Word() : as_ptr(0) {}
     Word(vm_byte _b) : as_byte(_b) {}
@@ -44,7 +45,7 @@ union Word
     Word(vm_ui64 _i) : as_ui64(_i) {}
     Word(vm_f32 _f) : as_f32(_f) {}
     Word(vm_f64 _f) : as_f64(_f) {}
-    Word(vm_ptr _p) : as_ptr(_p) {}
+    Word(vm_byte* _p) : as_ptr(_p) {}
 
     Word(vm_byte _0, vm_byte _1, vm_byte _2, vm_byte _3, vm_byte _4, vm_byte _5, vm_byte _6, vm_byte _7)
     {
