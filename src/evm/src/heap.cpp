@@ -13,27 +13,39 @@ Block::Block(size_t _size)
 void Block::Defragment()
 {
     std::vector<vm_byte *> toRemove;
+
     for (auto &[_, chunk] : chunks)
     {
-        if (!chunk.allocated)
-        {
-            Chunk *current = &chunk;
-            while(current->prev && !current->prev->allocated)
-            {
-                current->prev->next = current->next;
-                current->prev->size +=current->size;
-                toRemove.push_back(current->start);
-                current = current->prev;
-            }
+        if (chunk.allocated)
+            continue;
 
-            while(current->next && !current->next->allocated)
-            {
-                current->next->prev = current;
-                current->prev->size +=current->size;
-                toRemove.push_back(current->start);
-            }
+        Chunk *current = &chunk;
+
+        //Merge with left adjacent unallocated blocks
+        while (current->prev && !current->prev->allocated)
+        {
+            current->prev->next = current->next;
+            current->prev->size += current->size;
+            toRemove.push_back(current->start);
+            current = current->prev;
         }
+
+        //Merge with right adjacent unallocated blocks
+        while (current->next && !current->next->allocated)
+        {
+            current->next->prev = current;
+            current->size += current->next->size;
+            toRemove.push_back(current->next->start);
+            current->next = current->next->next;
+        }
+
+        //Ensure chunk pointers are continuous
+        current->next->prev = current;
     }
+
+    //Remove unused chunks
+    for (auto &chunkPtr : toRemove)
+        chunks.erase(chunkPtr);
 }
 
 bool Block::HasAddress(vm_byte *_addr) { return _addr >= &storage.front() && _addr <= &storage.back(); }
@@ -42,6 +54,27 @@ bool Block::IsAllocated(vm_byte *_addr)
 {
     auto search = chunks.find(_addr);
     return search != chunks.end() && search->second.allocated;
+}
+
+void Block::Alloc(vm_byte *_chunkPtr, vm_ui64 _amt)
+{
+    Chunk &chunk = chunks.at(_chunkPtr);
+    vm_byte *nextChunkStart = _chunkPtr + _amt;
+
+    if (HasAddress(nextChunkStart))
+    {
+        Chunk next(nextChunkStart, chunk.size - _amt, &chunk, chunk.next);
+        chunks.emplace(next.start, next);
+        chunk.next = &next;
+    }
+
+    chunk.allocated = true;
+    chunk.size = _amt;
+}
+
+void Block::Free(vm_byte *_chunkPtr)
+{
+    assert(false && "NOT IMPLEMENTED");
 }
 
 Heap::Heap()
