@@ -20,7 +20,8 @@ def run():
 @click.option('-o', '--output', type=click.Path(exists=False, file_okay=False, resolve_path=True), default='bin/', help="Sets the output directory for the executable.")
 @click.option('-t', '--tests', is_flag=True, help="Whether or not the test suite should be built.")
 @click.option('-d', '--debug', is_flag=True, help="Whether or not to build with debug features.")
-def build(output: str, tests: bool, debug: bool):
+@click.option('--debug-heap', is_flag=True, help="Whether or not to build with debugging code for heap.cpp.")
+def build(output: str, tests: bool, debug: bool, debug_heap: bool):
     pathlib.Path(output).mkdir(parents=True, exist_ok=True)
 
     resources = {}
@@ -46,7 +47,8 @@ def build(output: str, tests: bool, debug: bool):
     with open(resources["build.h"], 'w') as f:
         flags = {
             "BUILD_WITH_TESTS": tests,
-            "BUILD_DEBUG": debug
+            "BUILD_DEBUG": debug,
+            "BUILD_DEBUG_HEAP": debug_heap
         }
 
         for flag, present in flags.items():

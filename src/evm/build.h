@@ -1,1 +1,2 @@
 #define BUILD_WITH_TESTS
+#define BUILD_DEBUG_HEAP

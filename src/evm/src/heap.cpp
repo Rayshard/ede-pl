@@ -2,6 +2,12 @@
 #include "../build.h"
 #include "vm.h"
 #include <algorithm>
+#include <unordered_set>
+
+void Chunk::AssertHeuristics()
+{
+    assert((next && next->start == start + size) && "Chunk's next chunk starts at a different place than after this chunk's end!");
+}
 
 Block::Block(size_t _size, FreeChunksMap &_freeChunks)
 {
@@ -11,32 +17,6 @@ Block::Block(size_t _size, FreeChunksMap &_freeChunks)
     Chunk initial(&storage.front(), storage.size(), nullptr, nullptr);
     _freeChunks[_size][&initial] = this;
     chunks.emplace(initial.start, initial);
-}
-
-void Block::Defragment()
-{
-    Chunk *current = &chunks.at(&storage.front());
-
-    while (current)
-    {
-        if (current->allocated)
-        {
-            current = current->next;
-            continue;
-        }
-
-        //Merge with right adjacent unallocated blocks
-        while (current->next && !current->next->allocated)
-        {
-            current->size += current->next->size;
-            current->next = current->next->next;
-            chunks.erase(current->next->start);
-
-            //Ensure chunk pointers are continuous
-            if (current->next)
-                current->next->prev = current;
-        }
-    }
 }
 
 bool Block::HasAddress(vm_byte *_addr) { return _addr >= &storage.front() && _addr <= &storage.back(); }
@@ -73,6 +53,10 @@ void Block::Alloc(vm_byte *_chunkPtr, vm_ui64 _amt, FreeChunksMap &_freeChunks)
     //Set chunk
     chunk.allocated = true;
     chunk.size = _amt;
+
+#ifdef BUILD_DEBUG_HEAP
+    AssertHeuristics(_freeChunks);
+#endif
 }
 
 void Block::Free(vm_byte *_chunkPtr, FreeChunksMap &_freeChunks)
@@ -116,46 +100,98 @@ void Block::Free(vm_byte *_chunkPtr, FreeChunksMap &_freeChunks)
     {
         _freeChunks[chunk.size][&chunk] = this;
     }
+
+#ifdef BUILD_DEBUG_HEAP
+    AssertHeuristics(_freeChunks);
+#endif
 }
 
-Heap::Heap(size_t _initialSize) : blocks(), freeChunks(), size(0)
+void Block::AssertHeuristics(const FreeChunksMap &_freeChunks)
 {
-    blocks.emplace_back(Block(_initialSize, freeChunks));
+    assert(GetStart() == &storage.front() && "Block's start is not the start of it's storage!");
+    assert(GetFirstChunk()->GetStart() == GetStart() && "Block's first chunk does not start at the block's start!");
+
+    Chunk *currentChunk = GetFirstChunk();
+    size_t summedSize = 0;
+    while (currentChunk)
+    {
+        //Chunk::AssertHeuristics handles gaps inbetween chunks
+        currentChunk->AssertHeuristics();
+
+        assert(chunks.find(currentChunk->start) != chunks.end() && "Block's chunks list does not contain a chunk that it should!");
+
+        if (!currentChunk->allocated)
+        {
+            assert((currentChunk->next && currentChunk->next->allocated) && "Block has successive unallocated chunks!");
+            assert(_freeChunks.at(currentChunk->GetSize()).at(currentChunk) == this && "Block has an unallocated chunk that is not in the free list!");
+        }
+
+        summedSize += currentChunk->GetSize();
+        currentChunk = currentChunk->next;
+    }
+
+    for (auto &[start, chunk] : chunks)
+        assert(start == chunk.start && "Block's chunk list has invalid key/value pair!");
+
+    assert(summedSize == GetSize() && "The sum of the sizes of the block's chunks does not equal the size of the block!");
 }
+
+Heap::Heap() : blocks(), freeChunks(), size(0) {}
 
 vm_byte *Heap::Alloc(vm_ui64 _amt)
 {
     auto search = std::find_if(freeChunks.begin(), freeChunks.end(), [_amt](FreeChunksMap::reference _kvPair)
                                { return _kvPair.first >= _amt; });
 
+    vm_byte *chunkStart = nullptr;
+
     if (search != freeChunks.end()) //There is a block with a big enough chunk
     {
         auto chunkAndBlock = search->second.extract(search->second.begin());
-        auto chunkStart = chunkAndBlock.key()->start;
 
+        chunkStart = chunkAndBlock.key()->GetStart();
         chunkAndBlock.mapped()->Alloc(chunkStart, _amt, freeChunks);
-        return chunkStart;
     }
     else
     {
-        size_t newBlockSize = std::max(size, _amt) * 2;
+        size_t newBlockSize = std::max({size, (size_t)MIN_HEAP_BLOCK_SIZE, (size_t)_amt}) * 2;
         Block &block = blocks.emplace_back(Block(newBlockSize, freeChunks));
-        vm_byte *chunkStart = block.GetStart();
 
+        chunkStart = block.GetStart();
+        size += block.GetSize();
         block.Alloc(chunkStart, _amt, freeChunks);
-        return chunkStart;
     }
+
+#ifdef BUILD_DEBUG_HEAP
+    AssertHeuristics();
+#endif
+
+    return chunkStart;
 }
 
 void Heap::Free(vm_byte *_addr)
 {
-    for (auto &block : blocks)
+    for (auto itBlock = blocks.begin(); itBlock != blocks.end(); itBlock++)
     {
-        if (block.HasAddress(_addr) && block.IsAllocated(_addr))
+        if (itBlock->HasAddress(_addr) && itBlock->IsAllocated(_addr))
         {
-            block.Free(_addr, freeChunks);
-            if (block.IsEmpty())
-                return;
+            itBlock->Free(_addr, freeChunks);
+
+            //There is only one chunk in the block and it is unallocated so there
+            //is no need to have the block existing and since the chunk in the block
+            //is unallocated and thus in the free chunks list, we should remove it
+            if (itBlock->IsEmpty())
+            {
+                freeChunks.at(itBlock->GetSize()).erase(itBlock->GetFirstChunk());
+                size -= itBlock->GetSize();
+                blocks.erase(itBlock);
+            }
+
+#ifdef BUILD_DEBUG_HEAP
+            AssertHeuristics();
+#endif
+
+            return;
         }
     }
 
@@ -184,15 +220,31 @@ bool Heap::IsAllocated(vm_byte *_addr)
     return false;
 }
 
-size_t Heap::GetSize()
+void Heap::AssertHeuristics()
 {
-#ifdef BUILD_DEBUG
-    size_t expected = 0;
+    assert(freeChunks.find(0) == freeChunks.end() && "Free chunks list contains a size bucket for 0!");
+
+    std::unordered_set<Chunk *> foundFreeChunks;
+    for (auto &[chunkSize, chunks] : freeChunks)
+    {
+        for (auto &[chunk, block] : chunks)
+        {
+            assert(!chunk->IsAllocated() && "Free chunks list contains an allocated chunk!");
+            assert(chunk->GetSize() == chunkSize && "Free chunks list size bucket contains a chunk with the incorrect size!");
+
+            assert(foundFreeChunks.find(chunk) == foundFreeChunks.end() && "Free chunks list contains duplicate entries!");
+            foundFreeChunks.insert(chunk);
+        }
+    }
+
+    size_t expectedSize = 0;
     for (auto &block : blocks)
-        expected += block.GetSize();
+    {
+        assert(!block.IsEmpty() && "Heap contains an empty block!");
 
-    assert(size == expected && ("Expected size of heap to be " + std::to_string(expected) + " but found Heap::size = " + std::to_string(size)).c_str());
-#endif
+        block.AssertHeuristics(freeChunks);
+        expectedSize += block.GetSize();
+    }
 
-    return size;
+    assert(size == expectedSize && ("Expected size of heap to be " + std::to_string(expectedSize) + " but found Heap::size = " + std::to_string(size)).c_str());
 }
