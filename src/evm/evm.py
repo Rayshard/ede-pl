@@ -2,12 +2,15 @@
 import sys
 import subprocess
 import os
+import glob
 import platform
 import pkg_resources
 import click
 import pathlib
 
-EXECUTABLE_FILE_NAME = "evm" + (".exe" if platform.system() == "Windows" else "")
+EXECUTABLE_FILE_NAME = "evm" + \
+    (".exe" if platform.system() == "Windows" else "")
+
 
 def run():
     sys.exit(subprocess.call(["bin/" + EXECUTABLE_FILE_NAME] + sys.argv[1:]))
@@ -21,28 +24,19 @@ def build(output: str, tests: bool, debug: bool):
     pathlib.Path(output).mkdir(parents=True, exist_ok=True)
 
     resources = {}
+    cpp_file_names = [os.path.basename(file)
+                      for file in glob.glob("src/evm/src/*.cpp")]
 
     try:
         resources = {
             "build.h": pkg_resources.resource_filename('evm', 'build.h'),
-            "cpps": {
-                "main.cpp": pkg_resources.resource_filename('evm', 'src/main.cpp'),
-                "program.cpp": pkg_resources.resource_filename('evm', 'src/program.cpp'),
-                "thread.cpp": pkg_resources.resource_filename('evm', 'src/thread.cpp'),
-                "instructions.cpp": pkg_resources.resource_filename('evm', 'src/instructions.cpp'),
-                "vm.cpp": pkg_resources.resource_filename('evm', 'src/vm.cpp'),
-            }
+            "cpps": {file_name: pkg_resources.resource_filename('evm', os.path.join('src/', file_name))
+                     for file_name in cpp_file_names}
         }
     except:
         resources = {
             "build.h": "src/evm/build.h",
-            "cpps": {
-                "main.cpp": 'src/evm/src/main.cpp',
-                "program.cpp": 'src/evm/src/program.cpp',
-                "thread.cpp": 'src/evm/src/thread.cpp',
-                "instructions.cpp": 'src/evm/src/instructions.cpp',
-                "vm.cpp": 'src/evm/src/vm.cpp',
-            }
+            "cpps": {file_name: os.path.join('src/evm/src/', file_name) for file_name in cpp_file_names}
         }
 
     if tests:

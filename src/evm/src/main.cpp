@@ -75,7 +75,7 @@ int run(const std::vector<std::string> &_args)
         //Run
         auto exitCode = VM().Run(64, &program[0]);
 
-        std::cout << "Exited with code " << exitCode << "." << std::endl;
+        std::cout << "\nExited with code " << exitCode << "." << std::endl;
         return exitCode;
     }
     catch (const std::runtime_error &e)

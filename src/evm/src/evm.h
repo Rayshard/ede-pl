@@ -22,7 +22,7 @@ typedef std::vector<vm_byte> Memory;
 #define VM_UI64_SIZE sizeof(vm_ui64)
 #define VM_F32_SIZE sizeof(vm_f32)
 #define VM_F64_SIZE sizeof(vm_f64)
-#define VM_PTR_SIZE sizeof(vm_byte*)
+#define VM_PTR_SIZE sizeof(vm_byte *)
 #define WORD_SIZE 8ull
 
 union Word
@@ -34,8 +34,8 @@ union Word
     vm_ui64 as_ui64;
     vm_f32 as_f32;
     vm_f64 as_f64;
-    vm_byte* as_ptr;
-    vm_byte bytes[sizeof(vm_byte*)];
+    vm_byte *as_ptr;
+    vm_byte bytes[sizeof(vm_byte *)];
 
     Word() : as_ptr(0) {}
     Word(vm_byte _b) : as_byte(_b) {}
@@ -45,7 +45,7 @@ union Word
     Word(vm_ui64 _i) : as_ui64(_i) {}
     Word(vm_f32 _f) : as_f32(_f) {}
     Word(vm_f64 _f) : as_f64(_f) {}
-    Word(vm_byte* _p) : as_ptr(_p) {}
+    Word(vm_byte *_p) : as_ptr(_p) {}
 
     Word(vm_byte _0, vm_byte _1, vm_byte _2, vm_byte _3, vm_byte _4, vm_byte _5, vm_byte _6, vm_byte _7)
     {
@@ -68,4 +68,14 @@ std::string Hex(const T &_value)
     std::stringstream stream("0x");
     stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << _value;
     return stream.str();
+}
+
+template <typename T>
+std::string PtrToStr(T *_ptr)
+{
+    const void *ptr = static_cast<const void *>(_ptr);
+    std::stringstream ss;
+    
+    ss << ptr;
+    return ss.str();
 }

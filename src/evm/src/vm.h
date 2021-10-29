@@ -10,15 +10,16 @@ typedef vm_ui64 ThreadID;
 
 enum class VMErrorType
 {
-    UNKNOWN_OP_CODE,      // Unable to decode the op code at the instruction pointer
-    STACK_OVERFLOW,       // Operation caused stack point to be greater than stack's size
-    STACK_UNDERFLOW,      // Operation caused stack point to be less than stack's size
-    DIV_BY_ZERO,          // Division by zero occurred
-    CANNOT_SPAWN_THREAD,  // Thread could not be spawned
-    UNKNOWN_SYSCALL_CODE, // Unable to decode the code for the syscall instruction
-    INVALID_FP,           // The frame pointer has been set to a position outside of the stack
-    MEMORY_NOT_ALLOCATED, // Attempted to free unallocated memory
-    INVALID_THREAD_ID,    // A thread with that id either has never been created or has already died
+    UNKNOWN_OP_CODE,             // Unable to decode the op code at the instruction pointer
+    STACK_OVERFLOW,              // Operation caused stack point to be greater than stack's size
+    STACK_UNDERFLOW,             // Operation caused stack point to be less than stack's size
+    DIV_BY_ZERO,                 // Division by zero occurred
+    CANNOT_SPAWN_THREAD,         // Thread could not be spawned
+    UNKNOWN_SYSCALL_CODE,        // Unable to decode the code for the syscall instruction
+    INVALID_FP,                  // The frame pointer has been set to a position outside of the stack
+    MEMORY_NOT_ALLOCATED,        // Attempted to free unallocated memory
+    INVALID_THREAD_ID,           // A thread with that id either has never been created or has already died
+    CANNOT_FREE_UNALLOCATED_PTR, // Cannot free an unallocated memory pointer
     _COUNT
 };
 
@@ -41,6 +42,7 @@ public:
     static VMError INVALID_FP() { return VMError(VMErrorType::INVALID_FP, "Frame pointer has been set to an invalid position!"); }
     static VMError MEMORY_NOT_ALLOCATED() { return VMError(VMErrorType::INVALID_FP, "Attempted to free unallocated memory!"); }
     static VMError INVALID_THREAD_ID(ThreadID _id) { return VMError(VMErrorType::INVALID_THREAD_ID, "A thread with id [" + std::to_string(_id) + "] does not exist or has already died!"); }
+    static VMError CANNOT_FREE_UNALLOCATED_PTR(vm_byte* _ptr) { return VMError(VMErrorType::CANNOT_FREE_UNALLOCATED_PTR , "Cannot free unallocated memory pointer: " + PtrToStr(_ptr)); }
 };
 
 typedef std::variant<VMError, vm_i64> VMExitCode;
