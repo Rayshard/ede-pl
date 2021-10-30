@@ -140,12 +140,12 @@ namespace Instructions
 
     void SYSCALL_MALLOC(Thread *_thread)
     {
-        _thread->PushStack(_thread->GetVM()->Malloc(_thread->PopStack<vm_i64>()));
+        _thread->PushStack(_thread->GetVM()->GetHeap().Alloc(_thread->PopStack<vm_i64>()));
     }
 
     void SYSCALL_FREE(Thread *_thread)
     {
-        _thread->GetVM()->Free(_thread->PopStack<vm_byte *>());
+        _thread->GetVM()->GetHeap().Free(_thread->PopStack<vm_byte *>());
     }
 
     void SYSCALL(Thread *_thread)

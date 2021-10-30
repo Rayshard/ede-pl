@@ -4,6 +4,7 @@
 #include <map>
 #include <variant>
 #include "program.h"
+#include "heap.h"
 
 class Thread;
 typedef vm_ui64 ThreadID;
@@ -42,7 +43,7 @@ public:
     static VMError INVALID_FP() { return VMError(VMErrorType::INVALID_FP, "Frame pointer has been set to an invalid position!"); }
     static VMError MEMORY_NOT_ALLOCATED() { return VMError(VMErrorType::INVALID_FP, "Attempted to free unallocated memory!"); }
     static VMError INVALID_THREAD_ID(ThreadID _id) { return VMError(VMErrorType::INVALID_THREAD_ID, "A thread with id [" + std::to_string(_id) + "] does not exist or has already died!"); }
-    static VMError CANNOT_FREE_UNALLOCATED_PTR(vm_byte* _ptr) { return VMError(VMErrorType::CANNOT_FREE_UNALLOCATED_PTR , "Cannot free unallocated memory pointer: " + PtrToStr(_ptr)); }
+    static VMError CANNOT_FREE_UNALLOCATED_PTR(vm_byte *_ptr) { return VMError(VMErrorType::CANNOT_FREE_UNALLOCATED_PTR, "Cannot free unallocated memory pointer: " + PtrToStr(_ptr)); }
 };
 
 typedef std::variant<VMError, vm_i64> VMExitCode;
@@ -50,7 +51,7 @@ typedef std::variant<VMError, vm_i64> VMExitCode;
 class VM
 {
 private:
-    std::map<vm_byte *, Memory> heap;
+    Heap heap;
     std::map<ThreadID, Thread> threads;
     ThreadID nextThreadID;
     VMExitCode exitCode;
@@ -68,10 +69,6 @@ public:
     vm_i64 Run(vm_ui64 _stackSize, vm_byte *_startIP);
     void Quit(VMExitCode _code);
 
-    vm_byte *Malloc(vm_ui64 _amt);
-    void Free(vm_byte *_addr);
-    bool IsAllocated(vm_byte *_addr);
-
     ThreadID SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP);
     Thread &GetThread(vm_ui64 _id);
     void SetStdIO(std::wstreambuf *_in = nullptr, std::wstreambuf *_out = nullptr);
@@ -79,4 +76,5 @@ public:
     bool IsRunning() { return running; }
     std::wistream &GetStdIn() { return stdInput; }
     std::wostream &GetStdOut() { return stdOutput; }
+    Heap &GetHeap() { return heap; }
 };

@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <sstream>
+#include <random>
 
 INIT_TEST_SUITE();
 
@@ -443,7 +444,7 @@ DEFINE_TEST(SYSCALL_MALLOC)
 
     VM vm;
     vm_byte *address = (vm_byte *)Word(vm.Run(8, &program[0])).as_ptr;
-    ASSERT(vm.IsAllocated(address));
+    ASSERT(vm.GetHeap().IsAllocated(address));
 }
 
 DEFINE_TEST(SYSCALL_FREE)
@@ -457,7 +458,7 @@ DEFINE_TEST(SYSCALL_FREE)
 
     VM vm;
     vm_byte *address = (vm_byte *)Word(vm.Run(16, &program[0])).as_ptr;
-    ASSERT(!vm.IsAllocated(address));
+    ASSERT(!vm.GetHeap().IsAllocated(address));
 }
 #pragma endregion
 
@@ -637,4 +638,38 @@ DEFINE_TEST(TEST_FILES)
         ASSERT_MSG(vm.Run(64, &program[0]) == expectedExitCode, filePath);
         ASSERT_MSG(stdIO.str() == expectedOutput, filePath);
     }
+}
+
+DEFINE_TEST(TEST_HEAP)
+{
+    std::random_device randDev;
+    std::mt19937 randRng(randDev());
+    std::vector<vm_byte *> alives;
+    Heap heap;
+
+    std::uniform_int_distribution<std::mt19937::result_type> boolGenerator(0, 3);
+    std::uniform_int_distribution<std::mt19937::result_type> sizeGenerator(1, 128);
+
+    for (int i = 0; i < 1000; i++)
+    {
+        if (boolGenerator(randRng) > 0)
+        {
+            alives.push_back(heap.Alloc(sizeGenerator(randRng)));
+        }
+        else if(!alives.empty())
+        {
+            std::uniform_int_distribution<std::mt19937::result_type> aliveIdxPicker(0, alives.size() - 1);
+            auto pos = alives.begin() + aliveIdxPicker(randRng);
+            auto ptr = *pos;
+
+            heap.Free(ptr);
+            alives.erase(pos);
+        }
+
+        heap.Print();
+        std::cin.get();
+    }
+    
+    heap.AssertHeuristics();
+    heap.Print();
 }

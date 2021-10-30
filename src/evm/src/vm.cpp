@@ -86,26 +86,3 @@ void VM::SetStdIO(std::wstreambuf *_in, std::wstreambuf *_out)
     stdInput.rdbuf(_in ? _in : std::wcin.rdbuf());
     stdOutput.rdbuf(_out ? _out : std::wcout.rdbuf());
 }
-
-vm_byte *VM::Malloc(vm_ui64 _amt)
-{
-    Memory buffer(_amt);
-    vm_byte *address = buffer.data();
-
-    heap.emplace(address, std::move(buffer));
-    return address;
-}
-
-void VM::Free(vm_byte *_addr)
-{
-    auto addrSearch = heap.find(_addr);
-    if (addrSearch == heap.end())
-        throw VMError::MEMORY_NOT_ALLOCATED();
-
-    heap.erase(_addr);
-}
-
-bool VM::IsAllocated(vm_byte *_addr)
-{
-    return heap.find(_addr) != heap.end();
-}
