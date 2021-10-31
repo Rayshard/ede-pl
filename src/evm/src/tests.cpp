@@ -666,8 +666,8 @@ DEFINE_TEST(TEST_HEAP)
             alives.erase(pos);
         }
 
-        heap.Print();
-        std::cin.get();
+        // heap.Print();
+        // std::cin.get();
     }
     
     heap.AssertHeuristics();

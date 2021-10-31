@@ -2,13 +2,31 @@
 #include "evm.h"
 #include <unordered_map>
 #include <iostream>
+#include <optional>
 
 #define MIN_HEAP_BLOCK_SIZE 1024ull
 
 struct Chunk;
 class Block;
 
-typedef std::unordered_map<vm_ui64, std::unordered_map<Chunk *, Block *>> FreeChunksMap;
+class FreeChunksList
+{
+public:
+    typedef std::unordered_map<vm_ui64, std::unordered_map<Chunk *, Block *>> type;
+
+    void Insert(Chunk *_chunk, Block *_block);
+    void Delete(Chunk *_chunk);
+    bool Contains(Chunk *_chunk, Block *_block) const;
+    std::optional<std::pair<Chunk *, Block *>> FindAndExtract(vm_ui64 _minSize);
+
+    const type &GetList() { return map; }
+
+    void AssertHeuristics();
+    void Print();
+
+private:
+    type map;
+};
 
 class Chunk
 {
@@ -34,22 +52,22 @@ public:
 class Block
 {
     Memory storage;
-    std::unordered_map<vm_byte *, Chunk*> chunks;
+    std::unordered_map<vm_byte *, Chunk *> chunks;
 
 public:
-    Block(size_t _size, FreeChunksMap &_freeChunks);
+    Block(size_t _size, FreeChunksList &_freeChunks);
     Block(Block &&_b) noexcept;
     ~Block();
 
-    void Alloc(vm_byte *_chunkPtr, vm_ui64 _amt, FreeChunksMap &_freeChunks);
-    void Free(vm_byte *_chunkPtr, FreeChunksMap &_freeChunks);
-    void Defragment(FreeChunksMap &_freeChunks);
+    void Alloc(vm_byte *_chunkPtr, vm_ui64 _amt, FreeChunksList &_freeChunks);
+    void Free(vm_byte *_chunkPtr, FreeChunksList &_freeChunks);
+    void Defragment(FreeChunksList &_freeChunks);
 
     bool IsAllocated(vm_byte *_addr);
     bool HasAddress(vm_byte *_addr);
     bool IsEmpty();
 
-    void AssertHeuristics(const FreeChunksMap &_freeChunks);
+    void AssertHeuristics(const FreeChunksList &_freeChunks);
     void Print();
 
     size_t GetSize() { return storage.size(); }
@@ -65,12 +83,15 @@ public:
         chunks = std::move(_b.chunks);
         return *this;
     }
+
+private:
+    void MergeConsecutiveChunks(Chunk *_first, FreeChunksList &_freeChunks, bool _allocateFinal);
 };
 
 class Heap
 {
-    std::vector<Block*> blocks;
-    FreeChunksMap freeChunks;
+    std::vector<Block *> blocks;
+    FreeChunksList freeChunks;
     size_t size;
 
 public:
