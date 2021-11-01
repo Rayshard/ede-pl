@@ -103,3 +103,11 @@ public:
 
     size_t GetSize() { return size; }
 };
+
+class GarbageCollector
+{
+    Heap *heap;
+
+public:
+    GarbageCollector(Heap *_heap);
+};
