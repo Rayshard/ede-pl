@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <unordered_set>
 
+#pragma region FreeChunksList
+
 void FreeChunksList::Insert(Chunk *_chunk, Block *_block)
 {
     map[_chunk->GetSize()][_chunk] = _block;
@@ -28,7 +30,7 @@ bool FreeChunksList::Contains(Chunk *_chunk, Block *_block) const
     return sizeBucketChunkSearch != sizeBucketSearch->second.end() && sizeBucketChunkSearch->second == _block;
 }
 
-std::optional<std::pair<Chunk *, Block *>> FreeChunksList::FindAndExtract(vm_ui64 _minSize)
+std::optional<std::pair<Chunk *, Block *>> FreeChunksList::Find(vm_ui64 _minSize)
 {
     std::optional<std::pair<Chunk *, Block *>> result;
     auto search = std::find_if(map.begin(), map.end(), [_minSize](type::reference _kvPair)
@@ -37,8 +39,7 @@ std::optional<std::pair<Chunk *, Block *>> FreeChunksList::FindAndExtract(vm_ui6
     if (search == map.end())
         return std::nullopt;
 
-    auto chunkAndBlock = search->second.extract(search->second.begin());
-    return std::pair<Chunk *, Block *>(chunkAndBlock.key(), chunkAndBlock.mapped());
+    return *search->second.begin();
 }
 
 void FreeChunksList::AssertHeuristics()
@@ -74,12 +75,18 @@ void FreeChunksList::Print()
     }
 }
 
+#pragma endregion
+
+#pragma region Chunk
+
 Chunk::Chunk(vm_byte *_start, vm_ui64 _size, Chunk *_prev, Chunk *_next)
     : start(_start), size(_size), prev(_prev), next(_next), allocated(false) {}
 
 void Chunk::AssertHeuristics()
 {
-    assert((!next || next->start == start + size) && "Chunk's next chunk starts at a different place than after this chunk's end!");
+    assert((!next || (next->start == start + size)) && "Chunk's next chunk starts at a different place than after this chunk's end!");
+    assert((!next || (next->prev == this)) && "Chunk's next should have it's previous be this chunk!");
+    assert((!prev || (prev->next == this)) && "Chunk's previous should have it's next be this chunk!");
 }
 
 void Chunk::Print()
@@ -92,6 +99,10 @@ void Chunk::Print()
     std::cout << "next: " << (void *)next;
     std::cout << " }";
 }
+
+#pragma endregion
+
+#pragma region Block
 
 Block::Block(size_t _size, FreeChunksList &_freeChunks)
 {
@@ -133,9 +144,13 @@ void Block::Alloc(vm_byte *_chunkPtr, vm_ui64 _amt, FreeChunksList &_freeChunks)
     {
         vm_byte *nextChunkStart = _chunkPtr + _amt;
         Chunk *next = new Chunk(nextChunkStart, chunk->size - _amt, chunk, chunk->next);
-        chunks.emplace(nextChunkStart, next);
+
+        if (next->next)
+            next->next->prev = next;
 
         chunk->next = next;
+
+        chunks.emplace(nextChunkStart, next);
         _freeChunks.Insert(next, this);
     }
 
@@ -151,87 +166,38 @@ void Block::Alloc(vm_byte *_chunkPtr, vm_ui64 _amt, FreeChunksList &_freeChunks)
 #endif
 }
 
-void Block::Defragment(FreeChunksList &_freeChunks)
-{
-    Chunk *current = GetFirstChunk();
-
-    while (current)
-    {
-        if (!current->allocated)
-        {
-            _freeChunks.Delete(current); //Remove current chunk fron free list since its size is about to change
-
-            while (current->next && !current->next->allocated)
-            {
-                auto chunkToDelete = current->next;
-                _freeChunks.Delete(chunkToDelete); //Remove next chunk fron free list since it is being deleted
-
-                //Merge chunks
-                current->size += chunkToDelete->size;
-                current->next = chunkToDelete->next;
-
-                if (current->next)
-                    current->next->prev = current;
-
-                //Delete chunk that was just merged with the current
-                chunks.erase(chunkToDelete->start);
-                delete chunkToDelete;
-            }
-
-            _freeChunks.Insert(current, this); //Put current chunk back in free list
-        }
-
-        current = current->next;
-    }
-}
-
-// void Block::Free(vm_byte *_chunkPtr, FreeChunksList &_freeChunks)
-// {
-//     Chunk *chunk = chunks.at(_chunkPtr);
-//     chunk->allocated = false;
-
-//     _freeChunks.Insert(chunk, this);
-//     Defragment(_freeChunks);
-
-// #ifdef BUILD_DEBUG_HEAP
-//     AssertHeuristics(_freeChunks);
-// #endif
-// }
-
-void Block::MergeConsecutiveChunks(Chunk *_first, FreeChunksList &_freeChunks, bool _allocateFinal)
-{
-    Chunk *second = _first->next;
-    assert(second && "Specified chunk has no following chunk!");
-
-    if (!_first->allocated)
-        _freeChunks.Delete(_first); //Remove first chunk fron free list since its size is about to change
-    if (!second->allocated)
-        _freeChunks.Delete(second); //Remove second chunk from free list since it is being deleted
-
-    //Merge
-    _first->size += second->size;
-    _first->next = second->next;
-    _first->allocated = _allocateFinal;
-
-    if (_first->next)
-        _first->next->prev = _first;
-
-    //Delete second since it was merge into the first
-    chunks.erase(second->start);
-    delete second;
-
-    //(Re-)add first chunk to free list if it's not allocated
-    if (!_first->allocated)
-        _freeChunks.Insert(_first, this);
-}
-
 void Block::Free(vm_byte *_chunkPtr, FreeChunksList &_freeChunks)
 {
-    Chunk *freedChunk = chunks.at(_chunkPtr);
+    Chunk *freedChunk = chunks.at(_chunkPtr), *current = freedChunk;
     freedChunk->allocated = false;
-    _freeChunks.Insert(freedChunk, this);
 
-    Defragment(_freeChunks);
+    //Start merge at previous chunk if it is unallocated
+    if (freedChunk->prev && !freedChunk->prev->allocated)
+    {
+        _freeChunks.Insert(freedChunk, this);
+        current = freedChunk->prev;
+        _freeChunks.Delete(current); //Remove current chunk fron free list since its size is about to change
+    }
+
+    // Merge chunks
+    while (current->next && !current->next->allocated)
+    {
+        auto chunkToDelete = current->next;
+        _freeChunks.Delete(chunkToDelete); //Remove next chunk fron free list since it is being deleted
+
+        //Merge chunks
+        current->size += chunkToDelete->size;
+        current->next = chunkToDelete->next;
+
+        if (current->next)
+            current->next->prev = current;
+
+        //Delete chunk that was just merged with the current
+        chunks.erase(chunkToDelete->start);
+        delete chunkToDelete;
+    }
+
+    _freeChunks.Insert(current, this); //Put current chunk in free list
 
 #ifdef BUILD_DEBUG_HEAP
     AssertHeuristics(_freeChunks);
@@ -244,12 +210,11 @@ void Block::AssertHeuristics(const FreeChunksList &_freeChunks)
     assert(GetFirstChunk()->GetStart() == GetStart() && "Block's first chunk does not start at the block's start!");
 
     Chunk *currentChunk = GetFirstChunk();
-    size_t summedSize = 0;
+    size_t summedSize = 0, count = 0;
 
     while (currentChunk)
     {
-        //Chunk::AssertHeuristics handles gaps inbetween chunks
-        currentChunk->AssertHeuristics();
+        currentChunk->AssertHeuristics(); //Chunk::AssertHeuristics handles gaps inbetween chunks
 
         assert(chunks.find(currentChunk->start) != chunks.end() && "Block's chunks list does not contain a chunk that it should!");
 
@@ -261,7 +226,10 @@ void Block::AssertHeuristics(const FreeChunksList &_freeChunks)
 
         summedSize += currentChunk->GetSize();
         currentChunk = currentChunk->next;
+        count++;
     }
+
+    assert(count == chunks.size() && "Chunks list contains a different amount of chunks than the chunk network!");
 
     for (auto &[start, chunk] : chunks)
         assert(start == chunk->start && "Block's chunk list has invalid key/value pair!");
@@ -286,6 +254,10 @@ void Block::Print()
     std::cout << std::string(40, '=') << std::endl;
 }
 
+#pragma endregion
+
+#pragma region Heap
+
 Heap::Heap() : blocks(), freeChunks(), size(0) {}
 
 Heap::~Heap()
@@ -301,7 +273,7 @@ vm_byte *Heap::Alloc(vm_ui64 _amt)
     Block *block = nullptr;
     vm_byte *chunkStart = nullptr;
 
-    if (auto chunkAndBlock = freeChunks.FindAndExtract(_amt)) //There is a block with a big enough chunk
+    if (auto chunkAndBlock = freeChunks.Find(_amt)) //There is a block with a big enough chunk
     {
         chunkStart = chunkAndBlock->first->GetStart();
         block = chunkAndBlock->second;
@@ -412,3 +384,5 @@ void Heap::Print()
     freeChunks.Print();
     std::cout << "===========================================================" << std::endl;
 }
+
+#pragma endregion

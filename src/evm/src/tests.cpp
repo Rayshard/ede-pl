@@ -647,7 +647,7 @@ DEFINE_TEST(TEST_HEAP)
     std::vector<vm_byte *> alives;
     Heap heap;
 
-    std::uniform_int_distribution<std::mt19937::result_type> boolGenerator(0, 3);
+    std::uniform_int_distribution<std::mt19937::result_type> boolGenerator(0, 2);
     std::uniform_int_distribution<std::mt19937::result_type> sizeGenerator(1, 128);
 
     for (int i = 0; i < 1000; i++)
@@ -666,10 +666,6 @@ DEFINE_TEST(TEST_HEAP)
             alives.erase(pos);
         }
 
-        // heap.Print();
-        // std::cin.get();
+        heap.AssertHeuristics();
     }
-    
-    heap.AssertHeuristics();
-    heap.Print();
 }

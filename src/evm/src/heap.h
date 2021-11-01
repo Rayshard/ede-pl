@@ -17,7 +17,7 @@ public:
     void Insert(Chunk *_chunk, Block *_block);
     void Delete(Chunk *_chunk);
     bool Contains(Chunk *_chunk, Block *_block) const;
-    std::optional<std::pair<Chunk *, Block *>> FindAndExtract(vm_ui64 _minSize);
+    std::optional<std::pair<Chunk *, Block *>> Find(vm_ui64 _minSize);
 
     const type &GetList() { return map; }
 
@@ -39,9 +39,8 @@ class Chunk
 
     Chunk(vm_byte *_start, vm_ui64 _size, Chunk *_prev, Chunk *_next);
 
-    void AssertHeuristics();
-
 public:
+    void AssertHeuristics();
     void Print();
 
     vm_byte *GetStart() { return start; }
@@ -61,7 +60,6 @@ public:
 
     void Alloc(vm_byte *_chunkPtr, vm_ui64 _amt, FreeChunksList &_freeChunks);
     void Free(vm_byte *_chunkPtr, FreeChunksList &_freeChunks);
-    void Defragment(FreeChunksList &_freeChunks);
 
     bool IsAllocated(vm_byte *_addr);
     bool HasAddress(vm_byte *_addr);
@@ -83,9 +81,6 @@ public:
         chunks = std::move(_b.chunks);
         return *this;
     }
-
-private:
-    void MergeConsecutiveChunks(Chunk *_first, FreeChunksList &_freeChunks, bool _allocateFinal);
 };
 
 class Heap
