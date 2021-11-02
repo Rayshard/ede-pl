@@ -23,9 +23,11 @@ int usage(const std::string &_cmd = "")
     {
         std::cout << "Usage: evm COMMAND [ARGS]...\n\n"
                      "Options:\n"
+#ifdef BUILD_DEBUG
                      "   --ibe      Print each instruction before it is executed.\n"
                      "   --sate     Print each thread's stack after the thread ends.\n"
                      "   --saie     Print each thread's stack after an instruction is executed.\n"
+#endif
                      "\n"
                      "Commands:\n"
                      "   test       Run test suite.\n"
@@ -34,9 +36,13 @@ int usage(const std::string &_cmd = "")
     }
     else if (_cmd == "run")
     {
-        std::cout << "Usage: evm run FILEPATH\n\n"
+        std::cout << "Usage: evm run FILEPATH [ARGS]...\n\n"
+                     "Options:\n"
+                     "  --no-gc         Disables the garbage collector.\n"
+                     "\n"
                      "Args:\n"
                      "  FILEPATH        The edeasm file to execute.\n"
+                     "  ARGS            List of arguments to pass to the program.\n"
                   << std::endl;
     }
     else
@@ -64,16 +70,43 @@ int test(const std::vector<std::string> &_args)
 
 int run(const std::vector<std::string> &_args)
 {
-    if (_args.size() != 1)
+    if (_args.empty())
         return usage("run");
+
+    bool runGC = true;
+    auto itArg = _args.begin();
+
+    while (itArg != _args.end())
+    {
+        auto arg = *itArg;
+        if (arg[0] != '-')
+            break;
+
+        //Add new options here
+        if (arg == "--no-gc")
+            runGC = false;
+        else
+        {
+            std::cout << "Unknown Option: " << arg << std::endl;
+            return usage("run");
+        }
+
+        itArg++;
+    }
+
+    if (itArg == _args.end())
+    {
+        std::cout << "Expected file path" << std::endl;
+        return usage("run");
+    }
+
+    auto filePath = *itArg;
+    std::vector<std::string> cmdLineArgs(itArg, _args.end());
 
     try
     {
-        //Parse the ede asm file
-        Program program = Instructions::ParseFile(_args[0]);
-
-        //Run
-        auto exitCode = VM().Run(64, &program[0]);
+        Program program = Instructions::ParseFile(filePath);                    //Parse the ede asm file
+        auto exitCode = VM(runGC).Run(64, &program[0], std::move(cmdLineArgs)); //Run
 
         std::cout << "\nExited with code " << exitCode << "." << std::endl;
         return exitCode;
@@ -102,7 +135,7 @@ int main(int _argc, char *_argv[])
     std::string arg;
 
     //Parse options
-    while(true)
+    while (true)
     {
         arg = _argv[iArg];
         if (arg[0] != '-')
@@ -123,7 +156,7 @@ int main(int _argc, char *_argv[])
             return usage();
         }
 
-        if(++iArg == _argc)
+        if (++iArg == _argc)
         {
             std::cout << "Expected Command" << std::endl;
             return usage();

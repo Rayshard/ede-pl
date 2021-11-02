@@ -52,6 +52,8 @@ class VM
 {
 private:
     Heap heap;
+    bool runGC;
+
     std::map<ThreadID, Thread> threads;
     ThreadID nextThreadID;
     VMExitCode exitCode;
@@ -63,13 +65,13 @@ private:
 public:
     std::mutex mutex;
 
-    VM();
+    VM(bool _runGC = false);
     ~VM();
 
-    vm_i64 Run(vm_ui64 _stackSize, vm_byte *_startIP);
+    vm_i64 Run(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<std::string>& _cmdLineArgs);
     void Quit(VMExitCode _code);
 
-    ThreadID SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP);
+    ThreadID SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<Word>& _args);
     Thread &GetThread(vm_ui64 _id);
     void SetStdIO(std::wstreambuf *_in = nullptr, std::wstreambuf *_out = nullptr);
 

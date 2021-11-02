@@ -80,7 +80,9 @@ void FreeChunksList::Print()
 #pragma region Chunk
 
 Chunk::Chunk(vm_byte *_start, vm_ui64 _size, Chunk *_prev, Chunk *_next)
-    : start(_start), size(_size), prev(_prev), next(_next), allocated(false) {}
+    : start(_start), size(_size), prev(_prev), next(_next), allocated(false)
+{
+}
 
 void Chunk::AssertHeuristics()
 {
@@ -258,7 +260,9 @@ void Block::Print()
 
 #pragma region Heap
 
-Heap::Heap() : blocks(), freeChunks(), size(0) {}
+Heap::Heap(VM *_vm) : vm(_vm), blocks(), freeChunks(), size(0), gcRunning(false)
+{
+}
 
 Heap::~Heap()
 {
@@ -353,6 +357,41 @@ bool Heap::IsAllocated(vm_byte *_addr)
     }
 
     return false;
+}
+
+void Heap::StartGC()
+{
+    gcRunning = true;
+    gcThread = std::thread([this]
+                           {
+                               try
+                               {
+                                   this->RunGC();
+                               }
+                               catch (const VMError &e)
+                               {
+                                   std::scoped_lock<std::mutex> lock(vm->mutex);
+                                   this->vm->Quit(e);
+                               }
+
+                               gcRunning = false;
+                           });
+}
+
+void Heap::RunGC()
+{
+    while (gcRunning)
+    {
+        //Collect roots
+        //Traverse and mark
+        //Free unmarked
+    }    
+}
+
+void Heap::StopGC()
+{
+    gcRunning = false;
+    gcThread.join();
 }
 
 void Heap::AssertHeuristics()

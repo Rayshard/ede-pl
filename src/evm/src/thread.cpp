@@ -13,14 +13,20 @@ Thread::Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP)
     stack = Memory(_stackSize);
 }
 
-void Thread::Start()
+void Thread::Start(const std::vector<Word> &_args)
 {
     isAlive = true;
-    thread = std::thread([this]
+
+    //Push incoming args onto stack
+    for (auto &arg : _args)
+        PushStack(arg);
+
+    //Start thread
+    thread = std::thread([this, _args]
                          {
                              try
                              {
-                                 this->Run();
+                                 this->Run(_args);
                              }
                              catch (const VMError &e)
                              {
@@ -35,12 +41,11 @@ void Thread::Start()
 #endif
                              isAlive = false;
                          });
-    thread.detach();
 }
 
-void Thread::Run()
+void Thread::Run(const std::vector<Word> &_args)
 {
-    while (vm->IsRunning())
+    while (vm->IsRunning() && isAlive)
     {
         std::scoped_lock<std::mutex> lock(vm->mutex); //Lock execution to a thread so that this finishes an instruction uninterrupted
 
@@ -65,8 +70,8 @@ void Thread::Run()
 
 void Thread::Join()
 {
-    while (isAlive)
-        ;
+    isAlive = false;
+    thread.join();
 }
 
 void Thread::PrintStack()
@@ -108,6 +113,6 @@ void Thread::PopFrame()
     stackPtr = framePtr;
     if (stackPtr > stack.size())
         throw VMError::STACK_OVERFLOW();
-    
+
     framePtr = PopStack<vm_ui64>();
 }

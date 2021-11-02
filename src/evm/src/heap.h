@@ -3,9 +3,11 @@
 #include <unordered_map>
 #include <iostream>
 #include <optional>
+#include <thread>
 
 #define MIN_HEAP_BLOCK_SIZE 1024ull
 
+class VM;
 struct Chunk;
 class Block;
 
@@ -85,12 +87,17 @@ public:
 
 class Heap
 {
+    VM *vm;
+
     std::vector<Block *> blocks;
     FreeChunksList freeChunks;
     size_t size;
 
+    std::thread gcThread;
+    bool gcRunning;
+
 public:
-    Heap();
+    Heap(VM *_vm);
     ~Heap();
 
     vm_byte *Alloc(vm_ui64 _amt);
@@ -98,16 +105,14 @@ public:
     bool IsAddress(vm_byte *_addr);
     bool IsAllocated(vm_byte *_addr);
 
+    void StartGC();
+    void StopGC();
+
     void AssertHeuristics();
     void Print();
 
     size_t GetSize() { return size; }
-};
 
-class GarbageCollector
-{
-    Heap *heap;
-
-public:
-    GarbageCollector(Heap *_heap);
+private:
+    void RunGC();
 };

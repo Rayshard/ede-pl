@@ -40,8 +40,8 @@ def build(output: str, tests: bool, debug: bool, debug_heap: bool):
             "cpps": {file_name: os.path.join('src/evm/src/', file_name) for file_name in cpp_file_names}
         }
 
-    if tests:
-        resources.get("cpps")["tests.cpp"] = 'src/evm/src/tests.cpp'
+    if not tests:
+        del resources.get("cpps")["tests.cpp"]
 
     # Set build flags
     with open(resources["build.h"], 'w') as f:

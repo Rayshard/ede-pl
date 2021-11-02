@@ -10,6 +10,14 @@ Todo:
     ✔ make VMResultStrings in evm a map @done(21-10-25 00:14)
     ✔ instead of using results...use exception throwing @done(21-10-25 03:30)
     ☐ write tests for evm parsing errors
+    ☐ Add cmd line arguments
+      ☐ push number of cmd line arguments on the stack
+      ☐ at the start of the program, a heap allocation occurs for the number of cmd args * WORD_SIZE (this pushes the pointer to that on the top of the stack)
+      ☐ for each cmd line arg, allocate space for string and plop into slot of above allocatoin
+    ☐ change evm global instr
+      ☐ vm should take in # globals as a parameter
+      ☐ at the start of the program, a heap allocation occurs for the number of globals * WORD_SIZE (this pushes the pointer to that on the top of the stack)
+      ☐ the GLOAD and GSOTRE instructions should thus load from and store to the relevant position in memory
     ☐ review testing
     ☐ add binop to add to chars together to make a string
     ☐ add binop to add to char and string together to make a string
@@ -32,8 +40,8 @@ Todo:
         ✔ LSTORE [idx]             - local store; pops the value from the top of the stack and stores it in the local at the specified idx @done(21-10-27 02:15)
         ✔ PLOAD [idx]              - param load; pushes the value of the parameter at the specified idx onto the stack @done(21-10-27 02:32)
         ✔ PSTORE [idx]             - param store; pops the value from the top of the stack and stores it in the parameter at the specified idx @done(21-10-27 02:32)
-        ✔ GLOAD [idx]              - global load; pushes the value of the global at the specified idx onto the stack @done(21-10-27 02:32)
-        ✔ GSTORE [idx]             - global store; pops the value from the top of the stack and stores it in the global at the specified idx @done(21-10-27 02:32)
+        ☐ GLOAD [idx]              - global load; gets the value of the global at the specified idx in the globals buffer and pushes onto the stack
+        ☐ GSTORE [idx]             - global store; pops the value from the top of the stack and stores it in the global at the specified idx in the global buffer
         ☐ MLOAD [offset]           - memory load; pops memory address from top of stack and pushes the value located at that address + offset onto the stack
         ☐ MSTORE [offset]          - memory store; pops memory address from top of stack then pops the value from the top of the stack and stores it at that address + offset
         ✔ SLOAD [offset]           - stack loads; loads the word located [offset] bytes from the top of the stack and pushes the value onto the stack @done(21-10-25 01:07)
