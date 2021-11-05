@@ -22,9 +22,9 @@ public:
 
     Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP);
 
-    void Start(const std::vector<Word>& _args);
+    void Start(vm_byte* _globalsArrayPtr, const std::vector<Word>& _args);
     void Join();
-    void Run(const std::vector<Word>& _args);
+    void Run();
 
     void PushFrame();
     void PopFrame();

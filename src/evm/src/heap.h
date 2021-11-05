@@ -43,7 +43,7 @@ class Chunk
 
 public:
     void AssertHeuristics();
-    void Print();
+    void Print(bool _showData);
 
     vm_byte *GetStart() { return start; }
     vm_ui64 GetSize() { return size; }
@@ -103,6 +103,7 @@ public:
     vm_byte *Alloc(vm_ui64 _amt);
     void Free(vm_byte *_addr);
     bool IsAddress(vm_byte *_addr);
+    bool IsAddressRange(vm_byte *_start, vm_byte *_end);
     bool IsAllocated(vm_byte *_addr);
 
     void StartGC();

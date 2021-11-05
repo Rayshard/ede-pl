@@ -2,31 +2,58 @@
 #include "evm.h"
 #include <vector>
 
-typedef Memory Program;
-
-namespace Instructions
+#pragma pack(push, 1) //This pragma ensures that the structed is packed and has no padding
+struct ProgramHeader
 {
-    void ValidateAndInitProgram(Program &_prog);
-    Program ParseFile(const std::string& _filePath);
-    Program ParseStream(std::istream& _stream);
+    vm_ui64 numGlobals = 0; //The number of globals used in the program
+    vm_ui64 entryPoint = 0; //The byte offset into the instructions data at which to start execution
+};
+#pragma pack(pop)
+
+class Program
+{
+    ProgramHeader header;
+    Memory code;
+
+public:
+    Program();
+    Program(Program &&_p) noexcept;
 
     template <class T>
-    void Insert(Program &_prog, T _value) { _prog.insert(_prog.end(), (vm_byte *)&_value, (vm_byte *)&_value + sizeof(_value)); }
+    void Insert(T _value) { code.insert(code.end(), (vm_byte *)&_value, (vm_byte *)&_value + sizeof(_value)); }
 
     template <typename Arg1, typename... Rest>
-    void Insert(Program &_prog, Arg1 _arg1, Rest const &..._rest)
+    void Insert(Arg1 _arg1, Rest const &..._rest)
     {
-        Insert(_prog, _arg1);
-        Insert(_prog, _rest...);
+        Insert(_arg1);
+        Insert(_rest...);
     }
 
+    void ValidateAndInit();
+
+    vm_byte *GetEntryPtr();
+    const ProgramHeader &GetHeader() { return header; }
+    const Memory &GetCode() { return code; };
+
+    Program &operator=(Program &&_p) noexcept
+    {
+        if (this == &_p)
+            return *this;
+
+        header = _p.header;
+        code = std::move(_p.code);
+        return *this;
+    }
+
+    static Program FromFile(const std::string &_filePath);
+    static Program FromStream(std::istream &_stream);
+
     template <typename Arg1, typename... Rest>
-    Program CreateProgram(Arg1 _arg1, Rest const &..._rest)
+    static Program FromCode(Arg1 _arg1, Rest const &..._rest)
     {
         Program program = Program();
-        Insert(program, _arg1);
-        Insert(program, _rest...);
-        ValidateAndInitProgram(program);
-        return program;
+        program.Insert(_arg1, _rest...);
+        program.ValidateAndInit();
+        return std::move(program);
     }
-}
+};

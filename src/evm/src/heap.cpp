@@ -69,7 +69,7 @@ void FreeChunksList::Print()
         for (auto &[c, b] : cb)
         {
             std::cout << "\t";
-            c->Print();
+            c->Print(false);
             std::cout << " in block " << (void *)b << std::endl;
         }
     }
@@ -91,7 +91,7 @@ void Chunk::AssertHeuristics()
     assert((!prev || (prev->next == this)) && "Chunk's previous should have it's next be this chunk!");
 }
 
-void Chunk::Print()
+void Chunk::Print(bool _showData)
 {
     std::cout << "Chunk at " << (void *)this << " { ";
     std::cout << "start: " << (void *)start << ", ";
@@ -100,6 +100,15 @@ void Chunk::Print()
     std::cout << "prev: " << (void *)prev << ", ";
     std::cout << "next: " << (void *)next;
     std::cout << " }";
+
+    if (_showData)
+    {
+        for (vm_ui64 pos = 0; pos < size; pos++)
+        {
+            auto byte = start[pos];
+            std::cout << (pos % 8 == 0 ? "\n\t\t" : "\t\t") << Hex(byte, false) << " | " << (std::isprint(byte) ? std::string(1, byte) : "~~");
+        }
+    }
 }
 
 #pragma endregion
@@ -249,7 +258,7 @@ void Block::Print()
     for (auto &[chunkStart, chunk] : chunks)
     {
         std::cout << '\t';
-        chunk->Print();
+        chunk->Print(true);
         std::cout << std::endl;
     }
 
@@ -348,6 +357,17 @@ bool Heap::IsAddress(vm_byte *_addr)
     return false;
 }
 
+bool Heap::IsAddressRange(vm_byte *_start, vm_byte *_end)
+{
+    for (auto &block : blocks)
+    {
+        if (block->HasAddress(_start))
+            return block->HasAddress(_end);
+    }
+
+    return false;
+}
+
 bool Heap::IsAllocated(vm_byte *_addr)
 {
     for (auto &block : blocks)
@@ -385,7 +405,7 @@ void Heap::RunGC()
         //Collect roots
         //Traverse and mark
         //Free unmarked
-    }    
+    }
 }
 
 void Heap::StopGC()

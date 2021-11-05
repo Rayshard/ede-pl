@@ -135,7 +135,7 @@ namespace Instructions
 
     void SYSCALL_PRINTC(Thread *_thread)
     {
-        _thread->GetVM()->GetStdOut() << static_cast<wchar_t>(_thread->PopStack<vm_i64>());
+        _thread->GetVM()->GetStdOut() << (char)_thread->PopStack<vm_i64>();
     }
 
     void SYSCALL_MALLOC(Thread *_thread)
@@ -221,14 +221,48 @@ namespace Instructions
 
     void GLOAD(Thread *_thread)
     {
-        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
-        _thread->PushStack(_thread->ReadStack<Word>(idx * WORD_SIZE));
+        vm_ui64 idx = *(vm_ui64 *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_byte* addr = _thread->ReadStack<vm_byte*>(0) + idx * WORD_SIZE;
+        
+        if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
+            throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
+        
+        _thread->PushStack(*(Word*)addr);
     }
 
     void GSTORE(Thread *_thread)
     {
-        vm_ui32 idx = *(vm_ui32 *)&_thread->instrPtr[OP_CODE_SIZE];
-        _thread->WriteStack(idx * WORD_SIZE, _thread->PopStack<Word>());
+        vm_ui64 idx = *(vm_ui64 *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_byte* addr = _thread->ReadStack<vm_byte*>(0) + idx * WORD_SIZE;
+        Word value = _thread->PopStack<Word>();
+        
+        if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
+            throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
+        
+        std::copy((vm_byte *)&value, (vm_byte *)&value + sizeof(value), addr);
+    }
+
+    void MLOAD(Thread *_thread)
+    {
+        vm_i64 offset = *(vm_i64 *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_byte *addr = _thread->PopStack<Word>().as_ptr + offset;
+
+        if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
+            throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
+        
+        _thread->PushStack(*(Word*)addr);
+    }
+
+    void MSTORE(Thread *_thread)
+    {
+        vm_i64 offset = *(vm_i64 *)&_thread->instrPtr[OP_CODE_SIZE];
+        vm_byte *addr = _thread->PopStack<Word>().as_ptr + offset;
+        Word value = _thread->PopStack<Word>();
+
+        if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
+            throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
+
+        std::copy((vm_byte *)&value, (vm_byte *)&value + sizeof(value), addr);
     }
 #pragma endregion
 
@@ -259,6 +293,8 @@ namespace Instructions
         ExecutionFuncs[(size_t)OpCode::GSTORE] = &GSTORE;
         ExecutionFuncs[(size_t)OpCode::PLOAD] = &PLOAD;
         ExecutionFuncs[(size_t)OpCode::PSTORE] = &PSTORE;
+        ExecutionFuncs[(size_t)OpCode::MLOAD] = &MLOAD;
+        ExecutionFuncs[(size_t)OpCode::MSTORE] = &MSTORE;
         ExecutionFuncs[(size_t)OpCode::I2D] = &I2D;
         ExecutionFuncs[(size_t)OpCode::D2I] = &D2I;
         ExecutionFuncs[(size_t)OpCode::CALL] = &CALL;
@@ -343,13 +379,17 @@ namespace Instructions
         case OpCode::LSTORE:
             return "LSTORE " + std::to_string(*(vm_ui32 *)&_instr[1]);
         case OpCode::GLOAD:
-            return "GLOAD " + std::to_string(*(vm_ui32 *)&_instr[1]);
+            return "GLOAD " + std::to_string(*(vm_ui64 *)&_instr[1]);
         case OpCode::GSTORE:
-            return "GSTORE " + std::to_string(*(vm_ui32 *)&_instr[1]);
+            return "GSTORE " + std::to_string(*(vm_ui64 *)&_instr[1]);
         case OpCode::PLOAD:
             return "PLOAD " + std::to_string(*(vm_ui32 *)&_instr[1]);
         case OpCode::PSTORE:
             return "PSTORE " + std::to_string(*(vm_ui32 *)&_instr[1]);
+            case OpCode::MLOAD:
+            return "MLOAD " + std::to_string(*(vm_i64 *)&_instr[1]);
+        case OpCode::MSTORE:
+            return "MSTORE " + std::to_string(*(vm_i64 *)&_instr[1]);
         default:
             assert(false && "Case not handled");
         }

@@ -9,6 +9,7 @@
 bool PRINT_INSTR_BEFORE_EXECUTION = false;
 bool PRINT_STACK_AFTER_THREAD_END = false;
 bool PRINT_STACK_AFTER_INSTR_EXECUTION = false;
+bool PRINT_HEAP_AFTER_PROGRAM_END = false;
 #endif
 
 #ifdef BUILD_WITH_TESTS
@@ -27,6 +28,7 @@ int usage(const std::string &_cmd = "")
                      "   --ibe      Print each instruction before it is executed.\n"
                      "   --sate     Print each thread's stack after the thread ends.\n"
                      "   --saie     Print each thread's stack after an instruction is executed.\n"
+                     "   --hape     Print the heap after the program ends.\n"
 #endif
                      "\n"
                      "Commands:\n"
@@ -105,8 +107,12 @@ int run(const std::vector<std::string> &_args)
 
     try
     {
-        Program program = Instructions::ParseFile(filePath);                    //Parse the ede asm file
-        auto exitCode = VM(runGC).Run(64, &program[0], std::move(cmdLineArgs)); //Run
+        //TODO: first instruction should be CALL MAIN
+        //the args for main is the array of cmdline args and it will already
+        //be in the place where the paramters are
+
+        Program program = Program::FromFile(filePath);                  //Parse the ede asm file
+        auto exitCode = VM(runGC).Run(1024, program, std::move(cmdLineArgs)); //Run
 
         std::cout << "\nExited with code " << exitCode << "." << std::endl;
         return exitCode;
@@ -149,6 +155,8 @@ int main(int _argc, char *_argv[])
             PRINT_STACK_AFTER_INSTR_EXECUTION = true;
         else if (arg == "--sate")
             PRINT_STACK_AFTER_THREAD_END = true;
+        else if (arg == "--hape")
+            PRINT_HEAP_AFTER_PROGRAM_END = true;
         else
 #endif
         {

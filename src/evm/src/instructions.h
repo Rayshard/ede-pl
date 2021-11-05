@@ -21,6 +21,8 @@ namespace Instructions
         PSTORE,
         GLOAD,
         GSTORE,
+        MLOAD,
+        MSTORE,
 
         //BINOPS
         IADD,
@@ -98,11 +100,13 @@ namespace Instructions
             return OP_CODE_SIZE + SYSCALL_CODE_SIZE;
         case OpCode::SLOAD:
         case OpCode::SSTORE:
+        case OpCode::MLOAD:
+        case OpCode::MSTORE:
+        case OpCode::GLOAD:
+        case OpCode::GSTORE:
             return OP_CODE_SIZE + VM_I64_SIZE;
         case OpCode::LLOAD:
         case OpCode::LSTORE:
-        case OpCode::GLOAD:
-        case OpCode::GSTORE:
         case OpCode::PLOAD:
         case OpCode::PSTORE:
             return OP_CODE_SIZE + VM_UI32_SIZE;

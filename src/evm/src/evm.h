@@ -63,10 +63,20 @@ union Word
 static_assert(sizeof(Word) == WORD_SIZE, "Word is not the right size!");
 
 template <typename T>
-std::string Hex(const T &_value)
+std::string Hex(const T &_value, bool _includePrefix = true)
 {
-    std::stringstream stream("0x");
-    stream << std::setfill('0') << std::setw(sizeof(T) * 2) << std::hex << _value;
+    auto first = (vm_byte *)&_value;
+    auto last = first + sizeof(_value);
+    std::ostringstream stream;
+
+    if (_includePrefix)
+        stream << "0x";
+
+    stream << std::hex << std::setfill('0') << std::uppercase;
+
+    while (first != last)
+        stream << std::setw(2) << (vm_ui32)*first++;
+
     return stream.str();
 }
 
@@ -75,7 +85,7 @@ std::string PtrToStr(T *_ptr)
 {
     const void *ptr = static_cast<const void *>(_ptr);
     std::stringstream ss;
-    
+
     ss << ptr;
     return ss.str();
 }

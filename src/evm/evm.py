@@ -60,6 +60,7 @@ def build(output: str, tests: bool, debug: bool, debug_heap: bool):
             f.write("\textern bool PRINT_STACK_AFTER_THREAD_END;\n")
             f.write("\textern bool PRINT_STACK_AFTER_INSTR_EXECUTION;\n")
             f.write("\textern bool PRINT_INSTR_BEFORE_EXECUTION;\n")
+            f.write("\textern bool PRINT_HEAP_AFTER_PROGRAM_END;\n")
             f.write("#endif\n")
 
     # Build executable

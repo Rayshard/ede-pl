@@ -21,6 +21,7 @@ enum class VMErrorType
     MEMORY_NOT_ALLOCATED,        // Attempted to free unallocated memory
     INVALID_THREAD_ID,           // A thread with that id either has never been created or has already died
     CANNOT_FREE_UNALLOCATED_PTR, // Cannot free an unallocated memory pointer
+    INVALID_MEM_ACCESS,          // Invalid access to memory
     _COUNT
 };
 
@@ -44,6 +45,7 @@ public:
     static VMError MEMORY_NOT_ALLOCATED() { return VMError(VMErrorType::INVALID_FP, "Attempted to free unallocated memory!"); }
     static VMError INVALID_THREAD_ID(ThreadID _id) { return VMError(VMErrorType::INVALID_THREAD_ID, "A thread with id [" + std::to_string(_id) + "] does not exist or has already died!"); }
     static VMError CANNOT_FREE_UNALLOCATED_PTR(vm_byte *_ptr) { return VMError(VMErrorType::CANNOT_FREE_UNALLOCATED_PTR, "Cannot free unallocated memory pointer: " + PtrToStr(_ptr)); }
+    static VMError INVALID_MEM_ACCESS(vm_byte *_start, vm_byte* _end) { return VMError(VMErrorType::INVALID_MEM_ACCESS, "An address in the range " + PtrToStr(_start) + " : " + PtrToStr(_end) + " is not accessable!"); }
 };
 
 typedef std::variant<VMError, vm_i64> VMExitCode;
@@ -57,8 +59,9 @@ private:
     std::map<ThreadID, Thread> threads;
     ThreadID nextThreadID;
     VMExitCode exitCode;
-    std::wistream stdInput;
-    std::wostream stdOutput;
+    std::istream stdInput;
+    std::ostream stdOutput;
+    vm_byte* globalsArrayPtr;
 
     bool running;
 
@@ -68,15 +71,15 @@ public:
     VM(bool _runGC = false);
     ~VM();
 
-    vm_i64 Run(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<std::string>& _cmdLineArgs);
+    vm_i64 Run(vm_ui64 _stackSize, Program& _prog, const std::vector<std::string> &_cmdLineArgs);
     void Quit(VMExitCode _code);
 
-    ThreadID SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<Word>& _args);
+    ThreadID SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<Word> &_args);
     Thread &GetThread(vm_ui64 _id);
-    void SetStdIO(std::wstreambuf *_in = nullptr, std::wstreambuf *_out = nullptr);
+    void SetStdIO(std::streambuf *_in = nullptr, std::streambuf *_out = nullptr);
 
     bool IsRunning() { return running; }
-    std::wistream &GetStdIn() { return stdInput; }
-    std::wostream &GetStdOut() { return stdOutput; }
+    std::istream &GetStdIn() { return stdInput; }
+    std::ostream &GetStdOut() { return stdOutput; }
     Heap &GetHeap() { return heap; }
 };

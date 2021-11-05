@@ -1,36 +1,43 @@
 #include "vm.h"
 #include "thread.h"
 #include "instructions.h"
+#include "../build.h"
 #include <iostream>
 
 VM::VM(bool _runGC)
-    : heap(this), runGC(_runGC), threads(), running(false), nextThreadID(0), exitCode(0), stdInput(std::wcin.rdbuf()), stdOutput(std::wcout.rdbuf()) {}
+    : heap(this), runGC(_runGC), threads(), running(false), nextThreadID(0), exitCode(0), stdInput(std::cin.rdbuf()), stdOutput(std::cout.rdbuf()) {}
 
 VM::~VM()
 {
 }
 
-vm_i64 VM::Run(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<std::string> &_cmdLineArgs)
+vm_i64 VM::Run(vm_ui64 _stackSize, Program& _prog, const std::vector<std::string> &_cmdLineArgs)
 {
     running = true;
 
-    //Start main thread
-    std::vector<Word> args(_cmdLineArgs.size() + 1);
+    //Allocate space for globals
+    globalsArrayPtr = _prog.GetHeader().numGlobals == 0 ? nullptr : heap.Alloc(_prog.GetHeader().numGlobals * WORD_SIZE);
 
-    for (auto it = _cmdLineArgs.rbegin(); it != _cmdLineArgs.rend(); it++)
+    // Store command line arguments
+    auto argsArraySize = (vm_ui64)_cmdLineArgs.size();
+    auto argsArrayPtr = heap.Alloc(VM_UI64_SIZE + _cmdLineArgs.size() * VM_PTR_SIZE);
+    auto argsArrayPtrValues = (vm_byte **)&argsArrayPtr[VM_UI64_SIZE];
+
+    std::copy((vm_byte *)&argsArraySize, (vm_byte *)&argsArraySize + VM_UI64_SIZE, argsArrayPtr); //Store number of cmd line args
+
+    //Store each cmd line arg
+    for (vm_ui64 iArg = 0; iArg < argsArraySize; iArg++)
     {
-        auto arg = *it;
+        auto arg = _cmdLineArgs[iArg];
         Word argSize = (vm_ui64)arg.size();
-        auto ptr = heap.Alloc(arg.size() + WORD_SIZE);
+        auto argPtr = (argsArrayPtrValues[iArg] = heap.Alloc(arg.size() + VM_UI64_SIZE)); //store string ptr
 
-        std::copy((vm_byte*)&argSize, (vm_byte*)&argSize + WORD_SIZE, ptr);
-        std::copy((vm_byte*)&arg.front(), (vm_byte*)&arg.back(), ptr + WORD_SIZE);
-        args.push_back(ptr);
+        std::copy((vm_byte *)&argSize, (vm_byte *)&argSize + WORD_SIZE, argPtr); //store string size
+        std::copy(arg.begin(), arg.end(), argPtr + WORD_SIZE);                   //store string chars
     }
 
-    args.push_back((vm_ui64)_cmdLineArgs.size()); //Add the number of arguments
-
-    SpawnThread(_stackSize, _startIP, args);
+    //Start main thread
+    SpawnThread(_stackSize, _prog.GetEntryPtr(), {argsArrayPtr});
 
     //Possibly start garbage collector
     if (runGC)
@@ -72,6 +79,11 @@ vm_i64 VM::Run(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<std::str
     if (runGC)
         heap.StopGC();
 
+#ifdef BUILD_DEBUG
+    if (PRINT_HEAP_AFTER_PROGRAM_END)
+        heap.Print();
+#endif
+
     //Return exit code or error
     if (const VMError *error = std::get_if<VMError>(&exitCode))
         throw *error;
@@ -95,7 +107,7 @@ ThreadID VM::SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP, const std::vecto
 
     auto id = nextThreadID++;
     threads.emplace(id, Thread(this, id, _stackSize, _startIP));
-    threads.at(id).Start(_args);
+    threads.at(id).Start(globalsArrayPtr, _args);
     return id;
 }
 
@@ -108,8 +120,8 @@ Thread &VM::GetThread(ThreadID _id)
     return idSearch->second;
 }
 
-void VM::SetStdIO(std::wstreambuf *_in, std::wstreambuf *_out)
+void VM::SetStdIO(std::streambuf *_in, std::streambuf *_out)
 {
-    stdInput.rdbuf(_in ? _in : std::wcin.rdbuf());
-    stdOutput.rdbuf(_out ? _out : std::wcout.rdbuf());
+    stdInput.rdbuf(_in ? _in : std::cin.rdbuf());
+    stdOutput.rdbuf(_out ? _out : std::cout.rdbuf());
 }

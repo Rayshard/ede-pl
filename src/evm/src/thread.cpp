@@ -13,9 +13,12 @@ Thread::Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP)
     stack = Memory(_stackSize);
 }
 
-void Thread::Start(const std::vector<Word> &_args)
+void Thread::Start(vm_byte* _globalsArrayPtr, const std::vector<Word> &_args)
 {
     isAlive = true;
+
+    //Push globals array pointer onto stack
+    PushStack(_globalsArrayPtr);
 
     //Push incoming args onto stack
     for (auto &arg : _args)
@@ -26,7 +29,7 @@ void Thread::Start(const std::vector<Word> &_args)
                          {
                              try
                              {
-                                 this->Run(_args);
+                                 this->Run();
                              }
                              catch (const VMError &e)
                              {
@@ -43,7 +46,7 @@ void Thread::Start(const std::vector<Word> &_args)
                          });
 }
 
-void Thread::Run(const std::vector<Word> &_args)
+void Thread::Run()
 {
     while (vm->IsRunning() && isAlive)
     {
@@ -80,11 +83,13 @@ void Thread::PrintStack()
 
     for (uint64_t i = 0; i < stackPtr; i += WORD_SIZE)
     {
-        std::cout << ":\ti32: " << ((Word *)&stack[i])->as_i32;
-        std::cout << "\ti64: " << ((Word *)&stack[i])->as_i64;
-        std::cout << "\tf32: " << ((Word *)&stack[i])->as_f32;
-        std::cout << "\tf64: " << ((Word *)&stack[i])->as_f64;
-        std::cout << "\tptr: " << ((Word *)&stack[i])->as_ptr;
+        std::cout << reinterpret_cast<void *>(&stack[i]);
+        std::cout << ":     i32: " << ((Word *)&stack[i])->as_i32;
+        std::cout << "     i64: " << ((Word *)&stack[i])->as_i64;
+        std::cout << "     ui64: " << ((Word *)&stack[i])->as_ui64;
+        std::cout << "     f32: " << ((Word *)&stack[i])->as_f32;
+        std::cout << "     f64: " << ((Word *)&stack[i])->as_f64;
+        std::cout << "     ptr: " << (void*)((Word *)&stack[i])->as_ptr;
 
         if (i + WORD_SIZE == stackPtr)
             std::cout << "\t\t<-------";
