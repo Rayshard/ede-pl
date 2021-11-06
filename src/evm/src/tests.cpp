@@ -10,7 +10,7 @@
 
 INIT_TEST_SUITE();
 
-using Instructions::OpCode, Instructions::SysCallCode;
+using Instructions::OpCode, Instructions::SysCallCode, Instructions::DataType;
 
 DEFINE_TEST(NOOP)
 {
@@ -19,7 +19,7 @@ DEFINE_TEST(NOOP)
         OpCode::NOOP,
         OpCode::PUSH, 456ll,
         OpCode::NOOP,
-        OpCode::IADD,
+        OpCode::ADD, DataType::I64,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     ASSERT(VM().Run(64, program, {}) == 579ll);
@@ -44,6 +44,11 @@ DEFINE_TEST(POP)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     ASSERT(VM().Run(64, program, {}) == 789ll);
+}
+
+DEFINE_TEST(CONVERT)
+{
+    ASSERT(false);
 }
 
 #pragma region Instructions
@@ -92,13 +97,13 @@ DEFINE_TEST(LLOAD)
     std::stringstream stream(
         "   CALL @FUNC 16\n"
         "@FUNC:\n"
-        "   PUSHI 123"
+        "   PUSH I64 123"
         "   SSTORE -16\n"
-        "   PUSHI 456"
+        "   PUSH I64 456"
         "   SSTORE -8\n"
         "   LLOAD 0"
         "   LLOAD 1"
-        "   IADD"
+        "   ADD I64"
         "   EXIT\n");
     Program program = Program::FromStream(stream);
 
@@ -110,13 +115,13 @@ DEFINE_TEST(LSTORE)
     std::stringstream stream(
         "   CALL @FUNC 16\n"
         "@FUNC:\n"
-        "   PUSHI 123\n"
+        "   PUSH I64 123\n"
         "   LSTORE 0\n"
-        "   PUSHI 456\n"
+        "   PUSH I64 456\n"
         "   LSTORE 1\n"
         "   LLOAD 0\n"
         "   LLOAD 1\n"
-        "   IADD\n"
+        "   ADD I64\n"
         "   EXIT\n");
     Program program = Program::FromStream(stream);
 
@@ -126,13 +131,13 @@ DEFINE_TEST(LSTORE)
 DEFINE_TEST(PLOAD)
 {
     std::stringstream stream(
-        "   PUSHI 123"
-        "   PUSHI 456"
+        "   PUSH I64 123"
+        "   PUSH I64 456"
         "   CALL @FUNC 0\n"
         "@FUNC:\n"
         "   PLOAD 1"
         "   PLOAD 0"
-        "   ISUB"
+        "   SUB I64"
         "   EXIT\n");
     Program program = Program::FromStream(stream);
     ASSERT(VM().Run(72, program, {}) == 333);
@@ -141,15 +146,15 @@ DEFINE_TEST(PLOAD)
 DEFINE_TEST(PSTORE)
 {
     std::stringstream stream(
-        "   PUSHI 0\n"
-        "   PUSHI 0\n"
+        "   PUSH I64 0\n"
+        "   PUSH I64 0\n"
         "   CALL @FUNC 0\n"
-        "   ISUB\n"
+        "   SUB I64\n"
         "   EXIT\n"
         "@FUNC:\n"
-        "   PUSHI 123\n"
+        "   PUSH I64 123\n"
         "   PSTORE 1\n"
-        "   PUSHI 456\n"
+        "   PUSH I64 456\n"
         "   PSTORE 0\n"
         "   RET\n");
     Program program = Program::FromStream(stream);
@@ -159,16 +164,16 @@ DEFINE_TEST(PSTORE)
 DEFINE_TEST(GLOAD_GSTORE)
 {
     std::stringstream stream(
-        "   PUSHI 456"
-        "   PUSHI 123"
+        "   PUSH I64 456"
+        "   PUSH I64 123"
         "   SLOAD -16"
         "   SLOAD -16"
         "   GSTORE $first"
         "   GSTORE $second"
-        "   PUSHI 789"
+        "   PUSH I64 789"
         "   GLOAD $first"
         "   GLOAD $second"
-        "   ISUB"
+        "   SUB I64"
         "   EXIT\n");
     Program program = Program::FromStream(stream);
     ASSERT(VM().Run(72, program, {}) == 333);
@@ -176,114 +181,74 @@ DEFINE_TEST(GLOAD_GSTORE)
 #pragma endregion
 
 #pragma region Binops
-DEFINE_TEST(IADD)
+DEFINE_TEST(ADD)
 {
-    Program program = Program::FromCode(
-        OpCode::PUSH, 123ll,
-        OpCode::PUSH, 456ll,
-        OpCode::IADD,
-        OpCode::SYSCALL, SysCallCode::EXIT);
+    Program program;
 
-    ASSERT(VM().Run(64, program, {}) == 579ll);
+    //I8
+    program = Program::FromString("PUSH I8 16 PUSH I8 17 ADD I8 CONVERT I8 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //UI8
+    program = Program::FromString("PUSH UI8 16 PUSH UI8 17 ADD UI8 CONVERT UI8 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //I16
+    program = Program::FromString("PUSH I16 16 PUSH I16 17 ADD I16 CONVERT I16 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //UI16
+    program = Program::FromString("PUSH UI16 16 PUSH UI16 17 ADD UI16 CONVERT UI16 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //I32
+    program = Program::FromString("PUSH I32 16 PUSH I32 17 ADD I32 CONVERT I32 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //UI32
+    program = Program::FromString("PUSH UI32 16 PUSH UI32 17 ADD UI32 CONVERT UI32 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //I64
+    program = Program::FromString("PUSH I64 16 PUSH I64 17 ADD I64 CONVERT I64 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //UI64
+    program = Program::FromString("PUSH UI64 16 PUSH UI64 17 ADD UI64 CONVERT UI64 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //F32
+    program = Program::FromString("PUSH F32 16.0 PUSH F32 17.0 ADD F32 CONVERT F32 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
+
+    //F64
+    program = Program::FromString("PUSH F64 16.0 PUSH F64 17.0 ADD F64 CONVERT F64 I64 EXIT");
+    ASSERT(VM().Run(64, program, {}) == 33ll);
 }
 
-DEFINE_TEST(ISUB)
+DEFINE_TEST(SUB)
 {
-    Program program = Program::FromCode(
-        OpCode::PUSH, 456ll,
-        OpCode::PUSH, 123ll,
-        OpCode::ISUB,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(VM().Run(64, program, {}) == -333ll);
+    ASSERT(false);
 }
 
-DEFINE_TEST(IMUL)
+DEFINE_TEST(MUL)
 {
-    Program program = Program::FromCode(
-        OpCode::PUSH, 123ll,
-        OpCode::PUSH, 456ll,
-        OpCode::IMUL,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(VM().Run(64, program, {}) == 56088ll);
+    ASSERT(false);
 }
 
-DEFINE_TEST(IDIV)
+DEFINE_TEST(DIV)
 {
-    Program program = Program::FromCode(
-        OpCode::PUSH, 20ll,
-        OpCode::PUSH, 100ll,
-        OpCode::IDIV,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(VM().Run(64, program, {}) == 5ll);
-}
-
-DEFINE_TEST(DADD)
-{
-    Program program = Program::FromCode(
-        OpCode::PUSH, 123.0,
-        OpCode::PUSH, 456.0,
-        OpCode::DADD,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(Word(VM().Run(64, program, {})).as_f64 == 579.0);
-}
-
-DEFINE_TEST(DSUB)
-{
-    Program program = Program::FromCode(
-        OpCode::PUSH, 456.0,
-        OpCode::PUSH, 123.0,
-        OpCode::DSUB,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(Word(VM().Run(64, program, {})).as_f64 == -333.0);
-}
-
-DEFINE_TEST(DMUL)
-{
-    Program program = Program::FromCode(
-        OpCode::PUSH, 123.0,
-        OpCode::PUSH, 456.0,
-        OpCode::DMUL,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(Word(VM().Run(64, program, {})).as_f64 == 56088.0);
-}
-
-DEFINE_TEST(DDIV)
-{
-    Program program = Program::FromCode(
-        OpCode::PUSH, 20.0,
-        OpCode::PUSH, 100.0,
-        OpCode::DDIV,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(Word(VM().Run(64, program, {})).as_f64 == 5.0);
+    ASSERT(false);
 }
 
 DEFINE_TEST(EQ)
 {
-    Program program = Program::FromCode(
-        OpCode::PUSH, 100.0,
-        OpCode::PUSH, 100.0,
-        OpCode::EQ,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(VM().Run(64, program, {}) == 1ull);
+    ASSERT(false);
 }
 
 DEFINE_TEST(NEQ)
 {
-    Program program = Program::FromCode(
-        OpCode::PUSH, 100ll,
-        OpCode::PUSH, 100ll,
-        OpCode::NEQ,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(VM().Run(64, program, {}) == 0ull);
+    ASSERT(false);
 }
 #pragma endregion
 
@@ -303,12 +268,13 @@ DEFINE_TEST(JUMP)
 
 DEFINE_TEST(CALL1)
 {
-    std::stringstream stream("   CALL @FUNC 48\n"
-                             "   PUSHI 0\n"
-                             "   EXIT\n"
-                             "@FUNC:\n"
-                             "   PUSHI 1\n"
-                             "   EXIT\n");
+    std::stringstream stream(
+        "   CALL @FUNC 48\n"
+        "   PUSH I64 0\n"
+        "   EXIT\n"
+        "@FUNC:\n"
+        "   PUSH I64 1\n"
+        "   EXIT\n");
     Program program = Program::FromStream(stream);
 
     ASSERT(VM().Run(88, program, {}) == 1);
@@ -316,13 +282,14 @@ DEFINE_TEST(CALL1)
 
 DEFINE_TEST(CALL2)
 {
-    std::stringstream stream("   CALL @FUNC 48\n"
-                             "   PUSHI 0\n"
-                             "   EXIT\n"
-                             "@FUNC:\n"
-                             "   PUSHI 1\n"
-                             "   PUSHI 2\n"
-                             "   EXIT\n");
+    std::stringstream stream(
+        "   CALL @FUNC 48\n"
+        "   PUSH I64 0\n"
+        "   EXIT\n"
+        "@FUNC:\n"
+        "   PUSH I64 1\n"
+        "   PUSH I64 2\n"
+        "   EXIT\n");
     Program program = Program::FromStream(stream);
 
     try
@@ -330,7 +297,7 @@ DEFINE_TEST(CALL2)
         VM().Run(80, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::STACK_OVERFLOW);
     }
@@ -338,14 +305,15 @@ DEFINE_TEST(CALL2)
 
 DEFINE_TEST(RET1)
 {
-    std::stringstream stream("   CALL @FUNC 16\n"
-                             "   PUSHI 123\n"
-                             "   PUSHI 456\n"
-                             "   PUSHI 789\n"
-                             "   PUSHI 147\n"
-                             "   EXIT\n"
-                             "@FUNC:\n"
-                             "   RET\n");
+    std::stringstream stream(
+        "   CALL @FUNC 16\n"
+        "   PUSH I64 123\n"
+        "   PUSH I64 456\n"
+        "   PUSH I64 789\n"
+        "   PUSH I64 147\n"
+        "   EXIT\n"
+        "@FUNC:\n"
+        "   RET\n");
     Program program = Program::FromStream(stream);
 
     ASSERT(VM().Run(48, program, {}) == 147);
@@ -353,15 +321,16 @@ DEFINE_TEST(RET1)
 
 DEFINE_TEST(RET2)
 {
-    std::stringstream stream("   CALL @FUNC 16\n"
-                             "   PUSHI 123\n"
-                             "   PUSHI 456\n"
-                             "   PUSHI 789\n"
-                             "   PUSHI 147\n"
-                             "   PUSHI 258\n"
-                             "   EXIT\n"
-                             "@FUNC:\n"
-                             "   RET\n");
+    std::stringstream stream(
+        "   CALL @FUNC 16\n"
+        "   PUSH I64 123\n"
+        "   PUSH I64 456\n"
+        "   PUSH I64 789\n"
+        "   PUSH I64 147\n"
+        "   PUSH I64 258\n"
+        "   EXIT\n"
+        "@FUNC:\n"
+        "   RET\n");
     Program program = Program::FromStream(stream);
 
     try
@@ -369,7 +338,7 @@ DEFINE_TEST(RET2)
         VM().Run(48, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::STACK_OVERFLOW);
     }
@@ -377,11 +346,12 @@ DEFINE_TEST(RET2)
 
 DEFINE_TEST(RETV)
 {
-    std::stringstream stream("   CALL @FUNC 16\n"
-                             "   EXIT\n"
-                             "@FUNC:\n"
-                             "   PUSHI 123\n"
-                             "   RETV\n");
+    std::stringstream stream(
+        "   CALL @FUNC 16\n"
+        "   EXIT\n"
+        "@FUNC:\n"
+        "   PUSH I64 123\n"
+        "   RETV\n");
     Program program = Program::FromStream(stream);
 
     ASSERT(VM().Run(56, program, {}) == 123);
@@ -452,7 +422,7 @@ DEFINE_TEST(SYSCALL_MALLOC)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm;
-    vm_byte *address = (vm_byte *)Word(vm.Run(24, program, {})).as_ptr;
+    vm_byte* address = (vm_byte*)Word(vm.Run(24, program, {})).as_ptr;
     ASSERT(vm.GetHeap().IsAllocated(address));
 }
 
@@ -466,46 +436,20 @@ DEFINE_TEST(SYSCALL_FREE)
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     VM vm;
-    vm_byte *address = (vm_byte *)Word(vm.Run(32, program, {})).as_ptr;
+    vm_byte* address = (vm_byte*)Word(vm.Run(32, program, {})).as_ptr;
     ASSERT(!vm.GetHeap().IsAllocated(address));
-}
-#pragma endregion
-
-#pragma region Converters
-DEFINE_TEST(D2I)
-{
-    Program program = Program::FromCode(
-        OpCode::PUSH, 123ll,
-        OpCode::PUSH, 456.0,
-        OpCode::D2I,
-        OpCode::IADD,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(VM().Run(64, program, {}) == 579ll);
-}
-
-DEFINE_TEST(I2D)
-{
-    Program program = Program::FromCode(
-        OpCode::PUSH, 456.0,
-        OpCode::PUSH, 123ll,
-        OpCode::I2D,
-        OpCode::DADD,
-        OpCode::SYSCALL, SysCallCode::EXIT);
-
-    ASSERT(Word(VM().Run(64, program, {})).as_f64 == 579.0);
 }
 #pragma endregion
 
 #pragma endregion
 
 #pragma region VMErrors
-DEFINE_TEST(IDIV_DIV_BY_ZERO)
+DEFINE_TEST(DIV_I64_DIV_BY_ZERO)
 {
     Program program = Program::FromCode(
         OpCode::PUSH, 0ll,
         OpCode::PUSH, 100ll,
-        OpCode::IDIV,
+        OpCode::DIV, DataType::I64,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     try
@@ -513,18 +457,18 @@ DEFINE_TEST(IDIV_DIV_BY_ZERO)
         VM().Run(64, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::DIV_BY_ZERO);
     }
 }
 
-DEFINE_TEST(DDIV_DIV_BY_ZERO)
+DEFINE_TEST(DIV_F64_DIV_BY_ZERO)
 {
     Program program = Program::FromCode(
         OpCode::PUSH, 0.0,
         OpCode::PUSH, 100.0,
-        OpCode::DDIV,
+        OpCode::DIV, DataType::F64,
         OpCode::SYSCALL, SysCallCode::EXIT);
 
     try
@@ -532,7 +476,7 @@ DEFINE_TEST(DDIV_DIV_BY_ZERO)
         VM().Run(64, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::DIV_BY_ZERO);
     }
@@ -552,7 +496,7 @@ DEFINE_TEST(STACK_OVERFLOW)
         VM().Run(24, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::STACK_OVERFLOW);
     }
@@ -572,7 +516,7 @@ DEFINE_TEST(STACK_UNDERFLOW)
         VM().Run(24, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::STACK_UNDERFLOW);
     }
@@ -584,17 +528,15 @@ DEFINE_TEST(UNKNOWN_OP_CODE)
     program.Insert(
         OpCode::PUSH, 100ll,
         OpCode::_COUNT, 100ull,
-        OpCode::SYSCALL, SysCallCode::EXIT);
+        OpCode::SYSCALL, SysCallCode::EXIT
+    );
 
     try
     {
         VM().Run(24, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
-    {
-        ASSERT(e.GetType() == VMErrorType::UNKNOWN_OP_CODE);
-    }
+    catch (const VMError& e) { ASSERT(e.GetType() == VMErrorType::UNKNOWN_OP_CODE); }
 }
 
 DEFINE_TEST(UNKNOWN_SYSCALL_CODE)
@@ -608,7 +550,7 @@ DEFINE_TEST(UNKNOWN_SYSCALL_CODE)
         VM().Run(24, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::UNKNOWN_SYSCALL_CODE);
     }
@@ -625,7 +567,7 @@ DEFINE_TEST(INVALID_MEM_ACCESS1)
         VM().Run(24, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::INVALID_MEM_ACCESS);
     }
@@ -643,7 +585,7 @@ DEFINE_TEST(INVALID_MEM_ACCESS2)
         VM().Run(32, program, {});
         ASSERT(false);
     }
-    catch (const VMError &e)
+    catch (const VMError& e)
     {
         ASSERT(e.GetType() == VMErrorType::INVALID_MEM_ACCESS);
     }
@@ -689,7 +631,7 @@ DEFINE_TEST(TEST_HEAP)
 {
     std::random_device randDev;
     std::mt19937 randRng(randDev());
-    std::vector<vm_byte *> alives;
+    std::vector<vm_byte*> alives;
     Heap heap(nullptr);
 
     std::uniform_int_distribution<std::mt19937::result_type> boolGenerator(0, 2);

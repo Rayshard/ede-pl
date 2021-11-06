@@ -13,7 +13,7 @@ Thread::Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP)
     stack = Memory(_stackSize);
 }
 
-void Thread::Start(vm_byte* _globalsArrayPtr, const std::vector<Word> &_args)
+void Thread::Start(vm_byte *_globalsArrayPtr, const std::vector<Word> &_args)
 {
     isAlive = true;
 
@@ -89,7 +89,7 @@ void Thread::PrintStack()
         std::cout << "     ui64: " << ((Word *)&stack[i])->as_ui64;
         std::cout << "     f32: " << ((Word *)&stack[i])->as_f32;
         std::cout << "     f64: " << ((Word *)&stack[i])->as_f64;
-        std::cout << "     ptr: " << (void*)((Word *)&stack[i])->as_ptr;
+        std::cout << "     ptr: " << (void *)((Word *)&stack[i])->as_ptr;
 
         if (i + WORD_SIZE == stackPtr)
             std::cout << "\t\t<-------";
@@ -107,6 +107,19 @@ void Thread::OffsetSP(vm_i64 _off)
         throw VMError::STACK_OVERFLOW();
 }
 
+void Thread::PushStack(Word _value)
+{
+    WriteStack(stackPtr, _value);
+    stackPtr += WORD_SIZE;
+}
+
+Word Thread::PopStack()
+{
+    auto result = ReadStack<Word>(stackPtr - WORD_SIZE);
+    stackPtr -= WORD_SIZE;
+    return result;
+}
+
 void Thread::PushFrame()
 {
     PushStack(framePtr);
@@ -119,5 +132,5 @@ void Thread::PopFrame()
     if (stackPtr > stack.size())
         throw VMError::STACK_OVERFLOW();
 
-    framePtr = PopStack<vm_ui64>();
+    framePtr = PopStack().as_ui64;
 }

@@ -12,7 +12,7 @@ Todo:
     ☐ write tests for evm parsing errors
     ✔ Add cmd line arguments @done(21-11-04 23:05)
     ✔ Might want to return a moved Program from Program::From functions @done(21-11-05 11:44)
-    ☐ the ability to push 1, 2, 4, and 8 bytes onto stack; printC only pops off 1 byte
+    ✘ the ability to push 1, 2, 4, and 8 bytes onto stack; printC only pops off 1 byte @cancelled(21-11-05 22:41)
     ☐ review testing
     ☐ add binop to add to chars together to make a string
     ☐ add binop to add to char and string together to make a string
@@ -42,9 +42,6 @@ Todo:
         ✔ MSTORE [offset]          - memory store; pops memory address from top of stack then pops the value from the top of the stack and stores it at that address + offset @done(21-11-05 01:54)
         ✔ SLOAD [offset]           - stack loads; loads the word located [offset] bytes from the top of the stack and pushes the value onto the stack @done(21-10-25 01:07)
         ✔ SSTORE [offset]          - stack stack; pops the value from the top of the stack and stores it on the stack, [offset] bytes from the top of the stack (after the pop) @done(21-10-25 01:07)
-      ☐ Converters
-        ✔ I2D                      - assumes the top of the stack is an integer, pops it off, converts it to a double, and pushes the result onto the stack @done(21-10-26 02:51)
-        ✔ D2I                      - assumes the top of the stack is an double, pops it off, converts it to an integer, and pushes the result onto the stack @done(21-10-26 02:51)
       ☐ Binops         
         ✔ IADD                     - integer power; a=POP(), b=POP(), PUSH(b+a) where a and b are intgers @done(21-10-24 02:25)
         ✔ ISUB                     - integer power; a=POP(), b=POP(), PUSH(b-a) where a and b are intgers @done(21-10-24 02:25)

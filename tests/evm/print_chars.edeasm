@@ -1,14 +1,14 @@
-PUSHI 32
+PUSH UI8 32
 
 @LOOP:
     SLOAD -8
     PRINTC
-    PUSHI 1
-    IADD
+    PUSH UI8 1
+    ADD UI8
     SLOAD -8
-    PUSHI 127
-    EQ
+    PUSH UI8 127
+    EQ UI8
     JUMPZ @LOOP
 
-PUSHI 0
+PUSH I64 0
 EXIT

@@ -1,16 +1,17 @@
-    PUSHI 5         # num: the number the take the factorial of
-    PUSHI 1         # The result
+    PUSH UI64 5         # num: the number the take the factorial of
+    PUSH UI64 1         # The result
 @LOOP:
     SLOAD -16       # push num
-    PUSHI 1         # push 1 to compare num to
-    EQ              # push num == 1
+    PUSH UI64 1     # push 1 to compare num to
+    EQ UI64         # push num == 1
     JUMPNZ @EXIT
     SLOAD -16       # push num
-    IMUL            # result *= num 
-    PUSHI 1
+    MUL UI64        # result *= num 
+    PUSH UI64 1
     SLOAD -24       # push num
-    ISUB
+    SUB UI64
     SSTORE -16      # num -= 1
     JUMP @LOOP
 @EXIT:
+    CONVERT UI64 I64
     EXIT

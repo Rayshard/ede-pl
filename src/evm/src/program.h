@@ -14,13 +14,18 @@ class Program
 {
     ProgramHeader header;
     Memory code;
-
 public:
     Program();
-    Program(Program &&_p) noexcept;
+    Program(Program&& _p) noexcept;
+
+    void ValidateAndInit();
+
+    vm_byte* GetEntryPtr();
+    const ProgramHeader& GetHeader() const { return header; }
+    const Memory& GetCode() const { return code; };
 
     template <class T>
-    void Insert(T _value) { code.insert(code.end(), (vm_byte *)&_value, (vm_byte *)&_value + sizeof(_value)); }
+    void Insert(T _value) { code.insert(code.end(), (vm_byte*)&_value, (vm_byte*)&_value + sizeof(_value)); }
 
     template <typename Arg1, typename... Rest>
     void Insert(Arg1 _arg1, Rest const &..._rest)
@@ -29,13 +34,7 @@ public:
         Insert(_rest...);
     }
 
-    void ValidateAndInit();
-
-    vm_byte *GetEntryPtr();
-    const ProgramHeader &GetHeader() { return header; }
-    const Memory &GetCode() { return code; };
-
-    Program &operator=(Program &&_p) noexcept
+    Program& operator=(Program&& _p) noexcept
     {
         if (this == &_p)
             return *this;
@@ -45,8 +44,9 @@ public:
         return *this;
     }
 
-    static Program FromFile(const std::string &_filePath);
-    static Program FromStream(std::istream &_stream);
+    static Program FromFile(const std::string& _filePath);
+    static Program FromStream(std::istream& _stream);
+    static Program FromString(const std::string& _string);
 
     template <typename Arg1, typename... Rest>
     static Program FromCode(Arg1 _arg1, Rest const &..._rest)

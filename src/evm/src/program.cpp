@@ -5,7 +5,15 @@
 #include <fstream>
 #include "instructions.h"
 
-using Instructions::OpCode, Instructions::SysCallCode;
+#define LABEL_OPERAND_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+")
+#define GLOBAL_ID_OPERAND_REGEX std::regex("\\$([a-zA-Z]|[0-9]|[_])+")
+#define LABEL_DEF_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+:")
+#define INTEGER_REGEX std::regex("-?(0|[1-9][0-9]*)")
+#define UNSIGNED_INTEGER_REGEX std::regex("0|[1-9][0-9]*")
+#define DECIMAL_REGEX std::regex("-?(0|[1-9][0-9]*)([.][0-9]+)?")
+#define HEX_REGEX std::regex("0x[0-9a-fA-F]+")
+
+using Instructions::OpCode, Instructions::SysCallCode, Instructions::DataType;
 
 struct Position
 {
@@ -16,292 +24,321 @@ struct Position
 struct Token
 {
     std::string value = "";
-    Position position;
+    Position position = Position();
 };
 
-#define LABEL_OPERAND_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+")
-#define GLOBAL_ID_OPERAND_REGEX std::regex("\\$([a-zA-Z]|[0-9]|[_])+")
-#define LABEL_DEF_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+:")
-#define INTEGER_REGEX std::regex("-?(0|[1-9][0-9]*)")
-#define UNSIGNED_INTEGER_REGEX std::regex("0|[1-9][0-9]*")
-#define DECIMAL_REGEX std::regex("-?(0|[1-9][0-9]*)([.][0-9]+)?")
-#define HEX_REGEX std::regex("0x[0-9a-fA-F]+")
+struct ProgramMetadata
+{
+    std::map<std::string, vm_ui64> labels, globals;
+    std::map<vm_ui64, Token> labelOperands;
+};
 
 namespace Error
 {
-    std::runtime_error Create(Position _pos, const std::string &_msg)
+    std::runtime_error Create(Position _pos, const std::string& _msg)
     {
         std::stringstream ss;
         ss << "(" << _pos.line << ", " << _pos.column << ") " << _msg;
         return std::runtime_error(ss.str());
     }
 
-    static std::runtime_error FILE_OPEN(const std::string &_path) { return Create(Position(1, 1), std::string("Could not open file at ") + _path + "!"); }
+    static std::runtime_error FILE_OPEN(const std::string& _path) { return Create(Position(1, 1), std::string("Could not open file at ") + _path + "!"); }
     static std::runtime_error TOKEN_READ(Position _pos) { return Create(_pos, "Could not read token from file!"); }
-    static std::runtime_error EXPECTATION(Position _pos, const std::string &_e, const std::string &_f) { return Create(_pos, "Expected " + _e + " but found " + _f + "."); }
-    static std::runtime_error REDEFINED_LABEL(Position _pos, const std::string &_label) { return Create(_pos, "Label \"" + _label + "\" has already been defined!"); }
-    static std::runtime_error UNDEFINED_LABEL(Position _pos, const std::string &_label) { return Create(_pos, "Label \"" + _label + "\" does not exist!"); }
+    static std::runtime_error EXPECTATION(Position _pos, const std::string& _e, const std::string& _f) { return Create(_pos, "Expected " + _e + " but found " + _f + "."); }
+    static std::runtime_error REDEFINED_LABEL(Position _pos, const std::string& _label) { return Create(_pos, "Label \"" + _label + "\" has already been defined!"); }
+    static std::runtime_error UNDEFINED_LABEL(Position _pos, const std::string& _label) { return Create(_pos, "Label \"" + _label + "\" does not exist!"); }
     static std::runtime_error INVALID_PROGRAM() { return std::runtime_error("Invalid Program!"); }
 };
 
 class TokenStream
 {
-    std::istream *stream;
-
-public:
+    std::istream* stream;
     Position position;
+    Token last;
+public:
 
-    TokenStream(std::istream *_stream) : stream(_stream) {}
+    TokenStream(std::istream* _stream) : stream(_stream), position(), last() {}
 
-    int Peek() { return stream->peek(); }
-    int Get() { return stream->get(); }
+    Position GetPosition() { return position; }
+    Token GetLastToken() { return last; }
 
     std::string GetLine()
     {
         std::string line;
         std::getline(*stream, line);
+        position.line++;
+        position.column = 1;
         return line;
     }
 
-    template <typename T>
-    std::istream &operator>>(T &_obj) { return *stream >> _obj; }
-};
-
-Token GetNextToken(TokenStream &_stream)
-{
-    //Skip whitespace
-    while (std::iswspace(_stream.Peek()))
+    Token GetNextToken()
     {
-        _stream.position.column++;
-
-        if (_stream.Peek() == '\n')
+        //Skips
+        while (true)
         {
-            _stream.position.line++;
-            _stream.position.column = 1;
+            if (std::isspace(stream->peek())) //Skip whitespace
+            {
+                position.column++;
+
+                if (stream->peek() == '\n')
+                {
+                    position.line++;
+                    position.column = 1;
+                }
+
+                stream->get();
+            }
+            else if (stream->peek() == '#') { GetLine(); } //Skip comments
+            else { break; }
         }
 
-        _stream.Get();
+        Position pos = position;
+        std::string value;
+
+        if (!(*stream >> value))
+            throw Error::TOKEN_READ(pos);
+
+        position.column += value.size();
+        return last = Token{ value, pos };
     }
 
-    //Skip comments
-    if (_stream.Peek() == '#')
-        _stream.GetLine();
-
-    Position pos = _stream.position;
-    std::string value;
-
-    if (!(_stream >> value))
-        throw Error::TOKEN_READ(pos);
-
-    return Token{value, pos};
-}
-
-vm_f64 ReadF64Operand(TokenStream &_stream)
-{
-    Token token = GetNextToken(_stream);
-
-    try
+    vm_f32 ReadF32Operand()
     {
-        if (std::regex_match(token.value, DECIMAL_REGEX))
-            return std::stod(token.value);
+        Token token = GetNextToken();
 
-        throw 0;
-    }
-    catch (...)
-    {
-        throw Error::EXPECTATION(token.position, "a 64-bit floating point", "\"" + token.value + "\"");
-    }
-}
+        try
+        {
+            if (std::regex_match(token.value, DECIMAL_REGEX))
+                return std::stof(token.value);
 
-vm_i64 ReadI64Operand(TokenStream &_stream)
-{
-    Token token = GetNextToken(_stream);
-
-    try
-    {
-        if (std::regex_match(token.value, INTEGER_REGEX))
-            return std::stoll(token.value);
-        else if (std::regex_match(token.value, HEX_REGEX))
-            return std::stoll(token.value, 0, 16);
-
-        throw 0;
-    }
-    catch (...)
-    {
-        throw Error::EXPECTATION(token.position, "a 64-bit integer", "\"" + token.value + "\"");
-    }
-}
-
-vm_ui32 ReadUI32Operand(TokenStream &_stream)
-{
-    Token token = GetNextToken(_stream);
-
-    try
-    {
-        if (std::regex_match(token.value, UNSIGNED_INTEGER_REGEX))
-            return std::stoul(token.value);
-        else if (std::regex_match(token.value, HEX_REGEX))
-            return std::stoul(token.value, 0, 16);
-
-        throw 0;
-    }
-    catch (...)
-    {
-        throw Error::EXPECTATION(token.position, "a 32-bit unsigned integer", "\"" + token.value + "\"");
-    }
-}
-
-vm_ui64 ReadHexOperand(TokenStream &_stream, vm_ui64 _max)
-{
-    Token token = GetNextToken(_stream);
-
-    try
-    {
-        if (!std::regex_match(token.value, HEX_REGEX))
             throw 0;
+        }
+        catch (...)
+        {
+            throw Error::EXPECTATION(token.position, "a 32-bit floating point", "\"" + token.value + "\"");
+        }
+    }
 
-        auto value = std::stoull(token.value, 0, 16);
-        if (value > _max)
+    vm_f64 ReadF64Operand()
+    {
+        Token token = GetNextToken();
+
+        try
+        {
+            if (std::regex_match(token.value, DECIMAL_REGEX))
+                return std::stod(token.value);
+
             throw 0;
-
-        return value;
+        }
+        catch (...)
+        {
+            throw Error::EXPECTATION(token.position, "a 64-bit floating point", "\"" + token.value + "\"");
+        }
     }
-    catch (...)
+
+    vm_i64 ReadIntegerOperand(vm_i64 _min, vm_i64 _max)
     {
-        throw Error::EXPECTATION(token.position, "a hex number no greater than " + Hex(_max), "\"" + token.value + "\"");
+        Token token = GetNextToken();
+
+        try
+        {
+            vm_i64 value = 0;
+
+            if (std::regex_match(token.value, INTEGER_REGEX))
+                value = std::stoll(token.value);
+            else if (std::regex_match(token.value, HEX_REGEX))
+                value = std::stoll(token.value, 0, 16);
+
+            if (value < _min || value > _max)
+                throw 0;
+
+            return value;
+        }
+        catch (...) { throw Error::EXPECTATION(token.position, "an integer in range [" + std::to_string(_min) + ", " + std::to_string(_max) + "]", "\"" + token.value + "\""); }
     }
-}
 
-Token ReadLabelOperand(TokenStream &_stream)
-{
-    Token token = GetNextToken(_stream);
-    if (!std::regex_match(token.value, LABEL_OPERAND_REGEX))
-        throw Error::EXPECTATION(token.position, "a label operand", "\"" + token.value + "\"");
-
-    token.value.erase(0, 1); //Remove the @ prefix
-    return token;
-}
-
-vm_ui64 ReadGlobalIDOperand(TokenStream &_stream, std::map<std::string, vm_ui64> &_globals)
-{
-    Token token = GetNextToken(_stream);
-    if (!std::regex_match(token.value, GLOBAL_ID_OPERAND_REGEX))
-        throw Error::EXPECTATION(token.position, "a global id operand", "\"" + token.value + "\"");
-
-    token.value.erase(0, 1); //Remove the $ prefix
-
-    auto search = _globals.find(token.value);
-    if (search == _globals.end())
+    vm_ui64 ReadUnsignedIntegerOperand(vm_ui64 _max)
     {
-        vm_ui64 numGlobals = _globals.size();
-        _globals[token.value] = numGlobals;
-        return numGlobals;
+        Token token = GetNextToken();
+
+        try
+        {
+            vm_ui64 value = 0;
+
+            if (std::regex_match(token.value, UNSIGNED_INTEGER_REGEX))
+                value = std::stoull(token.value);
+            else if (std::regex_match(token.value, HEX_REGEX))
+                value = std::stoull(token.value, 0, 16);
+
+            if (value > _max)
+                throw 0;
+
+            return value;
+        }
+        catch (...) { throw Error::EXPECTATION(token.position, "an unsigned integer in range [0, " + std::to_string(_max) + "]", "\"" + token.value + "\""); }
     }
-    else
+
+    vm_i8 ReadI8Operand() { return ReadIntegerOperand(INT8_MIN, INT8_MAX); }
+    vm_ui8 ReadUI8Operand() { return ReadUnsignedIntegerOperand(UINT8_MAX); }
+    vm_i16 ReadI16Operand() { return ReadIntegerOperand(INT16_MIN, INT16_MAX); }
+    vm_ui16 ReadUI16Operand() { return ReadUnsignedIntegerOperand(UINT16_MAX); }
+    vm_i32 ReadI32Operand() { return ReadIntegerOperand(INT32_MIN, INT32_MAX); }
+    vm_ui32 ReadUI32Operand() { return ReadUnsignedIntegerOperand(UINT32_MAX); }
+    vm_i64 ReadI64Operand() { return ReadIntegerOperand(INT64_MIN, INT64_MAX); }
+    vm_ui64 ReadUI64Operand() { return ReadUnsignedIntegerOperand(UINT64_MAX); }
+
+    vm_ui64 ReadHexOperand(vm_ui64 _max)
+    {
+        Token token = GetNextToken();
+
+        try
+        {
+            if (!std::regex_match(token.value, HEX_REGEX))
+                throw 0;
+
+            auto value = std::stoull(token.value, 0, 16);
+            if (value > _max)
+                throw 0;
+
+            return value;
+        }
+        catch (...)
+        {
+            throw Error::EXPECTATION(token.position, "a hex number no greater than " + Hex(_max), "\"" + token.value + "\"");
+        }
+    }
+
+    DataType ReadDataTypeOperand()
+    {
+        static std::map<std::string, DataType> dataTypes = {
+            {"I8", DataType::I8}, {"UI8", DataType::UI8},
+            {"I16", DataType::I16}, {"UI16", DataType::UI16},
+            {"I32", DataType::I32}, {"UI32", DataType::UI32},
+            {"I64", DataType::I64}, {"UI64", DataType::UI64},
+            {"F32", DataType::F32}, {"F64", DataType::F64},
+        };
+
+        Token token = GetNextToken();
+        auto search = dataTypes.find(token.value);
+
+        if (search == dataTypes.end())
+            throw Error::EXPECTATION(token.position, "a data type ", "\"" + token.value + "\"");
+
         return search->second;
-}
+    }
 
-typedef void (*InstructionReader)(Program &, TokenStream &, std::map<vm_ui64, Token> &, std::map<std::string, vm_ui64> &);
-static const std::map<std::string, InstructionReader> InstructionReaders = {
-    {"NOOP", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::NOOP); }},
-    {"PUSH", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::PUSH, ReadHexOperand(_stream, UINT64_MAX)); }},
-    {"PUSHI", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::PUSH, ReadI64Operand(_stream)); }},
-    {"PUSHD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::PUSH, ReadF64Operand(_stream)); }},
-    {"POP", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::POP); }},
-    {"IADD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::IADD); }},
-    {"ISUB", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::ISUB); }},
-    {"IMUL", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::IMUL); }},
-    {"IDIV", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::IDIV); }},
-    {"DADD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::DADD); }},
-    {"DSUB", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::DSUB); }},
-    {"DMUL", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::DMUL); }},
-    {"DDIV", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::DDIV); }},
-    {"EQ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::EQ); }},
-    {"NEQ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::NEQ); }},
-    {"SLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::SLOAD, ReadI64Operand(_stream)); }},
-    {"SSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::SSTORE, ReadI64Operand(_stream)); }},
-    {"MLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::MLOAD, ReadI64Operand(_stream)); }},
-    {"MSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::MSTORE, ReadI64Operand(_stream)); }},
-    {"LLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::LLOAD, ReadUI32Operand(_stream)); }},
-    {"LSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::LSTORE, ReadUI32Operand(_stream)); }},
-    {"PLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::PLOAD, ReadUI32Operand(_stream)); }},
-    {"PSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::PSTORE, ReadUI32Operand(_stream)); }},
-    {"GLOAD", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::GLOAD, ReadGlobalIDOperand(_stream, _globals)); }},
-    {"GSTORE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::GSTORE, ReadGlobalIDOperand(_stream, _globals)); }},
-    {"DUP", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::SSTORE, -vm_i64(WORD_SIZE)); }},
-    {"JUMP", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     {
-         _prog.Insert(OpCode::JUMP);
-         _labelReplacePositions.emplace(_prog.GetCode().size(), ReadLabelOperand(_stream));
-         _prog.Insert(vm_ui64());
-     }},
-    {"JUMPZ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     {
-         _prog.Insert(OpCode::JUMPZ);
-         _labelReplacePositions.emplace(_prog.GetCode().size(), ReadLabelOperand(_stream));
-         _prog.Insert(vm_ui64());
-     }},
-    {"JUMPNZ", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     {
-         _prog.Insert(OpCode::JUMPNZ);
-         _labelReplacePositions.emplace(_prog.GetCode().size(), ReadLabelOperand(_stream));
-         _prog.Insert(vm_ui64());
-     }},
-    {"CALL", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     {
-         _prog.Insert(OpCode::CALL);
+    Token ReadLabelOperand()
+    {
+        Token token = GetNextToken();
+        if (!std::regex_match(token.value, LABEL_OPERAND_REGEX))
+            throw Error::EXPECTATION(token.position, "a label operand", "\"" + token.value + "\"");
 
-         _labelReplacePositions.emplace(_prog.GetCode().size(), ReadLabelOperand(_stream));
-         _prog.Insert(vm_ui64());                //Insert label
-         _prog.Insert(ReadUI32Operand(_stream)); //Insert storage
-     }},
-    {"RET", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::RET); }},
-    {"RETV", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::RETV); }},
-    {"EXIT", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::SYSCALL, SysCallCode::EXIT); }},
-    {"MALLOC", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::SYSCALL, SysCallCode::MALLOC); }},
-    {"FREE", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::SYSCALL, SysCallCode::FREE); }},
-    {"PRINTC", [](Program &_prog, TokenStream &_stream, std::map<vm_ui64, Token> &_labelReplacePositions, std::map<std::string, vm_ui64> &_globals)
-     { _prog.Insert(OpCode::SYSCALL, SysCallCode::PRINTC); }}};
+        token.value.erase(0, 1); //Remove the @ prefix
+        return token;
+    }
 
-Program::Program() : header(), code() {}
-Program::Program(Program &&_p) noexcept { this->operator=(std::move(_p)); }
+    std::string ReadGlobalIDOperand()
+    {
+        Token token = GetNextToken();
+        if (!std::regex_match(token.value, GLOBAL_ID_OPERAND_REGEX))
+            throw Error::EXPECTATION(token.position, "a global id operand", "\"" + token.value + "\"");
+
+        token.value.erase(0, 1); //Remove the $ prefix
+        return token.value;
+    }
+};
+typedef void (*InstructionInserter)(Program&, ProgramMetadata&, TokenStream&);
+static const std::map<std::string, InstructionInserter> InstructionInserters = {
+    {"NOOP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::NOOP); }},
+    {"POP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::POP); }},
+    {"ADD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::ADD, _stream.ReadDataTypeOperand()); }},
+    {"SUB", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SUB, _stream.ReadDataTypeOperand()); }},
+    {"MUL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::MUL, _stream.ReadDataTypeOperand()); }},
+    {"DIV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::DIV, _stream.ReadDataTypeOperand()); }},
+    {"EQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::EQ, _stream.ReadDataTypeOperand()); }},
+    {"NEQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::NEQ, _stream.ReadDataTypeOperand()); }},
+    {"SLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SLOAD, _stream.ReadI64Operand()); }},
+    {"SSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SSTORE, _stream.ReadI64Operand()); }},
+    {"DUP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SLOAD, -vm_i64(WORD_SIZE)); }},
+    {"MLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::MLOAD, _stream.ReadI64Operand()); }},
+    {"MSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::MSTORE, _stream.ReadI64Operand()); }},
+    {"LLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::LLOAD, _stream.ReadUI32Operand()); }},
+    {"LSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::LSTORE, _stream.ReadUI32Operand()); }},
+    {"PLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::PLOAD, _stream.ReadUI32Operand()); }},
+    {"PSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::PSTORE, _stream.ReadUI32Operand()); }},
+    {"RET", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::RET); }},
+    {"RETV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::RETV); }},
+    {"EXIT", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::EXIT); }},
+    {"MALLOC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::MALLOC); }},
+    {"FREE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::FREE); }},
+    {"PRINTC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::PRINTC); }},
+    {"PUSH", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        _prog.Insert(OpCode::PUSH);
+
+        switch (_stream.ReadDataTypeOperand())
+        {
+        case DataType::I8: _prog.Insert(Word(_stream.ReadI8Operand())); break;
+        case DataType::UI8: _prog.Insert(Word(_stream.ReadUI8Operand())); break;
+        case DataType::I16: _prog.Insert(Word(_stream.ReadI16Operand())); break;
+        case DataType::UI16: _prog.Insert(Word(_stream.ReadUI16Operand())); break;
+        case DataType::I32: _prog.Insert(Word(_stream.ReadI32Operand())); break;
+        case DataType::UI32: _prog.Insert(Word(_stream.ReadUI32Operand())); break;
+        case DataType::I64: _prog.Insert(Word(_stream.ReadI64Operand())); break;
+        case DataType::UI64: _prog.Insert(Word(_stream.ReadUI64Operand())); break;
+        case DataType::F32: _prog.Insert(Word(_stream.ReadF32Operand())); break;
+        case DataType::F64: _prog.Insert(Word(_stream.ReadF64Operand())); break;
+        default: assert(false && "Case not handled");
+        }
+    }},
+    {"CONVERT", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        auto from = _stream.ReadDataTypeOperand(), to = _stream.ReadDataTypeOperand();
+        _prog.Insert(OpCode::CONVERT, from, to);
+    }},
+    {"GLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        auto id = _stream.ReadGlobalIDOperand();
+        auto search = _progMeta.globals.find(id);
+        vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
+
+        _prog.Insert(OpCode::GLOAD, idx);
+    }},
+    {"GSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        auto id = _stream.ReadGlobalIDOperand();
+        auto search = _progMeta.globals.find(id);
+        vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
+
+        _prog.Insert(OpCode::GSTORE, idx);
+    }},
+    {"JUMP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        _prog.Insert(OpCode::JUMP);
+        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
+        _prog.Insert(vm_ui64()); //Insert target placeholder
+    }},
+    {"JUMPZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        _prog.Insert(OpCode::JUMPZ);
+        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
+        _prog.Insert(vm_ui64()); //Insert target placeholder
+    }},
+    {"JUMPNZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        _prog.Insert(OpCode::JUMPNZ);
+        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
+        _prog.Insert(vm_ui64()); //Insert target placeholder
+    }},
+    {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+        _prog.Insert(OpCode::CALL);
+        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
+        _prog.Insert(vm_ui64()); //Insert target placeholder
+        _prog.Insert(_stream.ReadUI32Operand());  //Insert storage
+    }},
+};
+
+Program::Program() : header(), code() { }
+Program::Program(Program&& _p) noexcept { this->operator=(std::move(_p)); }
 
 void Program::ValidateAndInit()
 {
-    vm_byte *start = code.data(), *end = &code.back() + 1;
+    vm_byte* start = code.data(), * end = &code.back() + 1;
 
-    for (vm_byte *ptr = start; ptr != end; ptr += GetSize((OpCode)*ptr))
+    for (vm_byte* ptr = start; ptr != end; ptr += GetSize((OpCode)*ptr))
     {
         OpCode opcode = (OpCode)*ptr;
 
@@ -319,34 +356,34 @@ void Program::ValidateAndInit()
         case OpCode::JUMPZ:
         case OpCode::CALL:
         {
-            vm_byte *operand = ptr + 1;
-            vm_ui64 offset = *(vm_ui64 *)operand;
+            vm_byte* operand = ptr + 1;
+            vm_ui64 offset = *(vm_ui64*)operand;
             if (offset >= code.size())
                 throw Error::INVALID_PROGRAM();
 
-            vm_byte *target = start + offset;
+            vm_byte* target = start + offset;
             if (end - target <= 0)
                 throw Error::INVALID_PROGRAM();
 
-            std::copy((vm_byte *)&target, (vm_byte *)&target + VM_PTR_SIZE, operand);
+            std::copy((vm_byte*)&target, (vm_byte*)&target + VM_PTR_SIZE, operand);
         }
         break;
         case OpCode::GLOAD:
         case OpCode::GSTORE:
         {
-            vm_ui64 idx = *(vm_ui64 *)(ptr + 1);
+            vm_ui64 idx = *(vm_ui64*)(ptr + 1);
             header.numGlobals = std::max(header.numGlobals, idx + 1); //Set globals count
         }
         break;
         default:
-            continue;
+        continue;
         }
     }
 }
 
-vm_byte *Program::GetEntryPtr() { return &code[header.entryPoint]; }
+vm_byte* Program::GetEntryPtr() { return &code[header.entryPoint]; }
 
-Program Program::FromFile(const std::string &_filePath)
+Program Program::FromFile(const std::string& _filePath)
 {
     std::ifstream file(_filePath);
     if (!file.is_open())
@@ -355,58 +392,57 @@ Program Program::FromFile(const std::string &_filePath)
     return FromStream(file);
 }
 
-Program Program::FromStream(std::istream &_stream)
+Program Program::FromStream(std::istream& _stream)
 {
     TokenStream stream(&_stream);
     Program program;
-    std::map<std::string, vm_ui64> labels, globals;
-    std::map<vm_ui64, Token> labelReplacePositions;
+    ProgramMetadata metadata;
 
     while (true)
     {
         Token token;
 
-        try
-        {
-            token = GetNextToken(stream);
-        }
-        catch (...)
-        {
-            break;
-        }
+        try { token = stream.GetNextToken(); }
+        catch (...) { break; }
 
-        auto instructionReaderSearch = InstructionReaders.find(token.value);
-        if (instructionReaderSearch != InstructionReaders.end())
+        auto instructionInserterSearch = InstructionInserters.find(token.value);
+        if (instructionInserterSearch != InstructionInserters.end())
         {
             size_t insertOffset = program.code.size();
-            instructionReaderSearch->second(program, stream, labelReplacePositions, globals);
+            instructionInserterSearch->second(program, metadata, stream);
             assert(program.code.size() - insertOffset == GetSize((OpCode)program.code[insertOffset]) && "Inserted instruction has different size than it should!");
         }
         else if (std::regex_match(token.value, LABEL_DEF_REGEX))
         {
             std::string label = token.value.substr(1, token.value.size() - 2);
 
-            auto labelSearch = labels.find(label);
-            if (labelSearch != labels.end())
+            auto labelSearch = metadata.labels.find(label);
+            if (labelSearch != metadata.labels.end())
                 throw Error::REDEFINED_LABEL(token.position, label);
 
-            labels.emplace(label, program.code.size());
+            metadata.labels.emplace(label, program.code.size());
         }
         else
             throw Error::EXPECTATION(token.position, "OPCODE or LABEL", token.value);
     }
 
     //Replace operands that are labels with the correct position in the program
-    for (auto &[pos, token] : labelReplacePositions)
+    for (auto& [pos, token] : metadata.labelOperands)
     {
-        auto labelSearch = labels.find(token.value);
-        if (labelSearch == labels.end())
+        auto labelSearch = metadata.labels.find(token.value);
+        if (labelSearch == metadata.labels.end())
             throw Error::UNDEFINED_LABEL(token.position, token.value);
 
         vm_ui64 target = labelSearch->second;
-        std::copy((vm_byte *)&target, (vm_byte *)&target + VM_PTR_SIZE, &program.code[pos]);
+        std::copy((vm_byte*)&target, (vm_byte*)&target + VM_PTR_SIZE, &program.code[pos]);
     }
 
     program.ValidateAndInit();
     return std::move(program);
+}
+
+Program Program::FromString(const std::string& _string)
+{
+    std::stringstream stream(_string);
+    return Program::FromStream(stream);
 }

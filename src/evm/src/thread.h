@@ -61,18 +61,6 @@ public:
         std::copy((vm_byte *)&_value, (vm_byte *)&_value + sizeof(T), &stack[_pos]);
     }
 
-    template <typename T>
-    void PushStack(const T &_value)
-    {
-        WriteStack(stackPtr, _value);
-        stackPtr += sizeof(T);
-    }
-
-    template <typename T>
-    T PopStack()
-    {
-        auto result = ReadStack<T>(stackPtr - sizeof(T));
-        stackPtr -= sizeof(T);
-        return result;
-    }
+    void PushStack(Word _value);
+    Word PopStack();
 };
