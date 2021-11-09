@@ -119,4 +119,17 @@ namespace Instructions
     }
 
     std::string ToString(const vm_byte* _instr);
+    void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
+
+    namespace PUSH
+    {
+        Word GetValue(const vm_byte* _instr);
+        void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
+    }
+
+    namespace SYSCALL
+    {
+        SysCallCode GetCode(const vm_byte* _instr);
+        void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
+    }
 }

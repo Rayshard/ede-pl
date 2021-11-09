@@ -3,6 +3,7 @@
 #include <regex>
 #include <iostream>
 #include <fstream>
+#include <unordered_map>
 #include "instructions.h"
 
 #define LABEL_OPERAND_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+")
@@ -356,7 +357,7 @@ void Program::ValidateAndInit()
         case OpCode::JUMPZ:
         case OpCode::CALL:
         {
-            vm_byte* operand = ptr + 1;
+            vm_byte* operand = ptr + OP_CODE_SIZE;
             vm_ui64 offset = *(vm_ui64*)operand;
             if (offset >= code.size())
                 throw Error::INVALID_PROGRAM();
@@ -371,7 +372,7 @@ void Program::ValidateAndInit()
         case OpCode::GLOAD:
         case OpCode::GSTORE:
         {
-            vm_ui64 idx = *(vm_ui64*)(ptr + 1);
+            vm_ui64 idx = *(vm_ui64*)(ptr + OP_CODE_SIZE);
             header.numGlobals = std::max(header.numGlobals, idx + 1); //Set globals count
         }
         break;
@@ -445,4 +446,44 @@ Program Program::FromString(const std::string& _string)
 {
     std::stringstream stream(_string);
     return Program::FromStream(stream);
+}
+
+void Program::ToNASM(std::ostream& _stream)
+{
+    vm_byte* start = code.data(), * end = &code.back() + 1;
+
+    //Get Label Positions
+    std::unordered_map<vm_byte*, std::string> labelPositions; //Map from label pointer position to a unique string
+
+    for (vm_byte* ptr = start; ptr != end; ptr += GetSize((OpCode)*ptr))
+    {
+        OpCode opcode = (OpCode)*ptr;
+
+        switch (opcode)
+        {
+        case OpCode::JUMP:
+        case OpCode::JUMPNZ:
+        case OpCode::JUMPZ:
+        case OpCode::CALL:
+        {
+            vm_byte* target = *(vm_byte**)(ptr + OP_CODE_SIZE);
+            labelPositions.emplace(target, "label" + std::to_string(labelPositions.size()));
+        }
+        break;
+        default:
+        continue;
+        }
+    }
+
+    //Translate
+    _stream << "\t\tglobal\t\tstart\n\n";
+    _stream << "\t\tsection\t\t.text\n";
+    _stream << "start:\n";
+
+    for (vm_byte* ptr = start; ptr != end; ptr += GetSize((OpCode)*ptr))
+    {
+        _stream << "\t\t;" << Instructions::ToString(ptr) << "\n";
+        Instructions::ToNASM(ptr, _stream, "\t\t");
+        _stream << "\n";
+    }
 }

@@ -44,6 +44,9 @@ public:
         return *this;
     }
 
+
+    void ToNASM(std::ostream& _stream);
+
     static Program FromFile(const std::string& _filePath);
     static Program FromStream(std::istream& _stream);
     static Program FromString(const std::string& _string);

@@ -5,6 +5,11 @@
 
 namespace Instructions
 {
+    namespace Error
+    {
+        std::runtime_error CompilationNotImplemented(const vm_byte* _instr) { return std::runtime_error("Instruction compilation not implemented: " + ToString(_instr)); }
+    }
+
     ExecutionFunc ExecutionFuncs[(size_t)OpCode::_COUNT];
     ExecutionFunc SysCallExecutionFuncs[(size_t)SysCallCode::_COUNT];
 
@@ -410,29 +415,54 @@ namespace Instructions
 #pragma endregion
 
 #pragma region Syscalls
-    void SYSCALL_EXIT(Thread* _thread) { _thread->GetVM()->Quit(_thread->PopStack().as_i64); }
-
-    void SYSCALL_PRINTC(Thread* _thread) { _thread->GetVM()->GetStdOut() << _thread->PopStack().as_byte; }
-
-    void SYSCALL_MALLOC(Thread* _thread) { _thread->PushStack(_thread->GetVM()->GetHeap().Alloc(_thread->PopStack().as_i64)); }
-
-    void SYSCALL_FREE(Thread* _thread) { _thread->GetVM()->GetHeap().Free(_thread->PopStack().as_ptr); }
-
-    void SYSCALL(Thread* _thread)
+    namespace SYSCALL
     {
-        vm_byte code = _thread->instrPtr[OP_CODE_SIZE];
-        if (code >= (vm_byte)SysCallCode::_COUNT)
-            throw VMError::UNKNOWN_SYSCALL_CODE(code);
+        SysCallCode GetCode(const vm_byte* _instr) { return *(SysCallCode*)(_instr + OP_CODE_SIZE); }
 
-        SysCallExecutionFuncs[code](_thread);
+        void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent)
+        {
+            switch (GetCode(_instr))
+            {
+            case SysCallCode::EXIT:
+            {
+                _stream << _indent << "pop rdi\n";
+                _stream << _indent << "mov rax, 0x02000001\n";
+                _stream << _indent << "syscall";
+            } break;
+            default: throw Error::CompilationNotImplemented(_instr);
+            }
+        }
+
+        void ExecuteEXIT(Thread* _thread) { _thread->GetVM()->Quit(_thread->PopStack().as_i64); }
+
+        void ExecutePRINTC(Thread* _thread) { _thread->GetVM()->GetStdOut() << _thread->PopStack().as_byte; }
+
+        void ExecuteMALLOC(Thread* _thread) { _thread->PushStack(_thread->GetVM()->GetHeap().Alloc(_thread->PopStack().as_i64)); }
+
+        void ExecuteFREE(Thread* _thread) { _thread->GetVM()->GetHeap().Free(_thread->PopStack().as_ptr); }
+
+        void Execute(Thread* _thread)
+        {
+            vm_byte code = (vm_byte)GetCode(_thread->instrPtr);
+            if (code >= (vm_byte)SysCallCode::_COUNT)
+                throw VMError::UNKNOWN_SYSCALL_CODE(code);
+
+            SysCallExecutionFuncs[code](_thread);
+        }
     }
 #pragma endregion
 
 #pragma region Loads and Stores
-    void PUSH(Thread* _thread)
+    namespace PUSH
     {
-        Word word = *(Word*)&_thread->instrPtr[OP_CODE_SIZE];
-        _thread->PushStack(word);
+        Word GetValue(const vm_byte* _instr) { return *(Word*)(_instr + OP_CODE_SIZE); }
+        void Execute(Thread* _thread) { _thread->PushStack(PUSH::GetValue(_thread->instrPtr)); }
+
+        void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent)
+        {
+            _stream << _indent << "mov rax, " << Hex(Instructions::PUSH::GetValue(_instr)) << "\n";
+            _stream << _indent << "push rax";
+        }
     }
 
     void POP(Thread* _thread) { _thread->PopStack(); }
@@ -524,7 +554,7 @@ namespace Instructions
     void Init()
     {
         ExecutionFuncs[(size_t)OpCode::NOOP] = &NOOP;
-        ExecutionFuncs[(size_t)OpCode::PUSH] = &PUSH;
+        ExecutionFuncs[(size_t)OpCode::PUSH] = &PUSH::Execute;
         ExecutionFuncs[(size_t)OpCode::POP] = &POP;
         ExecutionFuncs[(size_t)OpCode::ADD] = &ADD;
         ExecutionFuncs[(size_t)OpCode::SUB] = &SUB;
@@ -533,7 +563,7 @@ namespace Instructions
         ExecutionFuncs[(size_t)OpCode::JUMP] = &JUMP;
         ExecutionFuncs[(size_t)OpCode::JUMPZ] = &JUMPZ;
         ExecutionFuncs[(size_t)OpCode::JUMPNZ] = &JUMPNZ;
-        ExecutionFuncs[(size_t)OpCode::SYSCALL] = &SYSCALL;
+        ExecutionFuncs[(size_t)OpCode::SYSCALL] = &SYSCALL::Execute;
         ExecutionFuncs[(size_t)OpCode::EQ] = &EQ;
         ExecutionFuncs[(size_t)OpCode::NEQ] = &NEQ;
         ExecutionFuncs[(size_t)OpCode::SLOAD] = &SLOAD;
@@ -551,10 +581,10 @@ namespace Instructions
         ExecutionFuncs[(size_t)OpCode::RET] = &RET;
         ExecutionFuncs[(size_t)OpCode::RETV] = &RETV;
 
-        SysCallExecutionFuncs[(size_t)SysCallCode::EXIT] = &SYSCALL_EXIT;
-        SysCallExecutionFuncs[(size_t)SysCallCode::PRINTC] = &SYSCALL_PRINTC;
-        SysCallExecutionFuncs[(size_t)SysCallCode::MALLOC] = &SYSCALL_MALLOC;
-        SysCallExecutionFuncs[(size_t)SysCallCode::FREE] = &SYSCALL_FREE;
+        SysCallExecutionFuncs[(size_t)SysCallCode::EXIT] = &SYSCALL::ExecuteEXIT;
+        SysCallExecutionFuncs[(size_t)SysCallCode::PRINTC] = &SYSCALL::ExecutePRINTC;
+        SysCallExecutionFuncs[(size_t)SysCallCode::MALLOC] = &SYSCALL::ExecuteMALLOC;
+        SysCallExecutionFuncs[(size_t)SysCallCode::FREE] = &SYSCALL::ExecuteFREE;
     }
 
     std::string ToString(DataType _dt)
@@ -592,7 +622,7 @@ namespace Instructions
         case OpCode::NEQ: return "NEQ " + ToString((DataType)_instr[OP_CODE_SIZE]);
         case OpCode::RET: return "RET";
         case OpCode::RETV: return "RETV";
-        case OpCode::PUSH: return "PUSH " + Hex(*(vm_ui64*)&_instr[OP_CODE_SIZE]);
+        case OpCode::PUSH: return "PUSH " + Hex(PUSH::GetValue(_instr).as_ui64);
         case OpCode::JUMP: return "JUMP " + Hex(*(vm_ui64*)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMPNZ: return "JUMPNZ " + Hex(*(vm_ui64*)&_instr[OP_CODE_SIZE]);
         case OpCode::JUMPZ: return "JUMPZ " + Hex(*(vm_ui64*)&_instr[OP_CODE_SIZE]);
@@ -622,5 +652,16 @@ namespace Instructions
         }
 
         return "";
+    }
+
+    void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent)
+    {
+        switch ((OpCode)*_instr)
+        {
+        case OpCode::PUSH: Instructions::PUSH::ToNASM(_instr, _stream, "\t\t"); break;
+        case OpCode::SYSCALL: Instructions::SYSCALL::ToNASM(_instr, _stream, "\t\t"); break;
+        default:
+        throw Error::CompilationNotImplemented(_instr);
+        }
     }
 }

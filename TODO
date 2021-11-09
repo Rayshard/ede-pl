@@ -13,6 +13,8 @@ Todo:
     ✔ Add cmd line arguments @done(21-11-04 23:05)
     ✔ Might want to return a moved Program from Program::From functions @done(21-11-05 11:44)
     ✘ the ability to push 1, 2, 4, and 8 bytes onto stack; printC only pops off 1 byte @cancelled(21-11-05 22:41)
+    ☐ Create Gets and Sets for instruction operands
+    ☐ COnvert Instructions::Init to switch so that the default case can throw an error when an opcode is not hanled
     ☐ review testing
     ☐ add binop to add to chars together to make a string
     ☐ add binop to add to char and string together to make a string

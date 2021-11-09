@@ -83,7 +83,7 @@ template <typename T>
 std::string Hex(const T& _value, bool _includePrefix = true)
 {
     auto first = (vm_byte*)&_value;
-    auto last = first + sizeof(_value);
+    auto last = first + sizeof(_value) - 1;
     std::ostringstream stream;
 
     if (_includePrefix)
@@ -91,8 +91,10 @@ std::string Hex(const T& _value, bool _includePrefix = true)
 
     stream << std::hex << std::setfill('0') << std::uppercase;
 
-    while (first != last)
-        stream << std::setw(2) << (vm_ui32)*first++;
+    do
+    {
+        stream << std::setw(2) << (vm_ui32)*last;
+    } while (last-- != first);
 
     return stream.str();
 }

@@ -1,5 +1,7 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
+#include <unistd.h>
 #include "evm.h"
 #include "program.h"
 #include "instructions.h"
@@ -52,6 +54,17 @@ int usage(const std::string& _cmd = "", const std::string& _err = "")
             "  ARGS                    List of arguments to pass to the program.\n"
             << std::endl;
     }
+    else if (_cmd == "compile")
+    {
+        std::cout << "Usage: evm compile FILEPATH\n\n"
+            "Options:\n"
+            "  -o, --output PATH       Sets the destination of the output executable to PATH."
+            "  --otasm PATH            Sets the destination of the target assembly's output to PATH."
+            "\n"
+            "Args:\n"
+            "  FILEPATH                The edeasm file to compile.\n"
+            << std::endl;
+    }
     else
         CLI_FAILURE();
 
@@ -100,11 +113,11 @@ int run(const std::vector<std::string>& _args)
 
             //Get RID
             if (++itArg != _args.end()) { dbInfo.rID = *itArg; }
-            else { return usage("run", "Expected RID for option --debugger"); }
+            else { return usage("run", "Expected RID for option " + arg); }
 
             //Get WID
             if (++itArg != _args.end()) { dbInfo.wID = *itArg; }
-            else { return usage("run", "Expected WID for option --debugger"); }
+            else { return usage("run", "Expected WID for option " + arg); }
         }
         else { return usage("run", "Unknown Option: " + arg); }
 
@@ -159,12 +172,117 @@ int run(const std::vector<std::string>& _args)
     }
 }
 
+int compile(const std::vector<std::string>& _args)
+{
+    if (_args.empty())
+        return usage("compile");
+
+    std::string outputPath, targetASMOutputPath;
+
+    auto itArg = _args.begin();
+    while (itArg != _args.end())
+    {
+        auto arg = *itArg;
+        if (arg[0] != '-')
+            break;
+
+        //Add new options here
+        if (arg == "-o" || arg == "--output")
+        {
+            //Get output path
+            if (++itArg != _args.end()) { outputPath = *itArg; }
+            else { return usage("compile", "Expected output path for option " + arg); }
+        }
+        else if (arg == "--otasm")
+        {
+            //Get target asm output path
+            if (++itArg != _args.end()) { targetASMOutputPath = *itArg; }
+            else { return usage("compile", "Expected output path for option " + arg); }
+        }
+        else { return usage("compile", "Unknown Option: " + arg); }
+
+        itArg++;
+    }
+
+    if (itArg == _args.end())
+        return usage("compile", "Expected file path");
+
+    auto filePath = *itArg;
+    std::vector<std::string> cmdLineArgs(itArg, _args.end());
+
+    //Set default output path
+    if (outputPath.empty())
+        outputPath = filePath + ".out";
+
+    //Create temp file
+    std::string tempFileName = "/tmp/mytemp.XXXXXX";
+    int tempFileFD = mkstemp(tempFileName.data());
+    if (tempFileFD == -1)
+    {
+        std::cout << "Could not create temp file for compilation!" << std::endl;
+        return -1;
+    }
+    close(tempFileFD);
+
+    std::vector<std::string> filesToDelete = { tempFileName }; //Track files to delete
+
+    try
+    {
+        //Parse the ede asm file
+        Program program = Program::FromFile(filePath);
+
+        //Write target assembly to temp file
+        std::ofstream targetASMFile(tempFileName);
+        program.ToNASM(targetASMFile);
+        targetASMFile.close();
+
+        //Optionally write target assembly to specified output path
+        if (!targetASMOutputPath.empty())
+        {
+            std::error_code ec;
+            std::filesystem::copy(tempFileName, targetASMOutputPath, std::filesystem::copy_options::update_existing, ec);
+
+            if (ec.value() != 0)
+                throw std::runtime_error("Could not write target assembly to: " + targetASMOutputPath + "! " + ec.message());
+        }
+
+        //Compile target assembly
+        std::string objFilePath = tempFileName + ".o";
+        std::string cmd = "nasm -fmacho64 " + tempFileName + " -o " + objFilePath;
+        
+        if (std::system(cmd.c_str()) != 0) { throw std::runtime_error("Could not compile to target assembly using cmd: "); }
+        else { filesToDelete.push_back(objFilePath); }
+
+        //Link object file
+        cmd = "ld -e start -static -o " + outputPath + " " + objFilePath;
+        if (std::system(cmd.c_str()) != 0)
+            throw std::runtime_error("Could not link generated object file using cmd: " + cmd);
+
+        //Delete files
+        for (auto& f : filesToDelete)
+            unlink(f.c_str());
+
+        std::cout << "Successfully compiled \"" << filePath << "\" to " << std::filesystem::absolute(outputPath) << std::endl;
+        return 0;
+    }
+    catch (const std::runtime_error& e)
+    {
+        //Delete files
+        for (auto& f : filesToDelete)
+            unlink(f.c_str());
+
+        std::cout << e.what() << std::endl;
+        return -1;
+    }
+}
+
 int main(int _argc, char* _argv[])
 {
     typedef int (*CommandFunc)(const std::vector<std::string>&);
     static std::map<std::string, CommandFunc> commands = {
         {"test", &test},
         {"run", &run},
+        {"compile", &compile},
     };
 
     Instructions::Init();
