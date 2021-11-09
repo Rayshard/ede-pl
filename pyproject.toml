@@ -15,16 +15,21 @@ exclude = ["TODO"]
 ede = 'src.ede.ede:cli'
 evm = 'src.evm.evm:run'
 evm-build = 'src.evm.evm:build'
+edb = 'src.edb.edb:main'
 
 [tool.poetry.dependencies]
 python = ">=3.10"
 click = "*"
 pydot = "*"
+PyQt5 = "^5.15.6"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
 mypy = "*"
-autopep8 = "^1.6.0"
+black = {version = "^21.10b0", allow-prereleases = true}
+
+[tool.black]
+line-length = 190
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

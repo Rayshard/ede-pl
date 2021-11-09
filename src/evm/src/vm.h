@@ -50,6 +50,12 @@ public:
 
 typedef std::variant<VMError, vm_i64> VMExitCode;
 
+struct DebuggerInfo
+{
+    bool enabled;
+    std::string rID, wID;
+};
+
 class VM
 {
 private:

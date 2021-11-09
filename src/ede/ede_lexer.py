@@ -79,6 +79,7 @@ def lex_string(reader: Reader) -> Result[Token]:
     while True:
         char = reader.peek()
         
+        #TODO: Convert to match
         if char == '\\':
             reader.read()
             escaped_char = reader.read()

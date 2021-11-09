@@ -6,14 +6,14 @@
 #include "instructions.h"
 #include "../build.h"
 
-Thread::Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP)
+Thread::Thread(VM* _vm, ThreadID _id, vm_ui64 _stackSize, vm_byte* _startIP)
     : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0ull), framePtr(0ull), isAlive(false)
 {
     assert(_stackSize % WORD_SIZE == 0);
     stack = Memory(_stackSize);
 }
 
-void Thread::Start(vm_byte *_globalsArrayPtr, const std::vector<Word> &_args)
+void Thread::Start(vm_byte* _globalsArrayPtr, const std::vector<Word>& _args)
 {
     isAlive = true;
 
@@ -21,29 +21,27 @@ void Thread::Start(vm_byte *_globalsArrayPtr, const std::vector<Word> &_args)
     PushStack(_globalsArrayPtr);
 
     //Push incoming args onto stack
-    for (auto &arg : _args)
+    for (auto& arg : _args)
         PushStack(arg);
 
     //Start thread
-    thread = std::thread([this, _args]
-                         {
-                             try
-                             {
-                                 this->Run();
-                             }
-                             catch (const VMError &e)
-                             {
-                                 std::scoped_lock<std::mutex> lock(vm->mutex);
-                                 this->vm->Quit(e);
-                             }
+    thread = std::thread([this]
+        {
+            try { this->Run(); }
+            catch (const VMError& e)
+            {
+                std::scoped_lock<std::mutex> lock(vm->mutex);
+                this->vm->Quit(e);
+            }
 
-                             std::scoped_lock<std::mutex> lock(vm->mutex);
+            std::scoped_lock<std::mutex> lock(vm->mutex);
+            
 #ifdef BUILD_DEBUG
-                             if (PRINT_STACK_AFTER_THREAD_END)
-                                 PrintStack();
+            if (PRINT_STACK_AFTER_THREAD_END)
+                PrintStack();
 #endif
-                             isAlive = false;
-                         });
+            isAlive = false;
+        });
 }
 
 void Thread::Run()
@@ -83,13 +81,13 @@ void Thread::PrintStack()
 
     for (uint64_t i = 0; i < stackPtr; i += WORD_SIZE)
     {
-        std::cout << reinterpret_cast<void *>(&stack[i]);
-        std::cout << ":     i32: " << ((Word *)&stack[i])->as_i32;
-        std::cout << "     i64: " << ((Word *)&stack[i])->as_i64;
-        std::cout << "     ui64: " << ((Word *)&stack[i])->as_ui64;
-        std::cout << "     f32: " << ((Word *)&stack[i])->as_f32;
-        std::cout << "     f64: " << ((Word *)&stack[i])->as_f64;
-        std::cout << "     ptr: " << (void *)((Word *)&stack[i])->as_ptr;
+        std::cout << reinterpret_cast<void*>(&stack[i]);
+        std::cout << ":     i32: " << ((Word*)&stack[i])->as_i32;
+        std::cout << "     i64: " << ((Word*)&stack[i])->as_i64;
+        std::cout << "     ui64: " << ((Word*)&stack[i])->as_ui64;
+        std::cout << "     f32: " << ((Word*)&stack[i])->as_f32;
+        std::cout << "     f64: " << ((Word*)&stack[i])->as_f64;
+        std::cout << "     ptr: " << (void*)((Word*)&stack[i])->as_ptr;
 
         if (i + WORD_SIZE == stackPtr)
             std::cout << "\t\t<-------";
