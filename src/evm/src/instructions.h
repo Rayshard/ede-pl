@@ -121,15 +121,43 @@ namespace Instructions
     std::string ToString(const vm_byte* _instr);
     void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
 
+    namespace CONVERT
+    {
+        DataType GetFrom(const vm_byte* _instr);
+        DataType GetTo(const vm_byte* _instr);
+    }
+
     namespace PUSH
     {
         Word GetValue(const vm_byte* _instr);
-        void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
     }
 
     namespace SYSCALL
     {
         SysCallCode GetCode(const vm_byte* _instr);
-        void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
+    }
+
+    namespace OPERATION
+    {
+        DataType GetDataType(const vm_byte* _instr);
+    }
+
+    namespace JUMP
+    {
+        vm_byte* GetTarget(const vm_byte* _instr);
+        void SetTarget(vm_byte* _instr, vm_byte* _target);
+    }
+
+    namespace CALL
+    {
+        vm_byte* GetTarget(const vm_byte* _instr);
+        void SetTarget(vm_byte* _instr, vm_byte* _target);
+        
+        vm_ui32 GetStorage(const vm_byte* _instr);        
+    }
+
+    namespace INDEXED_LS
+    {
+        vm_ui32 GetIndex(const vm_byte* _instr);
     }
 }

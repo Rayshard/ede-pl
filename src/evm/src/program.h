@@ -18,7 +18,10 @@ public:
     Program();
     Program(Program&& _p) noexcept;
 
-    void ValidateAndInit();
+    void Resolve();
+    void Validate();
+
+    void ToNASM(std::ostream& _stream);
 
     vm_byte* GetEntryPtr();
     const ProgramHeader& GetHeader() const { return header; }
@@ -44,9 +47,6 @@ public:
         return *this;
     }
 
-
-    void ToNASM(std::ostream& _stream);
-
     static Program FromFile(const std::string& _filePath);
     static Program FromStream(std::istream& _stream);
     static Program FromString(const std::string& _string);
@@ -56,7 +56,9 @@ public:
     {
         Program program = Program();
         program.Insert(_arg1, _rest...);
-        program.ValidateAndInit();
+
+        program.Resolve();
+        program.Validate();
         return std::move(program);
     }
 };

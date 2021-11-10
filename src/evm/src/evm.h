@@ -19,6 +19,7 @@ typedef float vm_f32;
 typedef double vm_f64;
 typedef std::vector<vm_byte> Memory;
 
+#define VM_NULLPTR (vm_byte*)(0)
 #define VM_BYTE_SIZE sizeof(vm_byte)
 #define VM_I32_SIZE sizeof(vm_i32)
 #define VM_I64_SIZE sizeof(vm_i64)
@@ -45,7 +46,7 @@ union Word
     vm_byte* as_ptr;
     vm_byte bytes[sizeof(vm_byte*)];
 
-    Word() : as_ptr(0) {}
+    Word() : as_ptr(VM_NULLPTR) {}
     Word(vm_i8 _i) : as_i8(_i) {}
     Word(vm_ui8 _i) : as_ui8(_i) {}
     Word(vm_i16 _i) : as_i16(_i) {}

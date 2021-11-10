@@ -4,7 +4,9 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
+#include <unordered_set>
 #include "instructions.h"
+#include "../build.h"
 
 #define LABEL_OPERAND_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+")
 #define GLOBAL_ID_OPERAND_REGEX std::regex("\\$([a-zA-Z]|[0-9]|[_])+")
@@ -248,6 +250,7 @@ public:
         return token.value;
     }
 };
+
 typedef void (*InstructionInserter)(Program&, ProgramMetadata&, TokenStream&);
 static const std::map<std::string, InstructionInserter> InstructionInserters = {
     {"NOOP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::NOOP); }},
@@ -312,22 +315,22 @@ static const std::map<std::string, InstructionInserter> InstructionInserters = {
     {"JUMP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
         _prog.Insert(OpCode::JUMP);
         _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(vm_ui64()); //Insert target placeholder
+        _prog.Insert(VM_NULLPTR); //Insert target placeholder
     }},
     {"JUMPZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
         _prog.Insert(OpCode::JUMPZ);
         _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(vm_ui64()); //Insert target placeholder
+        _prog.Insert(VM_NULLPTR); //Insert target placeholder
     }},
     {"JUMPNZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
         _prog.Insert(OpCode::JUMPNZ);
         _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(vm_ui64()); //Insert target placeholder
+        _prog.Insert(VM_NULLPTR); //Insert target placeholder
     }},
     {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
         _prog.Insert(OpCode::CALL);
         _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(vm_ui64()); //Insert target placeholder
+        _prog.Insert(VM_NULLPTR); //Insert target placeholder
         _prog.Insert(_stream.ReadUI32Operand());  //Insert storage
     }},
 };
@@ -335,7 +338,7 @@ static const std::map<std::string, InstructionInserter> InstructionInserters = {
 Program::Program() : header(), code() { }
 Program::Program(Program&& _p) noexcept { this->operator=(std::move(_p)); }
 
-void Program::ValidateAndInit()
+void Program::Resolve()
 {
     vm_byte* start = code.data(), * end = &code.back() + 1;
 
@@ -347,38 +350,61 @@ void Program::ValidateAndInit()
         if (end - ptr < GetSize(opcode))
             throw Error::INVALID_PROGRAM();
 
-        //Update instructions that have label operands so that the
-        //operands are the actual pointers in memory; Update program
-        //globals count
+        //Resolve branch instructions targets
+        vm_byte* operand;
+
         switch (opcode)
         {
         case OpCode::JUMP:
         case OpCode::JUMPNZ:
-        case OpCode::JUMPZ:
-        case OpCode::CALL:
-        {
-            vm_byte* operand = ptr + OP_CODE_SIZE;
-            vm_ui64 offset = *(vm_ui64*)operand;
-            if (offset >= code.size())
-                throw Error::INVALID_PROGRAM();
-
-            vm_byte* target = start + offset;
-            if (end - target <= 0)
-                throw Error::INVALID_PROGRAM();
-
-            std::copy((vm_byte*)&target, (vm_byte*)&target + VM_PTR_SIZE, operand);
-        }
-        break;
-        case OpCode::GLOAD:
-        case OpCode::GSTORE:
-        {
-            vm_ui64 idx = *(vm_ui64*)(ptr + OP_CODE_SIZE);
-            header.numGlobals = std::max(header.numGlobals, idx + 1); //Set globals count
-        }
-        break;
+        case OpCode::JUMPZ: { operand = Instructions::JUMP::GetTarget(ptr); } break;
+        case OpCode::CALL: { operand = Instructions::CALL::GetTarget(ptr); } break;
         default:
         continue;
         }
+
+        Instructions::JUMP::SetTarget(ptr, start + *(vm_ui64*)&operand);
+    }
+}
+
+void Program::Validate()
+{
+    vm_byte* start = code.data(), * end = &code.back() + 1;
+    std::unordered_set<vm_byte*> possibleTargets; //a list of the targets of branching instructions
+
+    for (vm_byte* ptr = start; ptr != end; ptr += GetSize((OpCode)*ptr))
+    {
+        OpCode opcode = (OpCode)*ptr;
+
+        //Make sure the whole instruction is in the program
+        if (end - ptr < GetSize(opcode))
+            throw Error::INVALID_PROGRAM();
+
+
+        //Assert global references are in bounds
+        //Collect branching instructions targets
+        switch (opcode)
+        {
+        case OpCode::JUMP:
+        case OpCode::JUMPNZ:
+        case OpCode::JUMPZ: { possibleTargets.emplace(Instructions::JUMP::GetTarget(ptr)); } break;
+        case OpCode::CALL: { possibleTargets.emplace(Instructions::CALL::GetTarget(ptr)); } break;
+        case OpCode::GLOAD:
+        case OpCode::GSTORE:
+        {
+            if (Instructions::INDEXED_LS::GetIndex(ptr) >= header.numGlobals)
+                throw Error::INVALID_PROGRAM();
+        } break;
+        default:
+        continue;
+        }
+    }
+
+    //Assert branching instructions targets point to places in the code
+    for (auto& target : possibleTargets)
+    {
+        if (target >= end)
+            throw Error::INVALID_PROGRAM();
     }
 }
 
@@ -434,11 +460,18 @@ Program Program::FromStream(std::istream& _stream)
         if (labelSearch == metadata.labels.end())
             throw Error::UNDEFINED_LABEL(token.position, token.value);
 
-        vm_ui64 target = labelSearch->second;
+        vm_byte* target = program.code.data() + labelSearch->second;
         std::copy((vm_byte*)&target, (vm_byte*)&target + VM_PTR_SIZE, &program.code[pos]);
     }
 
-    program.ValidateAndInit();
+    //Set number of globals
+    for (auto& [id, idx] : metadata.globals)
+        program.header.numGlobals = std::max(program.header.numGlobals, idx + 1);
+
+#ifdef BUILD_DEBUG
+    program.Validate(); //Note that the program should already be validated since we generated a valid program
+#endif
+
     return std::move(program);
 }
 
