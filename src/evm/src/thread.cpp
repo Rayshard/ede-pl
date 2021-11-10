@@ -6,7 +6,7 @@
 #include "instructions.h"
 #include "../build.h"
 
-Thread::Thread(VM* _vm, ThreadID _id, vm_ui64 _stackSize, vm_byte* _startIP)
+Thread::Thread(VM* _vm, ThreadID _id, vm_ui64 _stackSize, const vm_byte* _startIP)
     : vm(_vm), instrPtr(_startIP), id(_id), stackPtr(0ull), framePtr(0ull), isAlive(false)
 {
     assert(_stackSize % WORD_SIZE == 0);
@@ -59,7 +59,7 @@ void Thread::Run()
             std::cout << Instructions::ToString(instrPtr) << "\t(Thread ID: " << id << ")" << std::endl;
 #endif
 
-        Instructions::ExecutionFuncs[opcode](this);
+        Instructions::Execute(instrPtr, this);
         instrPtr += Instructions::GetSize((Instructions::OpCode)opcode);
 
 #ifdef BUILD_DEBUG

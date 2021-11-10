@@ -18,9 +18,9 @@ private:
     bool isAlive;
 
 public:
-    vm_byte *instrPtr;
+    const vm_byte *instrPtr;
 
-    Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, vm_byte *_startIP);
+    Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, const vm_byte *_startIP);
 
     void Start(vm_byte* _globalsArrayPtr, const std::vector<Word>& _args);
     void Join();

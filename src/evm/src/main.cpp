@@ -285,8 +285,6 @@ int main(int _argc, char* _argv[])
         {"compile", &compile},
     };
 
-    Instructions::Init();
-
     if (_argc == 1)
         return usage();
 

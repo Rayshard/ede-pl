@@ -100,7 +100,7 @@ void VM::Quit(VMExitCode _code)
     running = false;
 }
 
-ThreadID VM::SpawnThread(vm_ui64 _stackSize, vm_byte *_startIP, const std::vector<Word> &_args)
+ThreadID VM::SpawnThread(vm_ui64 _stackSize, const vm_byte *_startIP, const std::vector<Word> &_args)
 {
     if (!running)
         throw VMError::CANNOT_SPAWN_THREAD();

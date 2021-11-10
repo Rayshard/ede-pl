@@ -66,53 +66,95 @@ namespace Instructions
 #define SYSCALL_CODE_SIZE sizeof(Instructions::SysCallCode)
 #define DATA_TYPE_SIZE sizeof(Instructions::DataType)
 
-    typedef void (*ExecutionFunc)(Thread*);
-    extern ExecutionFunc ExecutionFuncs[(size_t)OpCode::_COUNT];
+#pragma pack(push, 1)
+#define OPERAND(type, name) type name;
+#define INSTRUCTION(OPCODE, OPERANDS)                                                      \
+    struct OPCODE                                                                          \
+    {                                                                                      \
+        const OpCode opcode = OpCode::OPCODE;                                              \
+        OPERANDS                                                                           \
+                                                                                           \
+        static constexpr vm_ui64 GetSize() { return sizeof(OPCODE); }                      \
+                                                                                           \
+        static OPCODE* From(vm_byte* _instr)                                               \
+        {                                                                                  \
+            assert((OpCode)*_instr == OpCode::OPCODE && "Invalid instruction cast!");      \
+            return (OPCODE*)_instr;                                                        \
+        }                                                                                  \
+                                                                                           \
+        static const OPCODE* From(const vm_byte* _instr)                                   \
+        {                                                                                  \
+            assert((OpCode)*_instr == OpCode::OPCODE && "Invalid instruction cast!");      \
+            return (const OPCODE*)_instr;                                                  \
+        }                                                                                  \
+    }
 
-    void Init();
+    INSTRUCTION(NOOP, );
+    INSTRUCTION(POP, );
+    INSTRUCTION(SYSCALL, OPERAND(SysCallCode, code));
+    INSTRUCTION(CONVERT, OPERAND(DataType, from) OPERAND(DataType, to));
+    INSTRUCTION(PUSH, OPERAND(Word, value));
+    INSTRUCTION(SLOAD, OPERAND(vm_i64, offset));
+    INSTRUCTION(SSTORE, OPERAND(vm_i64, offset));
+    INSTRUCTION(MLOAD, OPERAND(vm_i64, offset));
+    INSTRUCTION(MSTORE, OPERAND(vm_i64, offset));
+    INSTRUCTION(GLOAD, OPERAND(vm_ui64, idx));
+    INSTRUCTION(GSTORE, OPERAND(vm_ui64, idx));
+    INSTRUCTION(LLOAD, OPERAND(vm_ui32, idx));
+    INSTRUCTION(LSTORE, OPERAND(vm_ui32, idx));
+    INSTRUCTION(PLOAD, OPERAND(vm_ui32, idx));
+    INSTRUCTION(PSTORE, OPERAND(vm_ui32, idx));
+    INSTRUCTION(ADD, OPERAND(DataType, type));
+    INSTRUCTION(SUB, OPERAND(DataType, type));
+    INSTRUCTION(MUL, OPERAND(DataType, type));
+    INSTRUCTION(DIV, OPERAND(DataType, type));
+    INSTRUCTION(EQ, OPERAND(DataType, type));
+    INSTRUCTION(NEQ, OPERAND(DataType, type));
+    INSTRUCTION(JUMP, OPERAND(vm_byte*, target));
+    INSTRUCTION(JUMPZ, OPERAND(vm_byte*, target));
+    INSTRUCTION(JUMPNZ, OPERAND(vm_byte*, target));
+    INSTRUCTION(CALL, OPERAND(vm_byte*, target) OPERAND(vm_ui32, storage));
+    INSTRUCTION(RET, );
+    INSTRUCTION(RETV, );
+
+#undef OPERAND
+#undef INSTRUCTION
+#pragma pack(pop)
+
+    void Execute(const vm_byte* _instr, Thread* _thread);
 
     constexpr vm_ui64 GetSize(OpCode _opCode)
     {
         switch (_opCode)
         {
-        case OpCode::NOOP:
-        case OpCode::POP:
-        case OpCode::RET:
-        case OpCode::RETV:
-        return OP_CODE_SIZE;
-        case OpCode::ADD:
-        case OpCode::SUB:
-        case OpCode::MUL:
-        case OpCode::DIV:
-        case OpCode::EQ:
-        case OpCode::NEQ:
-        return OP_CODE_SIZE + DATA_TYPE_SIZE;
-        case OpCode::PUSH:
-        return OP_CODE_SIZE + WORD_SIZE;
-        case OpCode::JUMP:
-        case OpCode::JUMPNZ:
-        case OpCode::JUMPZ:
-        return OP_CODE_SIZE + VM_PTR_SIZE;
-        case OpCode::CALL:
-        return OP_CODE_SIZE + VM_PTR_SIZE + VM_UI32_SIZE;
-        case OpCode::SYSCALL:
-        return OP_CODE_SIZE + SYSCALL_CODE_SIZE;
-        case OpCode::SLOAD:
-        case OpCode::SSTORE:
-        case OpCode::MLOAD:
-        case OpCode::MSTORE:
-        case OpCode::GLOAD:
-        case OpCode::GSTORE:
-        return OP_CODE_SIZE + VM_I64_SIZE;
-        case OpCode::LLOAD:
-        case OpCode::LSTORE:
-        case OpCode::PLOAD:
-        case OpCode::PSTORE:
-        return OP_CODE_SIZE + VM_UI32_SIZE;
-        case OpCode::CONVERT:
-        return OP_CODE_SIZE + DATA_TYPE_SIZE + DATA_TYPE_SIZE;
-        default:
-        assert(false && "Case not handled");
+        case OpCode::NOOP: return NOOP::GetSize();
+        case OpCode::POP: return POP::GetSize();
+        case OpCode::RET: return RET::GetSize();
+        case OpCode::RETV: return RETV::GetSize();
+        case OpCode::ADD: return ADD::GetSize();
+        case OpCode::SUB: return SUB::GetSize();
+        case OpCode::MUL: return MUL::GetSize();
+        case OpCode::DIV: return DIV::GetSize();
+        case OpCode::EQ: return EQ::GetSize();
+        case OpCode::NEQ: return NEQ::GetSize();
+        case OpCode::PUSH: return PUSH::GetSize();
+        case OpCode::JUMP: return JUMP::GetSize();
+        case OpCode::JUMPNZ: return JUMPNZ::GetSize();
+        case OpCode::JUMPZ: return JUMPZ::GetSize();
+        case OpCode::CALL: return CALL::GetSize();
+        case OpCode::SYSCALL: return SYSCALL::GetSize();
+        case OpCode::SLOAD: return SLOAD::GetSize();
+        case OpCode::SSTORE: return SSTORE::GetSize();
+        case OpCode::MLOAD: return MLOAD::GetSize();
+        case OpCode::MSTORE: return MSTORE::GetSize();
+        case OpCode::GLOAD: return GLOAD::GetSize();
+        case OpCode::GSTORE: return GSTORE::GetSize();
+        case OpCode::LLOAD: return LLOAD::GetSize();
+        case OpCode::LSTORE: return LSTORE::GetSize();
+        case OpCode::PLOAD: return PLOAD::GetSize();
+        case OpCode::PSTORE: return PSTORE::GetSize();
+        case OpCode::CONVERT: return CONVERT::GetSize();
+        default: assert(false && "Case not handled");
         }
 
         return 0;
@@ -120,44 +162,4 @@ namespace Instructions
 
     std::string ToString(const vm_byte* _instr);
     void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
-
-    namespace CONVERT
-    {
-        DataType GetFrom(const vm_byte* _instr);
-        DataType GetTo(const vm_byte* _instr);
-    }
-
-    namespace PUSH
-    {
-        Word GetValue(const vm_byte* _instr);
-    }
-
-    namespace SYSCALL
-    {
-        SysCallCode GetCode(const vm_byte* _instr);
-    }
-
-    namespace OPERATION
-    {
-        DataType GetDataType(const vm_byte* _instr);
-    }
-
-    namespace JUMP
-    {
-        vm_byte* GetTarget(const vm_byte* _instr);
-        void SetTarget(vm_byte* _instr, vm_byte* _target);
-    }
-
-    namespace CALL
-    {
-        vm_byte* GetTarget(const vm_byte* _instr);
-        void SetTarget(vm_byte* _instr, vm_byte* _target);
-        
-        vm_ui32 GetStorage(const vm_byte* _instr);        
-    }
-
-    namespace INDEXED_LS
-    {
-        vm_ui32 GetIndex(const vm_byte* _instr);
-    }
 }

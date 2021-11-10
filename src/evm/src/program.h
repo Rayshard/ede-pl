@@ -23,7 +23,7 @@ public:
 
     void ToNASM(std::ostream& _stream);
 
-    vm_byte* GetEntryPtr();
+    const vm_byte* GetEntryPtr();
     const ProgramHeader& GetHeader() const { return header; }
     const Memory& GetCode() const { return code; };
 

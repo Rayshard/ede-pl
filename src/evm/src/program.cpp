@@ -253,85 +253,84 @@ public:
 
 typedef void (*InstructionInserter)(Program&, ProgramMetadata&, TokenStream&);
 static const std::map<std::string, InstructionInserter> InstructionInserters = {
-    {"NOOP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::NOOP); }},
-    {"POP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::POP); }},
-    {"ADD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::ADD, _stream.ReadDataTypeOperand()); }},
-    {"SUB", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SUB, _stream.ReadDataTypeOperand()); }},
-    {"MUL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::MUL, _stream.ReadDataTypeOperand()); }},
-    {"DIV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::DIV, _stream.ReadDataTypeOperand()); }},
-    {"EQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::EQ, _stream.ReadDataTypeOperand()); }},
-    {"NEQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::NEQ, _stream.ReadDataTypeOperand()); }},
-    {"SLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SLOAD, _stream.ReadI64Operand()); }},
-    {"SSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SSTORE, _stream.ReadI64Operand()); }},
-    {"DUP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SLOAD, -vm_i64(WORD_SIZE)); }},
-    {"MLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::MLOAD, _stream.ReadI64Operand()); }},
-    {"MSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::MSTORE, _stream.ReadI64Operand()); }},
-    {"LLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::LLOAD, _stream.ReadUI32Operand()); }},
-    {"LSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::LSTORE, _stream.ReadUI32Operand()); }},
-    {"PLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::PLOAD, _stream.ReadUI32Operand()); }},
-    {"PSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::PSTORE, _stream.ReadUI32Operand()); }},
-    {"RET", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::RET); }},
-    {"RETV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::RETV); }},
-    {"EXIT", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::EXIT); }},
-    {"MALLOC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::MALLOC); }},
-    {"FREE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::FREE); }},
-    {"PRINTC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(OpCode::SYSCALL, SysCallCode::PRINTC); }},
+    {"NOOP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::NOOP { }); }},
+    {"POP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::POP { }); }},
+    {"ADD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::ADD {.type = _stream.ReadDataTypeOperand()}); }},
+    {"SUB", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SUB {.type = _stream.ReadDataTypeOperand()}); }},
+    {"MUL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::MUL {.type = _stream.ReadDataTypeOperand()}); }},
+    {"DIV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::DIV {.type = _stream.ReadDataTypeOperand()}); }},
+    {"EQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::EQ {.type = _stream.ReadDataTypeOperand()}); }},
+    {"NEQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::NEQ {.type = _stream.ReadDataTypeOperand()}); }},
+    {"SLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = _stream.ReadI64Operand()}); }},
+    {"SSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SSTORE {.offset = _stream.ReadI64Operand()}); }},
+    {"DUP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = -vm_i64(WORD_SIZE)}); }},
+    {"MLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::MLOAD {.offset = _stream.ReadI64Operand()}); }},
+    {"MSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::MSTORE {.offset = _stream.ReadI64Operand()}); }},
+    {"LLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::LLOAD {.idx = _stream.ReadUI32Operand()}); }},
+    {"LSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::LSTORE {.idx = _stream.ReadUI32Operand()}); }},
+    {"PLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::PLOAD {.idx = _stream.ReadUI32Operand()}); }},
+    {"PSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::PSTORE {.idx = _stream.ReadUI32Operand()}); }},
+    {"RET", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::RET { }); }},
+    {"RETV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::RETV { }); }},
+    {"EXIT", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::EXIT}); }},
+    {"MALLOC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::MALLOC}); }},
+    {"FREE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::FREE}); }},
+    {"PRINTC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::PRINTC}); }},
     {"PUSH", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
-        _prog.Insert(OpCode::PUSH);
-
+        Word value;
+        
         switch (_stream.ReadDataTypeOperand())
         {
-        case DataType::I8: _prog.Insert(Word(_stream.ReadI8Operand())); break;
-        case DataType::UI8: _prog.Insert(Word(_stream.ReadUI8Operand())); break;
-        case DataType::I16: _prog.Insert(Word(_stream.ReadI16Operand())); break;
-        case DataType::UI16: _prog.Insert(Word(_stream.ReadUI16Operand())); break;
-        case DataType::I32: _prog.Insert(Word(_stream.ReadI32Operand())); break;
-        case DataType::UI32: _prog.Insert(Word(_stream.ReadUI32Operand())); break;
-        case DataType::I64: _prog.Insert(Word(_stream.ReadI64Operand())); break;
-        case DataType::UI64: _prog.Insert(Word(_stream.ReadUI64Operand())); break;
-        case DataType::F32: _prog.Insert(Word(_stream.ReadF32Operand())); break;
-        case DataType::F64: _prog.Insert(Word(_stream.ReadF64Operand())); break;
+        case DataType::I8: value = _stream.ReadI8Operand(); break;
+        case DataType::UI8: value = _stream.ReadUI8Operand(); break;
+        case DataType::I16: value = _stream.ReadI16Operand(); break;
+        case DataType::UI16: value = _stream.ReadUI16Operand(); break;
+        case DataType::I32: value = _stream.ReadI32Operand(); break;
+        case DataType::UI32: value = _stream.ReadUI32Operand(); break;
+        case DataType::I64: value = _stream.ReadI64Operand(); break;
+        case DataType::UI64: value = _stream.ReadUI64Operand(); break;
+        case DataType::F32: value = _stream.ReadF32Operand(); break;
+        case DataType::F64: value = _stream.ReadF64Operand(); break;
         default: assert(false && "Case not handled");
         }
+
+        _prog.Insert(Instructions::PUSH {.value = value});
     }},
     {"CONVERT", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
         auto from = _stream.ReadDataTypeOperand(), to = _stream.ReadDataTypeOperand();
-        _prog.Insert(OpCode::CONVERT, from, to);
+        _prog.Insert(Instructions::CONVERT{.from = from, .to = to});
     }},
     {"GLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
         auto id = _stream.ReadGlobalIDOperand();
         auto search = _progMeta.globals.find(id);
         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
 
-        _prog.Insert(OpCode::GLOAD, idx);
+        _prog.Insert(Instructions::GLOAD {.idx = idx});
     }},
     {"GSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
         auto id = _stream.ReadGlobalIDOperand();
         auto search = _progMeta.globals.find(id);
         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
 
-        _prog.Insert(OpCode::GSTORE, idx);
+        _prog.Insert(Instructions::GSTORE {.idx = idx});
     }},
     {"JUMP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
-        _prog.Insert(OpCode::JUMP);
-        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(VM_NULLPTR); //Insert target placeholder
+        _prog.Insert(Instructions::JUMP {.target = VM_NULLPTR});
+        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
     }},
     {"JUMPZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
-        _prog.Insert(OpCode::JUMPZ);
-        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(VM_NULLPTR); //Insert target placeholder
+        _prog.Insert(Instructions::JUMPZ {.target = VM_NULLPTR});
+        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
     }},
     {"JUMPNZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
-        _prog.Insert(OpCode::JUMPNZ);
-        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(VM_NULLPTR); //Insert target placeholder
+        _prog.Insert(Instructions::JUMPNZ {.target = VM_NULLPTR});
+        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
     }},
     {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
-        _prog.Insert(OpCode::CALL);
-        _progMeta.labelOperands.emplace(_prog.GetCode().size(), _stream.ReadLabelOperand());
-        _prog.Insert(VM_NULLPTR); //Insert target placeholder
-        _prog.Insert(_stream.ReadUI32Operand());  //Insert storage
+        Token label = _stream.ReadLabelOperand();
+
+        _prog.Insert(Instructions::CALL {.target = VM_NULLPTR, .storage = _stream.ReadUI32Operand()});
+        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_UI32_SIZE - VM_PTR_SIZE, label);
     }},
 };
 
@@ -351,19 +350,15 @@ void Program::Resolve()
             throw Error::INVALID_PROGRAM();
 
         //Resolve branch instructions targets
-        vm_byte* operand;
-
         switch (opcode)
         {
-        case OpCode::JUMP:
-        case OpCode::JUMPNZ:
-        case OpCode::JUMPZ: { operand = Instructions::JUMP::GetTarget(ptr); } break;
-        case OpCode::CALL: { operand = Instructions::CALL::GetTarget(ptr); } break;
+        case OpCode::JUMP: Instructions::JUMP::From(ptr)->target = start + *(vm_ui64*)&Instructions::JUMP::From(ptr)->target; break;
+        case OpCode::JUMPNZ: Instructions::JUMPNZ::From(ptr)->target = start + *(vm_ui64*)&Instructions::JUMPNZ::From(ptr)->target; break;
+        case OpCode::JUMPZ: Instructions::JUMPZ::From(ptr)->target = start + *(vm_ui64*)&Instructions::JUMPZ::From(ptr)->target; break;
+        case OpCode::CALL: Instructions::CALL::From(ptr)->target = start + *(vm_ui64*)&Instructions::CALL::From(ptr)->target; break;
         default:
         continue;
         }
-
-        Instructions::JUMP::SetTarget(ptr, start + *(vm_ui64*)&operand);
     }
 }
 
@@ -385,14 +380,18 @@ void Program::Validate()
         //Collect branching instructions targets
         switch (opcode)
         {
-        case OpCode::JUMP:
-        case OpCode::JUMPNZ:
-        case OpCode::JUMPZ: { possibleTargets.emplace(Instructions::JUMP::GetTarget(ptr)); } break;
-        case OpCode::CALL: { possibleTargets.emplace(Instructions::CALL::GetTarget(ptr)); } break;
+        case OpCode::JUMP: possibleTargets.emplace(Instructions::JUMP::From(ptr)->target); break;
+        case OpCode::JUMPNZ: possibleTargets.emplace(Instructions::JUMPNZ::From(ptr)->target); break;
+        case OpCode::JUMPZ: possibleTargets.emplace(Instructions::JUMPZ::From(ptr)->target); break;
+        case OpCode::CALL: possibleTargets.emplace(Instructions::CALL::From(ptr)->target); break;
         case OpCode::GLOAD:
+        {
+            if (Instructions::GLOAD::From(ptr)->idx >= header.numGlobals)
+                throw Error::INVALID_PROGRAM();
+        } break;
         case OpCode::GSTORE:
         {
-            if (Instructions::INDEXED_LS::GetIndex(ptr) >= header.numGlobals)
+            if (Instructions::GSTORE::From(ptr)->idx >= header.numGlobals)
                 throw Error::INVALID_PROGRAM();
         } break;
         default:
@@ -408,7 +407,7 @@ void Program::Validate()
     }
 }
 
-vm_byte* Program::GetEntryPtr() { return &code[header.entryPoint]; }
+const vm_byte* Program::GetEntryPtr() { return &code[header.entryPoint]; }
 
 Program Program::FromFile(const std::string& _filePath)
 {
@@ -494,15 +493,10 @@ void Program::ToNASM(std::ostream& _stream)
 
         switch (opcode)
         {
-        case OpCode::JUMP:
-        case OpCode::JUMPNZ:
-        case OpCode::JUMPZ:
-        case OpCode::CALL:
-        {
-            vm_byte* target = *(vm_byte**)(ptr + OP_CODE_SIZE);
-            labelPositions.emplace(target, "label" + std::to_string(labelPositions.size()));
-        }
-        break;
+        case OpCode::JUMP: labelPositions.emplace(Instructions::JUMP::From(ptr)->target, "label" + std::to_string(labelPositions.size())); break;
+        case OpCode::JUMPNZ: labelPositions.emplace(Instructions::JUMPNZ::From(ptr)->target, "label" + std::to_string(labelPositions.size())); break;
+        case OpCode::JUMPZ: labelPositions.emplace(Instructions::JUMPZ::From(ptr)->target, "label" + std::to_string(labelPositions.size())); break;
+        case OpCode::CALL: labelPositions.emplace(Instructions::CALL::From(ptr)->target, "label" + std::to_string(labelPositions.size())); break;
         default:
         continue;
         }
