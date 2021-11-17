@@ -8,7 +8,7 @@
 class Thread
 {
 private:
-    VM *vm;
+    VM* vm;
 
     Memory stack;
     vm_ui64 stackPtr, framePtr;
@@ -18,9 +18,9 @@ private:
     bool isAlive;
 
 public:
-    const vm_byte *instrPtr;
+    const vm_byte* instrPtr;
 
-    Thread(VM *_vm, ThreadID _id, vm_ui64 _stackSize, const vm_byte *_startIP);
+    Thread(VM* _vm, ThreadID _id, vm_ui64 _stackSize, const vm_byte* _startIP);
 
     void Start(vm_byte* _globalsArrayPtr, const std::vector<Word>& _args);
     void Join();
@@ -32,7 +32,7 @@ public:
     void OffsetSP(vm_i64 _off);
     void PrintStack();
 
-    VM *GetVM() { return vm; }
+    VM* GetVM() { return vm; }
     ThreadID GetID() { return id; }
     bool IsAlive() { return isAlive; }
     vm_ui64 GetSP() { return stackPtr; }
@@ -47,18 +47,18 @@ public:
         else if (_pos + sizeof(T) > stack.size())
             throw VMError::STACK_OVERFLOW();
 
-        return *(T *)&stack[_pos];
+        return *(T*)&stack[_pos];
     }
 
     template <typename T>
-    void WriteStack(vm_i64 _pos, const T &_value)
+    void WriteStack(vm_i64 _pos, const T& _value)
     {
         if (_pos < 0)
             throw VMError::STACK_UNDERFLOW();
         else if (_pos + sizeof(T) > stack.size())
             throw VMError::STACK_OVERFLOW();
 
-        std::copy((vm_byte *)&_value, (vm_byte *)&_value + sizeof(T), &stack[_pos]);
+        *(T*)&stack[_pos] = _value;
     }
 
     void PushStack(Word _value);

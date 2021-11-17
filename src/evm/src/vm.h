@@ -60,7 +60,6 @@ class VM
 {
 private:
     Heap heap;
-    bool runGC;
 
     std::map<ThreadID, Thread> threads;
     ThreadID nextThreadID;
@@ -74,7 +73,7 @@ private:
 public:
     std::mutex mutex;
 
-    VM(bool _runGC = false);
+    VM();
     ~VM();
 
     vm_i64 Run(vm_ui64 _stackSize, Program& _prog, const std::vector<std::string> &_cmdLineArgs);

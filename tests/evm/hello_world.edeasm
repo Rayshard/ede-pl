@@ -1,0 +1,5 @@
+PUSH @message
+PRINTS
+EXIT
+
+@message: "Hello World\n"

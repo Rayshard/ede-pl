@@ -460,7 +460,7 @@ Program Program::FromStream(std::istream& _stream)
             throw Error::UNDEFINED_LABEL(token.position, token.value);
 
         vm_byte* target = program.code.data() + labelSearch->second;
-        std::copy((vm_byte*)&target, (vm_byte*)&target + VM_PTR_SIZE, &program.code[pos]);
+        *(vm_byte**)&program.code[pos] = target;
     }
 
     //Set number of globals

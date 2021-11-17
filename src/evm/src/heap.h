@@ -93,9 +93,6 @@ class Heap
     FreeChunksList freeChunks;
     size_t size;
 
-    std::thread gcThread;
-    bool gcRunning;
-
 public:
     Heap(VM *_vm);
     ~Heap();
@@ -106,14 +103,8 @@ public:
     bool IsAddressRange(vm_byte *_start, vm_byte *_end);
     bool IsAllocated(vm_byte *_addr);
 
-    void StartGC();
-    void StopGC();
-
     void AssertHeuristics();
     void Print();
 
     size_t GetSize() { return size; }
-
-private:
-    void RunGC();
 };

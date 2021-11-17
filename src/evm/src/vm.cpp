@@ -4,8 +4,8 @@
 #include "../build.h"
 #include <iostream>
 
-VM::VM(bool _runGC)
-    : heap(this), runGC(_runGC), threads(), running(false), nextThreadID(0), exitCode(0), stdInput(std::cin.rdbuf()), stdOutput(std::cout.rdbuf()) {}
+VM::VM()
+    : heap(this), threads(), running(false), nextThreadID(0), exitCode(0), stdInput(std::cin.rdbuf()), stdOutput(std::cout.rdbuf()) {}
 
 VM::~VM()
 {
@@ -23,7 +23,7 @@ vm_i64 VM::Run(vm_ui64 _stackSize, Program& _prog, const std::vector<std::string
     auto argsArrayPtr = heap.Alloc(VM_UI64_SIZE + _cmdLineArgs.size() * VM_PTR_SIZE);
     auto argsArrayPtrValues = (vm_byte **)&argsArrayPtr[VM_UI64_SIZE];
 
-    std::copy((vm_byte *)&argsArraySize, (vm_byte *)&argsArraySize + VM_UI64_SIZE, argsArrayPtr); //Store number of cmd line args
+    *(vm_ui64*)argsArrayPtr = argsArraySize; //Store number of cmd line args
 
     //Store each cmd line arg
     for (vm_ui64 iArg = 0; iArg < argsArraySize; iArg++)
@@ -32,16 +32,12 @@ vm_i64 VM::Run(vm_ui64 _stackSize, Program& _prog, const std::vector<std::string
         Word argSize = (vm_ui64)arg.size();
         auto argPtr = (argsArrayPtrValues[iArg] = heap.Alloc(arg.size() + VM_UI64_SIZE)); //store string ptr
 
-        std::copy((vm_byte *)&argSize, (vm_byte *)&argSize + WORD_SIZE, argPtr); //store string size
+        *(Word*)argPtr = argSize; //store string size
         std::copy(arg.begin(), arg.end(), argPtr + WORD_SIZE);                   //store string chars
     }
 
     //Start main thread
     SpawnThread(_stackSize, _prog.GetEntryPtr(), {argsArrayPtr});
-
-    //Possibly start garbage collector
-    if (runGC)
-        heap.StartGC();
 
     //Manage threads
     while (threads.size() != 0)
@@ -74,10 +70,6 @@ vm_i64 VM::Run(vm_ui64 _stackSize, Program& _prog, const std::vector<std::string
     }
 
     running = false;
-
-    //Stop garbage collector if it was started
-    if (runGC)
-        heap.StopGC();
 
 #ifdef BUILD_DEBUG
     if (PRINT_HEAP_AFTER_PROGRAM_END)

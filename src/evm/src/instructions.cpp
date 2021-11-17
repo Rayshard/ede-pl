@@ -191,7 +191,7 @@ namespace Instructions
         {
         case SysCallCode::EXIT: { _thread->GetVM()->Quit(_thread->PopStack().as_i64); } break;
         case SysCallCode::PRINTC: { _thread->GetVM()->GetStdOut() << _thread->PopStack().as_byte; } break;
-        case SysCallCode::MALLOC: { _thread->PushStack(_thread->GetVM()->GetHeap().Alloc(_thread->PopStack().as_i64)); } break;
+        case SysCallCode::MALLOC: { _thread->PushStack(_thread->GetVM()->GetHeap().Alloc(_thread->PopStack().as_ui64)); } break;
         case SysCallCode::FREE: { _thread->GetVM()->GetHeap().Free(_thread->PopStack().as_ptr); } break;        
         default: assert(false && "Case not handled");
         }
@@ -432,7 +432,7 @@ namespace Instructions
         if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
             throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
 
-        std::copy((vm_byte*)&value, (vm_byte*)&value + sizeof(value), addr);
+        *(Word*)addr = value;
     }
 
     void Execute(const SLOAD* _instr, Thread* _thread) { _thread->PushStack(_thread->ReadStack<Word>(_thread->GetSP() + _instr->offset)); }
@@ -461,7 +461,7 @@ namespace Instructions
         if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
             throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
 
-        std::copy((vm_byte*)&value, (vm_byte*)&value + sizeof(value), addr);
+        *(Word*)addr = value;
     }
 
     void Execute(const vm_byte* _instr, Thread* _thread)
