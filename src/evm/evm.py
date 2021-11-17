@@ -55,7 +55,7 @@ def build(output: str, tests: bool, debug: bool, debug_heap: bool):
             f.write("#endif\n")
 
     # Build executable
-    build_call_args = ["g++", "-std=c++17", "-fdiagnostics-color=always", "-g"]
+    build_call_args = ["g++", "-std=c++2a", "-fdiagnostics-color=always", "-g"]
     input_files = [path for name, path in resources.get("cpps").items()]
     evm_output_path = os.path.join(output, EXECUTABLE_FILE_NAME)
     subprocess.call(build_call_args + ["-o", evm_output_path] + input_files)

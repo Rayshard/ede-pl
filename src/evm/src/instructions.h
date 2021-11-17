@@ -160,6 +160,7 @@ namespace Instructions
         return 0;
     }
 
+    std::string ToString(DataType _dt);
     std::string ToString(const vm_byte* _instr);
     void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent);
 }

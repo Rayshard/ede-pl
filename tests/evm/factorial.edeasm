@@ -1,3 +1,4 @@
+@START:
     PUSH UI64 5         # num: the number the take the factorial of
     PUSH UI64 1         # The result
 @LOOP:

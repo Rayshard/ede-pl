@@ -109,3 +109,6 @@ std::string PtrToStr(T* _ptr)
     ss << ptr;
     return ss.str();
 }
+
+template <class T>
+Memory GetBytes(T _value) { return Memory((vm_byte*) & _value, (vm_byte*)&_value + sizeof(_value)); }

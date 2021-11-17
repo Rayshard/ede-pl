@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include "instructions.h"
 #include "../build.h"
+#include "deps/parser.h"
 
 #define LABEL_OPERAND_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+")
 #define GLOBAL_ID_OPERAND_REGEX std::regex("\\$([a-zA-Z]|[0-9]|[_])+")
@@ -17,6 +18,128 @@
 #define HEX_REGEX std::regex("0x[0-9a-fA-F]+")
 
 using Instructions::OpCode, Instructions::SysCallCode, Instructions::DataType;
+
+vm_i64 GetInteger(std::string _text, vm_i64 _min, vm_i64 _max)
+{
+    try
+    {
+        if (!std::regex_match(_text, INTEGER_REGEX))
+            throw 0;
+
+        vm_i64 value = std::stoll(_text);
+        if (value > _max)
+            throw 0;
+
+        return value;
+    }
+    catch (...) { throw std::invalid_argument(_text); }
+}
+
+vm_ui64 GetUnsignedInteger(std::string _text, vm_ui64 _max)
+{
+    try
+    {
+        if (!std::regex_match(_text, UNSIGNED_INTEGER_REGEX))
+            throw 0;
+
+        vm_ui64 value = std::stoull(_text);
+        if (value > _max)
+            throw 0;
+
+        return value;
+    }
+    catch (...) { throw std::invalid_argument(_text); }
+}
+
+vm_i8 GetI8Operand(std::string _text) { return GetInteger(_text, INT8_MIN, INT8_MAX); }
+vm_ui8 GetUI8Operand(std::string _text) { return GetUnsignedInteger(_text, UINT8_MAX); }
+vm_i16 GetI16Operand(std::string _text) { return GetInteger(_text, INT16_MIN, INT16_MAX); }
+vm_ui16 GetUI16Operand(std::string _text) { return GetUnsignedInteger(_text, UINT16_MAX); }
+vm_i32 GetI32Operand(std::string _text) { return GetInteger(_text, INT32_MIN, INT32_MAX); }
+vm_ui32 GetUI32Operand(std::string _text) { return GetUnsignedInteger(_text, UINT32_MAX); }
+vm_i64 GetI64Operand(std::string _text) { return GetInteger(_text, INT64_MIN, INT64_MAX); }
+vm_ui64 GetUI64Operand(std::string _text) { return GetUnsignedInteger(_text, UINT64_MAX); }
+
+vm_f32 GetF32Operand(std::string _text)
+{
+    try
+    {
+        if (!std::regex_match(_text, DECIMAL_REGEX))
+            throw 0;
+
+        return std::stof(_text);
+    }
+    catch (...) { throw std::invalid_argument(_text); }
+}
+
+vm_f64 GetF64Operand(std::string _text)
+{
+    try
+    {
+        if (!std::regex_match(_text, DECIMAL_REGEX))
+            throw 0;
+
+        return std::stod(_text);
+    }
+    catch (...) { throw std::invalid_argument(_text); }
+}
+
+parser::Parser* CreateParser()
+{
+    using namespace parser;
+    auto unknownAction = [](StringStream& _stream, const LexerMatch& _match) { throw std::runtime_error("Unrecognized token: " + _match.value + " at " + _match.position.ToString()); };
+
+    Parser* parser = new Parser(Lexer::NoAction(), unknownAction);
+    parser->lexer.AddPattern(Regex("\\s+"));
+    parser->lexer.AddPattern(Regex("#.*"));
+    parser->AddTerminal(":", Regex(":"), Lexer::NoAction());
+    parser->AddTerminal("LABEL", Regex("@([a-zA-Z]|[0-9]|[_])+"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value.substr(1)); });
+    parser->AddTerminal("GLOBAL_ID", Regex("\\$([a-zA-Z]|[0-9]|[_])+"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value.substr(1)); });
+    parser->AddTerminal("INTEGER", Regex("-?(0|[1-9][0-9]*)"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value); });
+    parser->AddTerminal("DECIMAL", Regex("-?(0|[1-9][0-9]*)([.][0-9]+)?"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value); });
+    parser->AddTerminal("HEX", Regex("0x[0-9a-fA-F]+"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value); });
+
+    // Add opcode terminals
+    std::string opcodes[] = {
+        "NOOP", "POP", "ADD", "SUB", "MUL", "DIV", "EQ", "NEQ", "DUP", "MLOAD", "MSTORE",
+        "LLOAD", "LSTORE", "PLOAD", "PSTORE", "RET", "RETV", "EXIT", "MALLOC", "FREE",
+        "PRINTC", "PUSH", "CONVERT", "GLOAD", "GSTORE", "JUMP", "JUMPZ", "JUMPNZ", "CALL",
+        "SLOAD", "SSTORE"
+    };
+
+    for (auto& opcode : opcodes)
+        parser->AddTerminal(opcode, Regex(opcode), Lexer::NoAction());
+
+    // Add data type terminals
+    parser->AddTerminal("I8", Regex("I8"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I8); });
+    parser->AddTerminal("UI8", Regex("UI8"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI8); });
+    parser->AddTerminal("I16", Regex("I16"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I16); });
+    parser->AddTerminal("UI16", Regex("UI16"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI16); });
+    parser->AddTerminal("I32", Regex("I32"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I32); });
+    parser->AddTerminal("UI32", Regex("UI32"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI32); });
+    parser->AddTerminal("I64", Regex("I64"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I64); });
+    parser->AddTerminal("UI64", Regex("UI64"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI64); });
+    parser->AddTerminal("F32", Regex("F32"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::F32); });
+    parser->AddTerminal("F64", Regex("F64"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::F64); });
+
+    // Add rules
+    parser->AddRule("PROGRAM", { "CODE" }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return _match[0].GetValue(); });
+
+    parser->AddRule("CODE", { }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return std::any(Memory()); });
+    parser->AddRule("CODE", { "INSTRUCTION", "CODE" }, [](TokenStream& _stream, const Parser::NTMatch& _match)
+        {
+            Memory result = Memory(_match[0].GetValue<Memory>());
+            auto tail = _match[1].GetValue<Memory>();
+            result.insert(result.end(), tail.begin(), tail.end());
+
+            return std::any(result);
+        });
+    parser->AddRule("INSTRUCTION", { "PUSH", "I64", "INTEGER" }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return std::any(GetBytes(Instructions::PUSH{ .value = GetI64Operand(_match[2].GetValue<std::string>()) })); });
+    parser->AddRule("INSTRUCTION", { "EXIT" }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return std::any(GetBytes(Instructions::SYSCALL{ .code = SysCallCode::EXIT })); });
+
+    parser->AddTerminal("UNKNOWN", Regex("[^\\s]+"), unknownAction);
+    return parser;
+}
 
 struct Position
 {
@@ -53,14 +176,14 @@ namespace Error
     static std::runtime_error INVALID_PROGRAM() { return std::runtime_error("Invalid Program!"); }
 };
 
-class TokenStream
+class TokensStream
 {
     std::istream* stream;
     Position position;
     Token last;
 public:
 
-    TokenStream(std::istream* _stream) : stream(_stream), position(), last() {}
+    TokensStream(std::istream* _stream) : stream(_stream), position(), last() {}
 
     Position GetPosition() { return position; }
     Token GetLastToken() { return last; }
@@ -251,34 +374,34 @@ public:
     }
 };
 
-typedef void (*InstructionInserter)(Program&, ProgramMetadata&, TokenStream&);
+typedef void (*InstructionInserter)(Program&, ProgramMetadata&, TokensStream&);
 static const std::map<std::string, InstructionInserter> InstructionInserters = {
-    {"NOOP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::NOOP { }); }},
-    {"POP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::POP { }); }},
-    {"ADD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::ADD {.type = _stream.ReadDataTypeOperand()}); }},
-    {"SUB", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SUB {.type = _stream.ReadDataTypeOperand()}); }},
-    {"MUL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::MUL {.type = _stream.ReadDataTypeOperand()}); }},
-    {"DIV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::DIV {.type = _stream.ReadDataTypeOperand()}); }},
-    {"EQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::EQ {.type = _stream.ReadDataTypeOperand()}); }},
-    {"NEQ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::NEQ {.type = _stream.ReadDataTypeOperand()}); }},
-    {"SLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = _stream.ReadI64Operand()}); }},
-    {"SSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SSTORE {.offset = _stream.ReadI64Operand()}); }},
-    {"DUP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = -vm_i64(WORD_SIZE)}); }},
-    {"MLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::MLOAD {.offset = _stream.ReadI64Operand()}); }},
-    {"MSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::MSTORE {.offset = _stream.ReadI64Operand()}); }},
-    {"LLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::LLOAD {.idx = _stream.ReadUI32Operand()}); }},
-    {"LSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::LSTORE {.idx = _stream.ReadUI32Operand()}); }},
-    {"PLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::PLOAD {.idx = _stream.ReadUI32Operand()}); }},
-    {"PSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::PSTORE {.idx = _stream.ReadUI32Operand()}); }},
-    {"RET", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::RET { }); }},
-    {"RETV", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::RETV { }); }},
-    {"EXIT", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::EXIT}); }},
-    {"MALLOC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::MALLOC}); }},
-    {"FREE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::FREE}); }},
-    {"PRINTC", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::PRINTC}); }},
-    {"PUSH", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"NOOP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::NOOP { }); }},
+    {"POP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::POP { }); }},
+    {"ADD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::ADD {.type = _stream.ReadDataTypeOperand()}); }},
+    {"SUB", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SUB {.type = _stream.ReadDataTypeOperand()}); }},
+    {"MUL", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::MUL {.type = _stream.ReadDataTypeOperand()}); }},
+    {"DIV", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::DIV {.type = _stream.ReadDataTypeOperand()}); }},
+    {"EQ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::EQ {.type = _stream.ReadDataTypeOperand()}); }},
+    {"NEQ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::NEQ {.type = _stream.ReadDataTypeOperand()}); }},
+    {"SLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = _stream.ReadI64Operand()}); }},
+    {"SSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SSTORE {.offset = _stream.ReadI64Operand()}); }},
+    {"DUP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = -vm_i64(WORD_SIZE)}); }},
+    {"MLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::MLOAD {.offset = _stream.ReadI64Operand()}); }},
+    {"MSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::MSTORE {.offset = _stream.ReadI64Operand()}); }},
+    {"LLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::LLOAD {.idx = _stream.ReadUI32Operand()}); }},
+    {"LSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::LSTORE {.idx = _stream.ReadUI32Operand()}); }},
+    {"PLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::PLOAD {.idx = _stream.ReadUI32Operand()}); }},
+    {"PSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::PSTORE {.idx = _stream.ReadUI32Operand()}); }},
+    {"RET", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::RET { }); }},
+    {"RETV", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::RETV { }); }},
+    {"EXIT", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::EXIT}); }},
+    {"MALLOC", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::MALLOC}); }},
+    {"FREE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::FREE}); }},
+    {"PRINTC", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::PRINTC}); }},
+    {"PUSH", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         Word value;
-        
+
         switch (_stream.ReadDataTypeOperand())
         {
         case DataType::I8: value = _stream.ReadI8Operand(); break;
@@ -296,37 +419,37 @@ static const std::map<std::string, InstructionInserter> InstructionInserters = {
 
         _prog.Insert(Instructions::PUSH {.value = value});
     }},
-    {"CONVERT", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"CONVERT", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         auto from = _stream.ReadDataTypeOperand(), to = _stream.ReadDataTypeOperand();
         _prog.Insert(Instructions::CONVERT{.from = from, .to = to});
     }},
-    {"GLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"GLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         auto id = _stream.ReadGlobalIDOperand();
         auto search = _progMeta.globals.find(id);
         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
 
         _prog.Insert(Instructions::GLOAD {.idx = idx});
     }},
-    {"GSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"GSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         auto id = _stream.ReadGlobalIDOperand();
         auto search = _progMeta.globals.find(id);
         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
 
         _prog.Insert(Instructions::GSTORE {.idx = idx});
     }},
-    {"JUMP", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"JUMP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         _prog.Insert(Instructions::JUMP {.target = VM_NULLPTR});
         _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
     }},
-    {"JUMPZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"JUMPZ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         _prog.Insert(Instructions::JUMPZ {.target = VM_NULLPTR});
         _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
     }},
-    {"JUMPNZ", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"JUMPNZ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         _prog.Insert(Instructions::JUMPNZ {.target = VM_NULLPTR});
         _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
     }},
-    {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokenStream& _stream) {
+    {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
         Token label = _stream.ReadLabelOperand();
 
         _prog.Insert(Instructions::CALL {.target = VM_NULLPTR, .storage = _stream.ReadUI32Operand()});
@@ -420,37 +543,19 @@ Program Program::FromFile(const std::string& _filePath)
 
 Program Program::FromStream(std::istream& _stream)
 {
-    TokenStream stream(&_stream);
+    using namespace parser;
+
     Program program;
     ProgramMetadata metadata;
+    Parser* parser = CreateParser();
+    StringStream input(_stream);
 
-    while (true)
-    {
-        Token token;
+    auto result = parser->Parse(input, "PROGRAM");
+    std::cout << result.GetValue<Memory>().size() << std::endl;
 
-        try { token = stream.GetNextToken(); }
-        catch (...) { break; }
+    program.code = std::move(result.GetValue<Memory>());
 
-        auto instructionInserterSearch = InstructionInserters.find(token.value);
-        if (instructionInserterSearch != InstructionInserters.end())
-        {
-            size_t insertOffset = program.code.size();
-            instructionInserterSearch->second(program, metadata, stream);
-            assert(program.code.size() - insertOffset == GetSize((OpCode)program.code[insertOffset]) && "Inserted instruction has different size than it should!");
-        }
-        else if (std::regex_match(token.value, LABEL_DEF_REGEX))
-        {
-            std::string label = token.value.substr(1, token.value.size() - 2);
-
-            auto labelSearch = metadata.labels.find(label);
-            if (labelSearch != metadata.labels.end())
-                throw Error::REDEFINED_LABEL(token.position, label);
-
-            metadata.labels.emplace(label, program.code.size());
-        }
-        else
-            throw Error::EXPECTATION(token.position, "OPCODE or LABEL", token.value);
-    }
+    delete parser;
 
     //Replace operands that are labels with the correct position in the program
     for (auto& [pos, token] : metadata.labelOperands)
@@ -473,6 +578,62 @@ Program Program::FromStream(std::istream& _stream)
 
     return std::move(program);
 }
+
+// Program FromStreamOld(std::istream& _stream)
+// {
+//     TokensStream stream(&_stream);
+//     Program program;
+//     ProgramMetadata metadata;
+
+//     while (true)
+//     {
+//         Token token;
+
+//         try { token = stream.GetNextToken(); }
+//         catch (...) { break; }
+
+//         auto instructionInserterSearch = InstructionInserters.find(token.value);
+//         if (instructionInserterSearch != InstructionInserters.end())
+//         {
+//             size_t insertOffset = program.code.size();
+//             instructionInserterSearch->second(program, metadata, stream);
+//             assert(program.code.size() - insertOffset == GetSize((OpCode)program.code[insertOffset]) && "Inserted instruction has different size than it should!");
+//         }
+//         else if (std::regex_match(token.value, LABEL_DEF_REGEX))
+//         {
+//             std::string label = token.value.substr(1, token.value.size() - 2);
+
+//             auto labelSearch = metadata.labels.find(label);
+//             if (labelSearch != metadata.labels.end())
+//                 throw Error::REDEFINED_LABEL(token.position, label);
+
+//             metadata.labels.emplace(label, program.code.size());
+//         }
+//         else
+//             throw Error::EXPECTATION(token.position, "OPCODE or LABEL", token.value);
+//     }
+
+//     //Replace operands that are labels with the correct position in the program
+//     for (auto& [pos, token] : metadata.labelOperands)
+//     {
+//         auto labelSearch = metadata.labels.find(token.value);
+//         if (labelSearch == metadata.labels.end())
+//             throw Error::UNDEFINED_LABEL(token.position, token.value);
+
+//         vm_byte* target = program.code.data() + labelSearch->second;
+//         *(vm_byte**)&program.code[pos] = target;
+//     }
+
+//     //Set number of globals
+//     for (auto& [id, idx] : metadata.globals)
+//         program.header.numGlobals = std::max(program.header.numGlobals, idx + 1);
+
+// #ifdef BUILD_DEBUG
+//     program.Validate(); //Note that the program should already be validated since we generated a valid program
+// #endif
+
+//     return std::move(program);
+// }
 
 Program Program::FromString(const std::string& _string)
 {

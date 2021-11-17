@@ -46,7 +46,6 @@ int usage(const std::string& _cmd = "", const std::string& _err = "")
     {
         std::cout << "Usage: evm run FILEPATH [ARGS]...\n\n"
             "Options:\n"
-            "  --no-gc                 Disables the garbage collector.\n"
             "  --debugger RID WID      Enables interaction with a debugger through the read (RID) and write (WID) file ids created by the calling debugger."
             "\n"
             "Args:\n"
@@ -93,7 +92,6 @@ int run(const std::vector<std::string>& _args)
     if (_args.empty())
         return usage("run");
 
-    bool runGC = true;
     DebuggerInfo dbInfo;
 
     auto itArg = _args.begin();
@@ -105,9 +103,7 @@ int run(const std::vector<std::string>& _args)
             break;
 
         //Add new options here
-        if (arg == "--no-gc")
-            runGC = false;
-        else if (arg == "--debugger")
+        if (arg == "--debugger")
         {
             dbInfo.enabled = true;
 
@@ -160,7 +156,7 @@ int run(const std::vector<std::string>& _args)
         //be in the place where the paramters are
 
         Program program = Program::FromFile(filePath);                  //Parse the ede asm file
-        auto exitCode = VM(runGC).Run(1024, program, std::move(cmdLineArgs)); //Run
+        auto exitCode = VM().Run(1024, program, std::move(cmdLineArgs)); //Run
 
         std::cout << "\nExited with code " << exitCode << "." << std::endl;
         return exitCode;
