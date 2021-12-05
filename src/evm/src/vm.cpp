@@ -117,3 +117,5 @@ void VM::SetStdIO(std::streambuf *_in, std::streambuf *_out)
     stdInput.rdbuf(_in ? _in : std::cin.rdbuf());
     stdOutput.rdbuf(_out ? _out : std::cout.rdbuf());
 }
+
+DebuggerInfo::DebuggerInfo() : enabled(false), rID(), wID() { }

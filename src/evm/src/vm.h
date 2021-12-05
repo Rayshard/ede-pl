@@ -54,6 +54,8 @@ struct DebuggerInfo
 {
     bool enabled;
     std::string rID, wID;
+
+    DebuggerInfo();
 };
 
 class VM

@@ -25,7 +25,7 @@ def build(output: str, tests: bool, debug: bool, debug_heap: bool):
     pathlib.Path(output).mkdir(parents=True, exist_ok=True)
 
     resources = {}
-    cpp_file_names = [os.path.basename(file) for file in glob.glob("src/evm/src/*.cpp")]
+    cpp_file_names = [os.path.basename(file) for file in glob.glob("src/evm/src/*.cpp")] + ["deps/" + os.path.basename(file) for file in glob.glob("src/evm/src/deps/*.cpp")]
 
     try:
         resources = {

@@ -7,157 +7,10 @@
 #include <unordered_set>
 #include "instructions.h"
 #include "../build.h"
-#include "deps/parser.h"
+#include "deps/lpc.h"
 
-#define LABEL_OPERAND_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+")
-#define GLOBAL_ID_OPERAND_REGEX std::regex("\\$([a-zA-Z]|[0-9]|[_])+")
-#define LABEL_DEF_REGEX std::regex("@([a-zA-Z]|[0-9]|[_])+:")
-#define INTEGER_REGEX std::regex("-?(0|[1-9][0-9]*)")
-#define UNSIGNED_INTEGER_REGEX std::regex("0|[1-9][0-9]*")
-#define DECIMAL_REGEX std::regex("-?(0|[1-9][0-9]*)([.][0-9]+)?")
-#define HEX_REGEX std::regex("0x[0-9a-fA-F]+")
-
+using namespace lpc;
 using Instructions::OpCode, Instructions::SysCallCode, Instructions::DataType;
-
-vm_i64 GetInteger(std::string _text, vm_i64 _min, vm_i64 _max)
-{
-    try
-    {
-        if (!std::regex_match(_text, INTEGER_REGEX))
-            throw 0;
-
-        vm_i64 value = std::stoll(_text);
-        if (value > _max)
-            throw 0;
-
-        return value;
-    }
-    catch (...) { throw std::invalid_argument(_text); }
-}
-
-vm_ui64 GetUnsignedInteger(std::string _text, vm_ui64 _max)
-{
-    try
-    {
-        if (!std::regex_match(_text, UNSIGNED_INTEGER_REGEX))
-            throw 0;
-
-        vm_ui64 value = std::stoull(_text);
-        if (value > _max)
-            throw 0;
-
-        return value;
-    }
-    catch (...) { throw std::invalid_argument(_text); }
-}
-
-vm_i8 GetI8Operand(std::string _text) { return GetInteger(_text, INT8_MIN, INT8_MAX); }
-vm_ui8 GetUI8Operand(std::string _text) { return GetUnsignedInteger(_text, UINT8_MAX); }
-vm_i16 GetI16Operand(std::string _text) { return GetInteger(_text, INT16_MIN, INT16_MAX); }
-vm_ui16 GetUI16Operand(std::string _text) { return GetUnsignedInteger(_text, UINT16_MAX); }
-vm_i32 GetI32Operand(std::string _text) { return GetInteger(_text, INT32_MIN, INT32_MAX); }
-vm_ui32 GetUI32Operand(std::string _text) { return GetUnsignedInteger(_text, UINT32_MAX); }
-vm_i64 GetI64Operand(std::string _text) { return GetInteger(_text, INT64_MIN, INT64_MAX); }
-vm_ui64 GetUI64Operand(std::string _text) { return GetUnsignedInteger(_text, UINT64_MAX); }
-
-vm_f32 GetF32Operand(std::string _text)
-{
-    try
-    {
-        if (!std::regex_match(_text, DECIMAL_REGEX))
-            throw 0;
-
-        return std::stof(_text);
-    }
-    catch (...) { throw std::invalid_argument(_text); }
-}
-
-vm_f64 GetF64Operand(std::string _text)
-{
-    try
-    {
-        if (!std::regex_match(_text, DECIMAL_REGEX))
-            throw 0;
-
-        return std::stod(_text);
-    }
-    catch (...) { throw std::invalid_argument(_text); }
-}
-
-parser::Parser* CreateParser()
-{
-    using namespace parser;
-    auto unknownAction = [](StringStream& _stream, const LexerMatch& _match) { throw std::runtime_error("Unrecognized token: " + _match.value + " at " + _match.position.ToString()); };
-
-    Parser* parser = new Parser(Lexer::NoAction(), unknownAction);
-    parser->lexer.AddPattern(Regex("\\s+"));
-    parser->lexer.AddPattern(Regex("#.*"));
-    parser->AddTerminal(":", Regex(":"), Lexer::NoAction());
-    parser->AddTerminal("LABEL", Regex("@([a-zA-Z]|[0-9]|[_])+"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value.substr(1)); });
-    parser->AddTerminal("GLOBAL_ID", Regex("\\$([a-zA-Z]|[0-9]|[_])+"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value.substr(1)); });
-    parser->AddTerminal("INTEGER", Regex("-?(0|[1-9][0-9]*)"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value); });
-    parser->AddTerminal("DECIMAL", Regex("-?(0|[1-9][0-9]*)([.][0-9]+)?"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value); });
-    parser->AddTerminal("HEX", Regex("0x[0-9a-fA-F]+"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(_match.value); });
-
-    // Add opcode terminals
-    std::string opcodes[] = {
-        "NOOP", "POP", "ADD", "SUB", "MUL", "DIV", "EQ", "NEQ", "DUP", "MLOAD", "MSTORE",
-        "LLOAD", "LSTORE", "PLOAD", "PSTORE", "RET", "RETV", "EXIT", "MALLOC", "FREE",
-        "PRINTC", "PUSH", "CONVERT", "GLOAD", "GSTORE", "JUMP", "JUMPZ", "JUMPNZ", "CALL",
-        "SLOAD", "SSTORE"
-    };
-
-    for (auto& opcode : opcodes)
-        parser->AddTerminal(opcode, Regex(opcode), Lexer::NoAction());
-
-    // Add data type terminals
-    parser->AddTerminal("I8", Regex("I8"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I8); });
-    parser->AddTerminal("UI8", Regex("UI8"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI8); });
-    parser->AddTerminal("I16", Regex("I16"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I16); });
-    parser->AddTerminal("UI16", Regex("UI16"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI16); });
-    parser->AddTerminal("I32", Regex("I32"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I32); });
-    parser->AddTerminal("UI32", Regex("UI32"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI32); });
-    parser->AddTerminal("I64", Regex("I64"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::I64); });
-    parser->AddTerminal("UI64", Regex("UI64"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::UI64); });
-    parser->AddTerminal("F32", Regex("F32"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::F32); });
-    parser->AddTerminal("F64", Regex("F64"), [](StringStream& _stream, const LexerMatch& _match) { return std::any(DataType::F64); });
-
-    // Add rules
-    parser->AddRule("PROGRAM", { "CODE" }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return _match[0].GetValue(); });
-
-    parser->AddRule("CODE", { }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return std::any(Memory()); });
-    parser->AddRule("CODE", { "INSTRUCTION", "CODE" }, [](TokenStream& _stream, const Parser::NTMatch& _match)
-        {
-            Memory result = Memory(_match[0].GetValue<Memory>());
-            auto tail = _match[1].GetValue<Memory>();
-            result.insert(result.end(), tail.begin(), tail.end());
-
-            return std::any(result);
-        });
-    parser->AddRule("INSTRUCTION", { "PUSH", "I64", "INTEGER" }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return std::any(GetBytes(Instructions::PUSH{ .value = GetI64Operand(_match[2].GetValue<std::string>()) })); });
-    parser->AddRule("INSTRUCTION", { "EXIT" }, [](TokenStream& _stream, const Parser::NTMatch& _match) { return std::any(GetBytes(Instructions::SYSCALL{ .code = SysCallCode::EXIT })); });
-
-    parser->AddTerminal("UNKNOWN", Regex("[^\\s]+"), unknownAction);
-    return parser;
-}
-
-struct Position
-{
-    size_t line, column;
-    Position(size_t _line = 1, size_t _col = 1) : line(_line), column(_col) {}
-};
-
-struct Token
-{
-    std::string value = "";
-    Position position = Position();
-};
-
-struct ProgramMetadata
-{
-    std::map<std::string, vm_ui64> labels, globals;
-    std::map<vm_ui64, Token> labelOperands;
-};
 
 namespace Error
 {
@@ -168,294 +21,256 @@ namespace Error
         return std::runtime_error(ss.str());
     }
 
-    static std::runtime_error FILE_OPEN(const std::string& _path) { return Create(Position(1, 1), std::string("Could not open file at ") + _path + "!"); }
-    static std::runtime_error TOKEN_READ(Position _pos) { return Create(_pos, "Could not read token from file!"); }
-    static std::runtime_error EXPECTATION(Position _pos, const std::string& _e, const std::string& _f) { return Create(_pos, "Expected " + _e + " but found " + _f + "."); }
-    static std::runtime_error REDEFINED_LABEL(Position _pos, const std::string& _label) { return Create(_pos, "Label \"" + _label + "\" has already been defined!"); }
-    static std::runtime_error UNDEFINED_LABEL(Position _pos, const std::string& _label) { return Create(_pos, "Label \"" + _label + "\" does not exist!"); }
+    static std::runtime_error FILE_OPEN(const std::string& _path) { return Create(Position{ 1, 1 }, std::string("Could not open file at ") + _path + "!"); }
+    static ParseError REDEFINED_LABEL(Position _pos, const std::string& _label) { return ParseError(_pos, "Label \"" + _label + "\" has already been defined!"); }
+    static ParseError UNDEFINED_LABEL(Position _pos, const std::string& _label) { return ParseError(_pos, "Label \"" + _label + "\" does not exist!"); }
     static std::runtime_error INVALID_PROGRAM() { return std::runtime_error("Invalid Program!"); }
 };
 
-class TokensStream
+vm_i64 MapInteger(const ParseResult<std::string>& _result, vm_i64 _min, vm_i64 _max)
 {
-    std::istream* stream;
-    Position position;
-    Token last;
+    try
+    {
+        vm_i64 value = std::stoll(_result.value);
+        if (value < _min || value > _max)
+            throw 0;
+
+        return value;
+    }
+    catch (...) { throw ParseError(_result.position, "Expected an integer in range [" + std::to_string(_min) + ", " + std::to_string(_max) + "]"); }
+}
+
+vm_ui64 MapUnsignedInteger(const ParseResult<std::string>& _result, vm_ui64 _max)
+{
+    try
+    {
+        vm_ui64 value = std::stoull(_result.value);
+        if (value > _max)
+            throw 0;
+
+        return value;
+    }
+    catch (...) { throw ParseError(_result.position, "Expected an unsigned integer in range [0, " + std::to_string(_max) + "]"); }
+}
+
+vm_i8 MapI8(const ParseResult<std::string>& _result) { return MapInteger(_result, INT8_MIN, INT8_MAX); }
+vm_ui8 MapUI8(const ParseResult<std::string>& _result) { return MapUnsignedInteger(_result, UINT8_MAX); }
+vm_i16 MapI16(const ParseResult<std::string>& _result) { return MapInteger(_result, INT16_MIN, INT16_MAX); }
+vm_ui16 MapUI16(const ParseResult<std::string>& _result) { return MapUnsignedInteger(_result, UINT16_MAX); }
+vm_i32 MapI32(const ParseResult<std::string>& _result) { return MapInteger(_result, INT32_MIN, INT32_MAX); }
+vm_ui32 MapUI32(const ParseResult<std::string>& _result) { return MapUnsignedInteger(_result, UINT32_MAX); }
+vm_i64 MapI64(const ParseResult<std::string>& _result) { return MapInteger(_result, INT64_MIN, INT64_MAX); }
+vm_ui64 MapUI64(const ParseResult<std::string>& _result) { return MapUnsignedInteger(_result, UINT64_MAX); }
+
+vm_f32 MapF32(const ParseResult<std::string>& _result)
+{
+    try { return std::stof(_result.value); }
+    catch (...) { throw ParseError(_result.position, "Expected a 32-bit floating point number"); }
+}
+
+vm_f64 MapF64(const ParseResult<std::string>& _result)
+{
+    try { return std::stod(_result.value); }
+    catch (...) { throw ParseError(_result.position, "Expected a 64-bit floating point number"); }
+}
+
+Parser<Memory> CreateCodeParser(Memory& _code, const Parser<Memory>& _instructionParser)
+{
+    return _instructionParser.Chain<Memory>([=, code = &_code](auto _result)
+        {
+            code->insert(code->end(), _result.value.begin(), _result.value.end());
+            return CreateCodeParser(*code, _instructionParser);
+        })
+        | Value("CODE", _code);
+}
+
+struct Label
+{
+    Position position; std::string value;
+
+    Label(Position _pos, const std::string& _value) : position(_pos), value(_value) {}
+    Label() : Label(Position(), "") { }
+};
+
+struct Instruction
+{
+    Memory code;
+    std::map<std::string, std::any> metadata;
+
+    Instruction() : code(), metadata() { }
+    Instruction(const Memory& _code, std::map<std::string, std::any> _metadata = {}) : code(_code), metadata(_metadata) { }
+
+    OpCode GetOpCode() { return *(OpCode*)&code.front(); }
+};
+
+class ProgramParseValue
+{
+    std::map<std::string, vm_ui64> labels, globals;
+    std::map<vm_ui64, Label> labelOperands;
+    Memory code;
+
 public:
+    void AppendCode(const Memory& _code) { code.insert(code.end(), _code.begin(), _code.end()); }
 
-    TokensStream(std::istream* _stream) : stream(_stream), position(), last() {}
-
-    Position GetPosition() { return position; }
-    Token GetLastToken() { return last; }
-
-    std::string GetLine()
+    void AddLabel(const Label& _label)
     {
-        std::string line;
-        std::getline(*stream, line);
-        position.line++;
-        position.column = 1;
-        return line;
+        auto labelSearch = labels.find(_label.value);
+        if (labelSearch != labels.end())
+            throw Error::REDEFINED_LABEL(_label.position, _label.value);
+
+        labels[_label.value] = code.size();
     }
 
-    Token GetNextToken()
+    void AddLabelOperand(vm_ui64 _codePoint, const Label& _label)
     {
-        //Skips
-        while (true)
+        auto labelOpSearch = labelOperands.find(_codePoint);
+        assert(labelOpSearch == labelOperands.end() && "Code point is already in use!");
+
+        labelOperands[_codePoint] = _label;
+    }
+
+    const Memory& GetCode() const { return code; }
+    const std::map<vm_ui64, Label>& GetLabelOperands() const { return labelOperands; }
+    const std::map<std::string, vm_ui64>& GetLabels() const { return labels; }
+    const std::map<std::string, vm_ui64>& GetGlobals() const { return globals; }
+};
+
+lpc::LPC<ProgramParseValue> CreateLPC()
+{
+    auto unknownAction = [](StringStream& _stream, const Lexer::Token& _token) { throw std::runtime_error("Unrecognized token: " + _token.value + " at " + _token.position.ToString()); };
+    Lexer lexer(std::monostate(), unknownAction);
+    lexer.AddPattern("WS", Regex("\\s+"));
+    lexer.AddPattern("COMMENT", Regex("#.*"));
+
+    auto LABEL = lexer.AddPattern("LABEL", Regex("@([a-zA-Z]|[0-9]|[_])+")).AsTerminal().Map<Label>([](auto _result) { return Label(_result.position, _result.value.substr(1, _result.value.size() - 1)); });
+    auto LABEL_DEF = LABEL << Char("COLON", ':');
+    auto GLOBAL_ID = lexer.AddPattern("GLOBAL_ID", Regex("\\$([a-zA-Z]|[0-9]|[_])+")).AsTerminal().Map<std::string>([](auto _result) { return _result.value.substr(1); });
+    auto INTEGER = lexer.AddPattern("INTEGER", Regex("-?(0|[1-9][0-9]*)")).AsTerminal();
+    auto DECIMAL = lexer.AddPattern("DECIMAL", Regex("-?(0|[1-9][0-9]*)([.][0-9]+)?")).AsTerminal();
+    auto HEX = lexer.AddPattern("HEX", Regex("0x[0-9a-fA-F]+")).AsTerminal().Map<vm_ui64>([](auto _result) { return std::stoull(_result.value); });
+    auto OPCODE = lexer.AddPattern("OPCODE", Regex("PUSH|EXIT|JUMP|NOOP|POP|ADD|SUB|MUL|DIV|EQ|NEQ|DUP|SLOAD|STORE|MLOAD|MSTORE"));
+
+    static std::map<std::string, DataType> dataTypes =
+    {
+        {"I8", DataType::I8}, {"UI8", DataType::UI8},
+        {"I16", DataType::I16}, {"UI16", DataType::UI16},
+        {"I32", DataType::I32}, {"UI32", DataType::UI32},
+        {"I64", DataType::I64}, {"UI64", DataType::UI64},
+        {"F32", DataType::F32}, {"F64", DataType::F64},
+    };
+    auto DATA_TYPE = lexer.AddPattern("DATA_TYPE", Regex("(U?I(8|16|32|64))|(F(32|64))")).AsTerminal().Map<DataType>([](auto _result) { return dataTypes.at(_result.value); });
+    auto I8 = INTEGER.Map<vm_i8>(MapI8);
+    auto UI8 = INTEGER.Map<vm_ui8>(MapUI8);
+    auto I16 = INTEGER.Map<vm_i16>(MapI16);
+    auto UI16 = INTEGER.Map<vm_ui16>(MapUI16);
+    auto I32 = INTEGER.Map<vm_i32>(MapI32);
+    auto UI32 = INTEGER.Map<vm_ui32>(MapUI32);
+    auto I64 = INTEGER.Map<vm_i64>(MapI64);
+    auto UI64 = INTEGER.Map<vm_ui64>(MapUI64);
+    auto F32 = DECIMAL.Map<vm_f32>(MapF32);
+    auto F64 = DECIMAL.Map<vm_f64>(MapF64);
+
+    typedef TryValue<Instruction, std::monostate> InstructionParseValue;
+
+    auto INSTR_PUSH = OPCODE.AsTerminal("PUSH") >> Try(Parser(
+        Prefixed("PUSH I8 <8-bit integer>", DATA_TYPE.Satisfy(DataType::I8), I8.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH UI8 <8-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI8), UI8.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH I16 <16-bit integer>", DATA_TYPE.Satisfy(DataType::I16), I16.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH UI16 <16-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI16), UI16.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH I32 <32-bit integer>", DATA_TYPE.Satisfy(DataType::I32), I32.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH UI32 <32-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI32), UI32.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH I64 <64-bit integer>", DATA_TYPE.Satisfy(DataType::I64), I64.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH UI64 <64-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI64), UI64.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH F32 <32-bit float>", DATA_TYPE.Satisfy(DataType::F32), F32.Map<Word>([](auto result) { return Word(result.value); }))
+        | Prefixed("PUSH F64 <64-bit float>", DATA_TYPE.Satisfy(DataType::F64), F64.Map<Word>([](auto result) { return Word(result.value); }))
+    ).Map<Instruction>([](auto _result) { return GetBytes(Instructions::PUSH{ .value = _result.value }); }));
+
+    auto INSTR_JUMP = OPCODE.AsTerminal("JUMP") >> Try(LABEL.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::JUMP{ .target = VM_NULLPTR }), { {"LABEL", _result.value} }); }));
+    auto INSTR_JUMPZ = OPCODE.AsTerminal("JUMPZ") >> Try(LABEL.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::JUMPZ{ .target = VM_NULLPTR }), { {"LABEL", _result.value} }); }));
+    auto INSTR_JUMPNZ = OPCODE.AsTerminal("JUMPNZ") >> Try(LABEL.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::JUMPNZ{ .target = VM_NULLPTR }), { {"LABEL", _result.value} }); }));
+    auto INSTR_ADD = OPCODE.AsTerminal("ADD") >> Try(DATA_TYPE.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::ADD{ .type = _result.value })); }));
+    auto INSTR_SUB = OPCODE.AsTerminal("SUB") >> Try(DATA_TYPE.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::SUB{ .type = _result.value })); }));
+    auto INSTR_MUL = OPCODE.AsTerminal("MUL") >> Try(DATA_TYPE.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::MUL{ .type = _result.value })); }));
+    auto INSTR_DIV = OPCODE.AsTerminal("DIV") >> Try(DATA_TYPE.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::DIV{ .type = _result.value })); }));
+    auto INSTR_EQ = OPCODE.AsTerminal("EQ") >> Try(DATA_TYPE.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::EQ{ .type = _result.value })); }));
+    auto INSTR_NEQ = OPCODE.AsTerminal("NEQ") >> Try(DATA_TYPE.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::NEQ{ .type = _result.value })); }));
+    auto INSTR_DUP = OPCODE.AsTerminal("DUP") >> Try(I64.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::SLOAD{ .offset = -vm_i64(WORD_SIZE) })); }));
+    auto INSTR_SLOAD = OPCODE.AsTerminal("SLOAD") >> Try(I64.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::SLOAD{ .offset = _result.value })); }));
+    auto INSTR_SSTORE = OPCODE.AsTerminal("SSTORE") >> Try(I64.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::SSTORE{ .offset = _result.value })); }));
+    auto INSTR_MLOAD = OPCODE.AsTerminal("MLOAD") >> Try(I64.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::MLOAD{ .offset = _result.value })); }));
+    auto INSTR_MSTORE = OPCODE.AsTerminal("MSTORE") >> Try(I64.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::MSTORE{ .offset = _result.value })); }));
+    auto INSTR_LLOAD = OPCODE.AsTerminal("LLOAD") >> Try(UI32.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::LLOAD{ .idx = _result.value })); }));
+    auto INSTR_LSTORE = OPCODE.AsTerminal("LSTORE") >> Try(UI32.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::LSTORE{ .idx = _result.value })); }));
+    auto INSTR_PLOAD = OPCODE.AsTerminal("PLOAD") >> Try(UI32.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::PLOAD{ .idx = _result.value })); }));
+    auto INSTR_PSTORE = OPCODE.AsTerminal("PSTORE") >> Try(UI32.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::PSTORE{ .idx = _result.value })); }));
+    auto INSTR_NOOP = OPCODE.AsTerminal("NOOP").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::NOOP{ })); });
+    auto INSTR_RET = OPCODE.AsTerminal("RET").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::RET{ })); });
+    auto INSTR_RETV = OPCODE.AsTerminal("RETV").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::RETV{ })); });
+    auto INSTR_POP = OPCODE.AsTerminal("POP").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::POP{ })); });
+    auto INSTR_EXIT = OPCODE.AsTerminal("EXIT").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::SYSCALL{ .code = SysCallCode::EXIT })); });
+    auto INSTR_MALLOC = OPCODE.AsTerminal("MALLOC").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::SYSCALL{ .code = SysCallCode::MALLOC })); });
+    auto INSTR_FREE = OPCODE.AsTerminal("FREE").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::SYSCALL{ .code = SysCallCode::FREE })); });
+    auto INSTR_PRINTC = OPCODE.AsTerminal("PRINTC").Map<InstructionParseValue>([](auto _) { return InstructionParseValue(GetBytes(Instructions::SYSCALL{ .code = SysCallCode::PRINTC })); });
+
+    auto INSTRUCTION = Parser("INSTRUCTION", INSTR_PUSH | INSTR_EXIT | INSTR_JUMP);
+
+    typedef ProgramParseValue CodeParseValue;
+    auto CODE = FoldL<VariantValue<InstructionParseValue, Label>, CodeParseValue>("CODE", INSTRUCTION || LABEL_DEF, CodeParseValue(), [](CodeParseValue& _value, auto _result)
         {
-            if (std::isspace(stream->peek())) //Skip whitespace
+            if (_result.value.template Is<0>()) //INSTRUCTION
             {
-                position.column++;
-
-                if (stream->peek() == '\n')
+                auto instructionResultValue = _result.value.template Get<0>();
+                if (instructionResultValue.IsSuccess())
                 {
-                    position.line++;
-                    position.column = 1;
+                    Instruction instruction = instructionResultValue.GetSuccess();
+                    assert(!instruction.code.empty() && "Parsing INSTRUCTION resulted in a instruction with no code!");
+
+                    auto insertPoint = _value.GetCode().size();
+                    _value.AppendCode(instruction.code);
+
+                    switch (instruction.GetOpCode())
+                    {
+                    case OpCode::JUMP: _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(instruction.metadata.at("LABEL"))); break;
+                    case OpCode::JUMPZ: _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(instruction.metadata.at("LABEL"))); break;
+                    case OpCode::JUMPNZ: _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(instruction.metadata.at("LABEL"))); break;
+                    default: break;
+                    }
                 }
-
-                stream->get();
+                else { throw instructionResultValue.GetParseError(); }
             }
-            else if (stream->peek() == '#') { GetLine(); } //Skip comments
-            else { break; }
-        }
+            else { _value.AddLabel(_result.value.template Get<1>()); } //LABEL
+        });
 
-        Position pos = position;
-        std::string value;
+    auto parser = Parser("PROGRAM", CODE);
 
-        if (!(*stream >> value))
-            throw Error::TOKEN_READ(pos);
+    return LPC(lexer, parser, { "WS" });
+}
 
-        position.column += value.size();
-        return last = Token{ value, pos };
-    }
+//     {"CONVERT", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
+//         auto from = _stream.ReadDataTypeOperand(), to = _stream.ReadDataTypeOperand();
+//         _prog.Insert(Instructions::CONVERT{.from = from, .to = to});
+//     }},
+//     {"GLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
+//         auto id = _stream.ReadGlobalIDOperand();
+//         auto search = _progMeta.globals.find(id);
+//         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
 
-    vm_f32 ReadF32Operand()
-    {
-        Token token = GetNextToken();
+//         _prog.Insert(Instructions::GLOAD {.idx = idx});
+//     }},
+//     {"GSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
+//         auto id = _stream.ReadGlobalIDOperand();
+//         auto search = _progMeta.globals.find(id);
+//         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
 
-        try
-        {
-            if (std::regex_match(token.value, DECIMAL_REGEX))
-                return std::stof(token.value);
+//         _prog.Insert(Instructions::GSTORE {.idx = idx});
+//     }},
+//     {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
+//         Token label = _stream.ReadLabelOperand();
 
-            throw 0;
-        }
-        catch (...)
-        {
-            throw Error::EXPECTATION(token.position, "a 32-bit floating point", "\"" + token.value + "\"");
-        }
-    }
-
-    vm_f64 ReadF64Operand()
-    {
-        Token token = GetNextToken();
-
-        try
-        {
-            if (std::regex_match(token.value, DECIMAL_REGEX))
-                return std::stod(token.value);
-
-            throw 0;
-        }
-        catch (...)
-        {
-            throw Error::EXPECTATION(token.position, "a 64-bit floating point", "\"" + token.value + "\"");
-        }
-    }
-
-    vm_i64 ReadIntegerOperand(vm_i64 _min, vm_i64 _max)
-    {
-        Token token = GetNextToken();
-
-        try
-        {
-            vm_i64 value = 0;
-
-            if (std::regex_match(token.value, INTEGER_REGEX))
-                value = std::stoll(token.value);
-            else if (std::regex_match(token.value, HEX_REGEX))
-                value = std::stoll(token.value, 0, 16);
-
-            if (value < _min || value > _max)
-                throw 0;
-
-            return value;
-        }
-        catch (...) { throw Error::EXPECTATION(token.position, "an integer in range [" + std::to_string(_min) + ", " + std::to_string(_max) + "]", "\"" + token.value + "\""); }
-    }
-
-    vm_ui64 ReadUnsignedIntegerOperand(vm_ui64 _max)
-    {
-        Token token = GetNextToken();
-
-        try
-        {
-            vm_ui64 value = 0;
-
-            if (std::regex_match(token.value, UNSIGNED_INTEGER_REGEX))
-                value = std::stoull(token.value);
-            else if (std::regex_match(token.value, HEX_REGEX))
-                value = std::stoull(token.value, 0, 16);
-
-            if (value > _max)
-                throw 0;
-
-            return value;
-        }
-        catch (...) { throw Error::EXPECTATION(token.position, "an unsigned integer in range [0, " + std::to_string(_max) + "]", "\"" + token.value + "\""); }
-    }
-
-    vm_i8 ReadI8Operand() { return ReadIntegerOperand(INT8_MIN, INT8_MAX); }
-    vm_ui8 ReadUI8Operand() { return ReadUnsignedIntegerOperand(UINT8_MAX); }
-    vm_i16 ReadI16Operand() { return ReadIntegerOperand(INT16_MIN, INT16_MAX); }
-    vm_ui16 ReadUI16Operand() { return ReadUnsignedIntegerOperand(UINT16_MAX); }
-    vm_i32 ReadI32Operand() { return ReadIntegerOperand(INT32_MIN, INT32_MAX); }
-    vm_ui32 ReadUI32Operand() { return ReadUnsignedIntegerOperand(UINT32_MAX); }
-    vm_i64 ReadI64Operand() { return ReadIntegerOperand(INT64_MIN, INT64_MAX); }
-    vm_ui64 ReadUI64Operand() { return ReadUnsignedIntegerOperand(UINT64_MAX); }
-
-    vm_ui64 ReadHexOperand(vm_ui64 _max)
-    {
-        Token token = GetNextToken();
-
-        try
-        {
-            if (!std::regex_match(token.value, HEX_REGEX))
-                throw 0;
-
-            auto value = std::stoull(token.value, 0, 16);
-            if (value > _max)
-                throw 0;
-
-            return value;
-        }
-        catch (...)
-        {
-            throw Error::EXPECTATION(token.position, "a hex number no greater than " + Hex(_max), "\"" + token.value + "\"");
-        }
-    }
-
-    DataType ReadDataTypeOperand()
-    {
-        static std::map<std::string, DataType> dataTypes = {
-            {"I8", DataType::I8}, {"UI8", DataType::UI8},
-            {"I16", DataType::I16}, {"UI16", DataType::UI16},
-            {"I32", DataType::I32}, {"UI32", DataType::UI32},
-            {"I64", DataType::I64}, {"UI64", DataType::UI64},
-            {"F32", DataType::F32}, {"F64", DataType::F64},
-        };
-
-        Token token = GetNextToken();
-        auto search = dataTypes.find(token.value);
-
-        if (search == dataTypes.end())
-            throw Error::EXPECTATION(token.position, "a data type ", "\"" + token.value + "\"");
-
-        return search->second;
-    }
-
-    Token ReadLabelOperand()
-    {
-        Token token = GetNextToken();
-        if (!std::regex_match(token.value, LABEL_OPERAND_REGEX))
-            throw Error::EXPECTATION(token.position, "a label operand", "\"" + token.value + "\"");
-
-        token.value.erase(0, 1); //Remove the @ prefix
-        return token;
-    }
-
-    std::string ReadGlobalIDOperand()
-    {
-        Token token = GetNextToken();
-        if (!std::regex_match(token.value, GLOBAL_ID_OPERAND_REGEX))
-            throw Error::EXPECTATION(token.position, "a global id operand", "\"" + token.value + "\"");
-
-        token.value.erase(0, 1); //Remove the $ prefix
-        return token.value;
-    }
-};
-
-typedef void (*InstructionInserter)(Program&, ProgramMetadata&, TokensStream&);
-static const std::map<std::string, InstructionInserter> InstructionInserters = {
-    {"NOOP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::NOOP { }); }},
-    {"POP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::POP { }); }},
-    {"ADD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::ADD {.type = _stream.ReadDataTypeOperand()}); }},
-    {"SUB", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SUB {.type = _stream.ReadDataTypeOperand()}); }},
-    {"MUL", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::MUL {.type = _stream.ReadDataTypeOperand()}); }},
-    {"DIV", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::DIV {.type = _stream.ReadDataTypeOperand()}); }},
-    {"EQ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::EQ {.type = _stream.ReadDataTypeOperand()}); }},
-    {"NEQ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::NEQ {.type = _stream.ReadDataTypeOperand()}); }},
-    {"SLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = _stream.ReadI64Operand()}); }},
-    {"SSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SSTORE {.offset = _stream.ReadI64Operand()}); }},
-    {"DUP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SLOAD {.offset = -vm_i64(WORD_SIZE)}); }},
-    {"MLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::MLOAD {.offset = _stream.ReadI64Operand()}); }},
-    {"MSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::MSTORE {.offset = _stream.ReadI64Operand()}); }},
-    {"LLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::LLOAD {.idx = _stream.ReadUI32Operand()}); }},
-    {"LSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::LSTORE {.idx = _stream.ReadUI32Operand()}); }},
-    {"PLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::PLOAD {.idx = _stream.ReadUI32Operand()}); }},
-    {"PSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::PSTORE {.idx = _stream.ReadUI32Operand()}); }},
-    {"RET", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::RET { }); }},
-    {"RETV", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::RETV { }); }},
-    {"EXIT", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::EXIT}); }},
-    {"MALLOC", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::MALLOC}); }},
-    {"FREE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::FREE}); }},
-    {"PRINTC", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) { _prog.Insert(Instructions::SYSCALL {.code = SysCallCode::PRINTC}); }},
-    {"PUSH", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        Word value;
-
-        switch (_stream.ReadDataTypeOperand())
-        {
-        case DataType::I8: value = _stream.ReadI8Operand(); break;
-        case DataType::UI8: value = _stream.ReadUI8Operand(); break;
-        case DataType::I16: value = _stream.ReadI16Operand(); break;
-        case DataType::UI16: value = _stream.ReadUI16Operand(); break;
-        case DataType::I32: value = _stream.ReadI32Operand(); break;
-        case DataType::UI32: value = _stream.ReadUI32Operand(); break;
-        case DataType::I64: value = _stream.ReadI64Operand(); break;
-        case DataType::UI64: value = _stream.ReadUI64Operand(); break;
-        case DataType::F32: value = _stream.ReadF32Operand(); break;
-        case DataType::F64: value = _stream.ReadF64Operand(); break;
-        default: assert(false && "Case not handled");
-        }
-
-        _prog.Insert(Instructions::PUSH {.value = value});
-    }},
-    {"CONVERT", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        auto from = _stream.ReadDataTypeOperand(), to = _stream.ReadDataTypeOperand();
-        _prog.Insert(Instructions::CONVERT{.from = from, .to = to});
-    }},
-    {"GLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        auto id = _stream.ReadGlobalIDOperand();
-        auto search = _progMeta.globals.find(id);
-        vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
-
-        _prog.Insert(Instructions::GLOAD {.idx = idx});
-    }},
-    {"GSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        auto id = _stream.ReadGlobalIDOperand();
-        auto search = _progMeta.globals.find(id);
-        vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
-
-        _prog.Insert(Instructions::GSTORE {.idx = idx});
-    }},
-    {"JUMP", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        _prog.Insert(Instructions::JUMP {.target = VM_NULLPTR});
-        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
-    }},
-    {"JUMPZ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        _prog.Insert(Instructions::JUMPZ {.target = VM_NULLPTR});
-        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
-    }},
-    {"JUMPNZ", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        _prog.Insert(Instructions::JUMPNZ {.target = VM_NULLPTR});
-        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_PTR_SIZE, _stream.ReadLabelOperand());
-    }},
-    {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-        Token label = _stream.ReadLabelOperand();
-
-        _prog.Insert(Instructions::CALL {.target = VM_NULLPTR, .storage = _stream.ReadUI32Operand()});
-        _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_UI32_SIZE - VM_PTR_SIZE, label);
-    }},
-};
+//         _prog.Insert(Instructions::CALL {.target = VM_NULLPTR, .storage = _stream.ReadUI32Operand()});
+//         _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_UI32_SIZE - VM_PTR_SIZE, label);
+//     }},
+// };
 
 Program::Program() : header(), code() { }
 Program::Program(Program&& _p) noexcept { this->operator=(std::move(_p)); }
@@ -543,25 +358,17 @@ Program Program::FromFile(const std::string& _filePath)
 
 Program Program::FromStream(std::istream& _stream)
 {
-    using namespace parser;
+    static LPC parser = CreateLPC();
+    ProgramParseValue parseResult = parser.Parse(IStreamToString(_stream)).value;
 
     Program program;
-    ProgramMetadata metadata;
-    Parser* parser = CreateParser();
-    StringStream input(_stream);
-
-    auto result = parser->Parse(input, "PROGRAM");
-    std::cout << result.GetValue<Memory>().size() << std::endl;
-
-    program.code = std::move(result.GetValue<Memory>());
-
-    delete parser;
+    program.code = std::move(parseResult.GetCode());
 
     //Replace operands that are labels with the correct position in the program
-    for (auto& [pos, token] : metadata.labelOperands)
+    for (auto& [pos, token] : parseResult.GetLabelOperands())
     {
-        auto labelSearch = metadata.labels.find(token.value);
-        if (labelSearch == metadata.labels.end())
+        auto labelSearch = parseResult.GetLabels().find(token.value);
+        if (labelSearch == parseResult.GetLabels().end())
             throw Error::UNDEFINED_LABEL(token.position, token.value);
 
         vm_byte* target = program.code.data() + labelSearch->second;
@@ -569,7 +376,7 @@ Program Program::FromStream(std::istream& _stream)
     }
 
     //Set number of globals
-    for (auto& [id, idx] : metadata.globals)
+    for (auto& [id, idx] : parseResult.GetGlobals())
         program.header.numGlobals = std::max(program.header.numGlobals, idx + 1);
 
 #ifdef BUILD_DEBUG
@@ -578,62 +385,6 @@ Program Program::FromStream(std::istream& _stream)
 
     return std::move(program);
 }
-
-// Program FromStreamOld(std::istream& _stream)
-// {
-//     TokensStream stream(&_stream);
-//     Program program;
-//     ProgramMetadata metadata;
-
-//     while (true)
-//     {
-//         Token token;
-
-//         try { token = stream.GetNextToken(); }
-//         catch (...) { break; }
-
-//         auto instructionInserterSearch = InstructionInserters.find(token.value);
-//         if (instructionInserterSearch != InstructionInserters.end())
-//         {
-//             size_t insertOffset = program.code.size();
-//             instructionInserterSearch->second(program, metadata, stream);
-//             assert(program.code.size() - insertOffset == GetSize((OpCode)program.code[insertOffset]) && "Inserted instruction has different size than it should!");
-//         }
-//         else if (std::regex_match(token.value, LABEL_DEF_REGEX))
-//         {
-//             std::string label = token.value.substr(1, token.value.size() - 2);
-
-//             auto labelSearch = metadata.labels.find(label);
-//             if (labelSearch != metadata.labels.end())
-//                 throw Error::REDEFINED_LABEL(token.position, label);
-
-//             metadata.labels.emplace(label, program.code.size());
-//         }
-//         else
-//             throw Error::EXPECTATION(token.position, "OPCODE or LABEL", token.value);
-//     }
-
-//     //Replace operands that are labels with the correct position in the program
-//     for (auto& [pos, token] : metadata.labelOperands)
-//     {
-//         auto labelSearch = metadata.labels.find(token.value);
-//         if (labelSearch == metadata.labels.end())
-//             throw Error::UNDEFINED_LABEL(token.position, token.value);
-
-//         vm_byte* target = program.code.data() + labelSearch->second;
-//         *(vm_byte**)&program.code[pos] = target;
-//     }
-
-//     //Set number of globals
-//     for (auto& [id, idx] : metadata.globals)
-//         program.header.numGlobals = std::max(program.header.numGlobals, idx + 1);
-
-// #ifdef BUILD_DEBUG
-//     program.Validate(); //Note that the program should already be validated since we generated a valid program
-// #endif
-
-//     return std::move(program);
-// }
 
 Program Program::FromString(const std::string& _string)
 {
