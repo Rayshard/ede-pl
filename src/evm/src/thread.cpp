@@ -13,12 +13,9 @@ Thread::Thread(VM* _vm, ThreadID _id, vm_ui64 _stackSize, const vm_byte* _startI
     stack = Memory(_stackSize);
 }
 
-void Thread::Start(vm_byte* _globalsArrayPtr, const std::vector<Word>& _args)
+void Thread::Start(const std::vector<Word>& _args)
 {
     isAlive = true;
-
-    //Push globals array pointer onto stack
-    PushStack(_globalsArrayPtr);
 
     //Push incoming args onto stack
     for (auto& arg : _args)

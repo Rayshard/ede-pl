@@ -17,7 +17,9 @@ Todo (EVM):
     ✔ instead of using results...use exception throwing @done(21-10-25 03:30)
     ☐ write tests for evm parsing errors
     ☐ SLOAD AND SSTORE's offset should be an unsigned int since you can only ever read from a neg value from the top
+    ☐ Remove globals as they can be implemented using labels in a data section
     ☐ implement remainng instuctions
+    ☐ for cmdlineargs, shouldn't they just be pushed on the top of the stack before calling initial thread?
     ✔ Add cmd line arguments @done(21-11-04 23:05)
     ✔ Might want to return a moved Program from Program::From functions @done(21-11-05 11:44)
     ✘ the ability to push 1, 2, 4, and 8 bytes onto stack; printC only pops off 1 byte @cancelled(21-11-05 22:41)

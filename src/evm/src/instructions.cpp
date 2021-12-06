@@ -414,27 +414,6 @@ namespace Instructions
     void Execute(const PLOAD* _instr, Thread* _thread) { _thread->PushStack(_thread->ReadStack<Word>(_thread->GetFP() - WORD_SIZE * 2 - (_instr->idx + 1) * WORD_SIZE)); }
     void Execute(const PSTORE* _instr, Thread* _thread) { _thread->WriteStack(_thread->GetFP() - WORD_SIZE * 2 - (_instr->idx + 1) * WORD_SIZE, _thread->PopStack()); }
 
-    void Execute(const GLOAD* _instr, Thread* _thread)
-    {
-        vm_byte* addr = _thread->ReadStack<vm_byte*>(0) + _instr->idx * WORD_SIZE;
-
-        if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
-            throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
-
-        _thread->PushStack(*(Word*)addr);
-    }
-
-    void Execute(const GSTORE* _instr, Thread* _thread)
-    {
-        vm_byte* addr = _thread->ReadStack<vm_byte*>(0) + _instr->idx * WORD_SIZE;
-        Word value = _thread->PopStack();
-
-        if (!_thread->GetVM()->GetHeap().IsAddressRange(addr, addr + WORD_SIZE - 1))
-            throw VMError::INVALID_MEM_ACCESS(addr, addr + WORD_SIZE - 1);
-
-        *(Word*)addr = value;
-    }
-
     void Execute(const SLOAD* _instr, Thread* _thread) { _thread->PushStack(_thread->ReadStack<Word>(_thread->GetSP() + _instr->offset)); }
 
     void Execute(const SSTORE* _instr, Thread* _thread)
@@ -485,8 +464,6 @@ namespace Instructions
         case OpCode::SSTORE: Execute(SSTORE::From(_instr), _thread); break;
         case OpCode::LLOAD: Execute(LLOAD::From(_instr), _thread); break;
         case OpCode::LSTORE: Execute(LSTORE::From(_instr), _thread); break;
-        case OpCode::GLOAD: Execute(GLOAD::From(_instr), _thread); break;
-        case OpCode::GSTORE: Execute(GSTORE::From(_instr), _thread); break;
         case OpCode::PLOAD: Execute(PLOAD::From(_instr), _thread); break;
         case OpCode::PSTORE: Execute(PSTORE::From(_instr), _thread); break;
         case OpCode::MLOAD: Execute(MLOAD::From(_instr), _thread); break;
@@ -554,8 +531,6 @@ namespace Instructions
         case OpCode::SSTORE: return "SSTORE " + std::to_string(SSTORE::From(_instr)->offset);
         case OpCode::LLOAD: return "LLOAD " + std::to_string(LLOAD::From(_instr)->idx);
         case OpCode::LSTORE: return "LSTORE " + std::to_string(LSTORE::From(_instr)->idx);
-        case OpCode::GLOAD: return "GLOAD " + std::to_string(GLOAD::From(_instr)->idx);
-        case OpCode::GSTORE: return "GSTORE " + std::to_string(GSTORE::From(_instr)->idx);
         case OpCode::PLOAD: return "PLOAD " + std::to_string(PLOAD::From(_instr)->idx);
         case OpCode::PSTORE: return "PSTORE " + std::to_string(PSTORE::From(_instr)->idx);
         case OpCode::MLOAD: return "MLOAD " + std::to_string(MLOAD::From(_instr)->offset);
@@ -568,6 +543,8 @@ namespace Instructions
 
     void ToNASM(const vm_byte* _instr, std::ostream& _stream, const std::string& _indent)
     {
+        _stream << _indent << ToString(_instr) << "\n";
+
         switch ((OpCode)*_instr)
         {
         case OpCode::PUSH:

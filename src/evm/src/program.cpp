@@ -24,6 +24,8 @@ namespace Error
     static std::runtime_error FILE_OPEN(const std::string& _path) { return Create(Position{ 1, 1 }, std::string("Could not open file at ") + _path + "!"); }
     static ParseError REDEFINED_LABEL(Position _pos, const std::string& _label) { return ParseError(_pos, "Label \"" + _label + "\" has already been defined!"); }
     static ParseError UNDEFINED_LABEL(Position _pos, const std::string& _label) { return ParseError(_pos, "Label \"" + _label + "\" does not exist!"); }
+    static ParseError REDEFINED_GLOBAL(Position _pos, const std::string& _global) { return ParseError(_pos, "Global \"" + _global + "\" has already been defined!"); }
+    static ParseError UNDEFINED_GLOBAL(Position _pos, const std::string& _global) { return ParseError(_pos, "Global \"" + _global + "\" does not exist!"); }
     static std::runtime_error INVALID_PROGRAM() { return std::runtime_error("Invalid Program!"); }
 };
 
@@ -105,7 +107,7 @@ struct Instruction
 
 class ProgramParseValue
 {
-    std::map<std::string, vm_ui64> labels, globals;
+    std::map<std::string, vm_ui64> labels;
     std::map<vm_ui64, Label> labelOperands;
     Memory code;
 
@@ -132,7 +134,6 @@ public:
     const Memory& GetCode() const { return code; }
     const std::map<vm_ui64, Label>& GetLabelOperands() const { return labelOperands; }
     const std::map<std::string, vm_ui64>& GetLabels() const { return labels; }
-    const std::map<std::string, vm_ui64>& GetGlobals() const { return globals; }
 };
 
 lpc::LPC<ProgramParseValue> CreateLPC()
@@ -173,18 +174,26 @@ lpc::LPC<ProgramParseValue> CreateLPC()
     typedef TryValue<Instruction, std::monostate> InstructionParseValue;
 
     auto INSTR_PUSH = OPCODE.AsTerminal("PUSH") >> Try(Parser(
-        Prefixed("PUSH I8 <8-bit integer>", DATA_TYPE.Satisfy(DataType::I8), I8.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH UI8 <8-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI8), UI8.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH I16 <16-bit integer>", DATA_TYPE.Satisfy(DataType::I16), I16.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH UI16 <16-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI16), UI16.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH I32 <32-bit integer>", DATA_TYPE.Satisfy(DataType::I32), I32.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH UI32 <32-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI32), UI32.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH I64 <64-bit integer>", DATA_TYPE.Satisfy(DataType::I64), I64.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH UI64 <64-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI64), UI64.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH F32 <32-bit float>", DATA_TYPE.Satisfy(DataType::F32), F32.Map<Word>([](auto result) { return Word(result.value); }))
-        | Prefixed("PUSH F64 <64-bit float>", DATA_TYPE.Satisfy(DataType::F64), F64.Map<Word>([](auto result) { return Word(result.value); }))
-    ).Map<Instruction>([](auto _result) { return GetBytes(Instructions::PUSH{ .value = _result.value }); }));
+            Parser(Prefixed("PUSH I8 <8-bit integer>", DATA_TYPE.Satisfy(DataType::I8), I8.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH UI8 <8-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI8), UI8.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH I16 <16-bit integer>", DATA_TYPE.Satisfy(DataType::I16), I16.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH UI16 <16-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI16), UI16.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH I32 <32-bit integer>", DATA_TYPE.Satisfy(DataType::I32), I32.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH UI32 <32-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI32), UI32.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH I64 <64-bit integer>", DATA_TYPE.Satisfy(DataType::I64), I64.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH UI64 <64-bit unsigned integer>", DATA_TYPE.Satisfy(DataType::UI64), UI64.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH F32 <32-bit float>", DATA_TYPE.Satisfy(DataType::F32), F32.Map<Word>([](auto result) { return Word(result.value); }))
+                | Prefixed("PUSH F64 <64-bit float>", DATA_TYPE.Satisfy(DataType::F64), F64.Map<Word>([](auto result) { return Word(result.value); }))
+            ).Map<Instruction>([](auto _result) { return GetBytes(Instructions::PUSH{ .value = _result.value }); })
+            | LABEL.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::PUSH{ .value = VM_NULLPTR }), { {"LABEL", _result.value} }); })));
 
+    auto INSTR_CALL = OPCODE.AsTerminal("CALL") >> Try(Parser(LABEL & UI32).Map<Instruction>([](auto _result)
+        {
+            auto [label, storage] = _result.value;
+            return Instruction(GetBytes(Instructions::CALL{ .target = VM_NULLPTR, .storage = storage.value }), { {"LABEL", label.value} });
+        }));
+
+    auto INSTR_CONVERT = OPCODE.AsTerminal("CONVERT") >> Try(Parser(DATA_TYPE + DATA_TYPE).Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::CONVERT{ .from = _result.value[0].value, .to = _result.value[1].value })); }));
     auto INSTR_JUMP = OPCODE.AsTerminal("JUMP") >> Try(LABEL.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::JUMP{ .target = VM_NULLPTR }), { {"LABEL", _result.value} }); }));
     auto INSTR_JUMPZ = OPCODE.AsTerminal("JUMPZ") >> Try(LABEL.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::JUMPZ{ .target = VM_NULLPTR }), { {"LABEL", _result.value} }); }));
     auto INSTR_JUMPNZ = OPCODE.AsTerminal("JUMPNZ") >> Try(LABEL.Map<Instruction>([](auto _result) { return Instruction(GetBytes(Instructions::JUMPNZ{ .target = VM_NULLPTR }), { {"LABEL", _result.value} }); }));
@@ -233,6 +242,12 @@ lpc::LPC<ProgramParseValue> CreateLPC()
                     case OpCode::JUMP: _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(instruction.metadata.at("LABEL"))); break;
                     case OpCode::JUMPZ: _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(instruction.metadata.at("LABEL"))); break;
                     case OpCode::JUMPNZ: _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(instruction.metadata.at("LABEL"))); break;
+                    case OpCode::CALL: _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(instruction.metadata.at("LABEL"))); break;
+                    case OpCode::PUSH: {
+                        auto search = instruction.metadata.find("LABEL");
+                        if (search != instruction.metadata.end())
+                            _value.AddLabelOperand(insertPoint + OP_CODE_SIZE, std::any_cast<Label>(search->second));
+                    } break;
                     default: break;
                     }
                 }
@@ -241,36 +256,8 @@ lpc::LPC<ProgramParseValue> CreateLPC()
             else { _value.AddLabel(_result.value.template Get<1>()); } //LABEL
         });
 
-    auto parser = Parser("PROGRAM", CODE);
-
-    return LPC(lexer, parser, { "WS" });
+    return LPC(lexer, Parser("PROGRAM", CODE), { "WS" });
 }
-
-//     {"CONVERT", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-//         auto from = _stream.ReadDataTypeOperand(), to = _stream.ReadDataTypeOperand();
-//         _prog.Insert(Instructions::CONVERT{.from = from, .to = to});
-//     }},
-//     {"GLOAD", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-//         auto id = _stream.ReadGlobalIDOperand();
-//         auto search = _progMeta.globals.find(id);
-//         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
-
-//         _prog.Insert(Instructions::GLOAD {.idx = idx});
-//     }},
-//     {"GSTORE", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-//         auto id = _stream.ReadGlobalIDOperand();
-//         auto search = _progMeta.globals.find(id);
-//         vm_ui64 idx = search == _progMeta.globals.end() ? (_progMeta.globals[id] = _progMeta.globals.size()) : search->second;
-
-//         _prog.Insert(Instructions::GSTORE {.idx = idx});
-//     }},
-//     {"CALL", [](Program& _prog, ProgramMetadata& _progMeta, TokensStream& _stream) {
-//         Token label = _stream.ReadLabelOperand();
-
-//         _prog.Insert(Instructions::CALL {.target = VM_NULLPTR, .storage = _stream.ReadUI32Operand()});
-//         _progMeta.labelOperands.emplace(_prog.GetCode().size() - VM_UI32_SIZE - VM_PTR_SIZE, label);
-//     }},
-// };
 
 Program::Program() : header(), code() { }
 Program::Program(Program&& _p) noexcept { this->operator=(std::move(_p)); }
@@ -314,7 +301,6 @@ void Program::Validate()
             throw Error::INVALID_PROGRAM();
 
 
-        //Assert global references are in bounds
         //Collect branching instructions targets
         switch (opcode)
         {
@@ -322,18 +308,7 @@ void Program::Validate()
         case OpCode::JUMPNZ: possibleTargets.emplace(Instructions::JUMPNZ::From(ptr)->target); break;
         case OpCode::JUMPZ: possibleTargets.emplace(Instructions::JUMPZ::From(ptr)->target); break;
         case OpCode::CALL: possibleTargets.emplace(Instructions::CALL::From(ptr)->target); break;
-        case OpCode::GLOAD:
-        {
-            if (Instructions::GLOAD::From(ptr)->idx >= header.numGlobals)
-                throw Error::INVALID_PROGRAM();
-        } break;
-        case OpCode::GSTORE:
-        {
-            if (Instructions::GSTORE::From(ptr)->idx >= header.numGlobals)
-                throw Error::INVALID_PROGRAM();
-        } break;
-        default:
-        continue;
+        default: continue;
         }
     }
 
@@ -374,10 +349,6 @@ Program Program::FromStream(std::istream& _stream)
         vm_byte* target = program.code.data() + labelSearch->second;
         *(vm_byte**)&program.code[pos] = target;
     }
-
-    //Set number of globals
-    for (auto& [id, idx] : parseResult.GetGlobals())
-        program.header.numGlobals = std::max(program.header.numGlobals, idx + 1);
 
 #ifdef BUILD_DEBUG
     program.Validate(); //Note that the program should already be validated since we generated a valid program

@@ -20,8 +20,6 @@ namespace Instructions
         LSTORE,
         PLOAD,
         PSTORE,
-        GLOAD,
-        GSTORE,
         MLOAD,
         MSTORE,
 
@@ -98,8 +96,6 @@ namespace Instructions
     INSTRUCTION(SSTORE, OPERAND(vm_i64, offset));
     INSTRUCTION(MLOAD, OPERAND(vm_i64, offset));
     INSTRUCTION(MSTORE, OPERAND(vm_i64, offset));
-    INSTRUCTION(GLOAD, OPERAND(vm_ui64, idx));
-    INSTRUCTION(GSTORE, OPERAND(vm_ui64, idx));
     INSTRUCTION(LLOAD, OPERAND(vm_ui32, idx));
     INSTRUCTION(LSTORE, OPERAND(vm_ui32, idx));
     INSTRUCTION(PLOAD, OPERAND(vm_ui32, idx));
@@ -147,8 +143,6 @@ namespace Instructions
         case OpCode::SSTORE: return SSTORE::GetSize();
         case OpCode::MLOAD: return MLOAD::GetSize();
         case OpCode::MSTORE: return MSTORE::GetSize();
-        case OpCode::GLOAD: return GLOAD::GetSize();
-        case OpCode::GSTORE: return GSTORE::GetSize();
         case OpCode::LLOAD: return LLOAD::GetSize();
         case OpCode::LSTORE: return LSTORE::GetSize();
         case OpCode::PLOAD: return PLOAD::GetSize();

@@ -15,9 +15,6 @@ vm_i64 VM::Run(vm_ui64 _stackSize, Program& _prog, const std::vector<std::string
 {
     running = true;
 
-    //Allocate space for globals
-    globalsArrayPtr = _prog.GetHeader().numGlobals == 0 ? nullptr : heap.Alloc(_prog.GetHeader().numGlobals * WORD_SIZE);
-
     // Store command line arguments
     auto argsArraySize = (vm_ui64)_cmdLineArgs.size();
     auto argsArrayPtr = heap.Alloc(VM_UI64_SIZE + _cmdLineArgs.size() * VM_PTR_SIZE);
@@ -99,7 +96,7 @@ ThreadID VM::SpawnThread(vm_ui64 _stackSize, const vm_byte *_startIP, const std:
 
     auto id = nextThreadID++;
     threads.emplace(id, Thread(this, id, _stackSize, _startIP));
-    threads.at(id).Start(globalsArrayPtr, _args);
+    threads.at(id).Start(_args);
     return id;
 }
 

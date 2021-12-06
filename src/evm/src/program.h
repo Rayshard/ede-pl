@@ -5,7 +5,6 @@
 #pragma pack(push, 1) //This pragma ensures that the structed is packed and has no padding
 struct ProgramHeader
 {
-    vm_ui64 numGlobals = 0; //The number of globals used in the program
     vm_ui64 entryPoint = 0; //The byte offset into the instructions data at which to start execution
 };
 #pragma pack(pop)
